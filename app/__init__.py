@@ -7,8 +7,18 @@ from app.model import db, User
 from app.controllers.amazon_controller import amazon_bp, api_bp, admin_bp
 from app.controllers.webhook_controller import world_bp, ups_bp
 
+# Update the imports for app/__init__.py
+from app.controllers.amazon_controller import amazon_bp, api_bp, admin_bp
+from app.controllers.webhook_controller import world_bp, ups_bp
+from app.controllers.cart_controller import bp as cart_bp
+from app.controllers.review_controller import bp as review_bp
+
+# Then in the create_app function, register all blueprints
+
+
 def create_app(test_config=None):
     # Create and configure the app
+    
     app = Flask(__name__, instance_relative_config=True)
     
     # Set up configuration
@@ -34,6 +44,14 @@ def create_app(test_config=None):
     
     # Initialize Flask extensions
     db.init_app(app)
+    
+    app.register_blueprint(amazon_bp)
+    app.register_blueprint(api_bp)
+    app.register_blueprint(admin_bp)
+    app.register_blueprint(world_bp)
+    app.register_blueprint(ups_bp)
+    app.register_blueprint(cart_bp)
+    app.register_blueprint(review_bp)
     
     # Setup Flask-Migrate
     migrate = Migrate(app, db)

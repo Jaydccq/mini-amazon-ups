@@ -1,0 +1,159 @@
+{% extends "layout.html" %}
+
+{% block title %}Connect to World | Mini-Amazon{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('index.index') }}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('admin.warehouses') }}">Warehouses</a></li>
+            <li class="breadcrumb-item active">Connect to World</li>
+        </ol>
+    </nav>
+    
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <!-- Current Connection Status -->
+            {% if current_world_id %}
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-check-circle"></i> Connected to World</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h6>Current World ID:</h6>
+                        <div class="input-group">
+                            <input type="text" class="form-control" value="{{ current_world_id }}" readonly>
+                            <button class="btn btn-outline-secondary copy-btn" type="button" data-clipboard-text="{{ current_world_id }}">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <small class="text-muted">You can share this World ID with your UPS partner.</small>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('admin.warehouses') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left"></i> Back to Warehouses
+                        </a>
+                        <form method="POST" action="{{ url_for('admin.disconnect_world') }}">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-plug"></i> Disconnect
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h2 class="mb-0">{% if current_world_id %}Switch{% else %}Connect{% endif %} to World</h2>
+                </div>
+                <div class="card-body">
+                    <!-- Info Alert -->
+                    <div class="alert alert-info mb-4">
+                        <h5><i class="fas fa-info-circle"></i> World Connection</h5>
+                        <p class="mb-0">
+                            You can either connect to an existing world by providing its World ID, or create a new world.
+                            Make sure to coordinate with your UPS partner to use the same World ID.
+                        </p>
+                    </div>
+                    
+                    <!-- Connect Form -->
+                    <form method="POST" action="{{ url_for('admin.connect_world') }}">
+                        <div class="mb-4">
+                            <h5>Option 1: Connect to an Existing World</h5>
+                            <div class="form-group">
+                                <label for="world_id" class="form-label">World ID</label>
+                                <input type="text" class="form-control" id="world_id" name="world_id" placeholder="Enter the World ID to connect to">
+                                <div class="form-text">Enter the World ID provided by your UPS partner.</div>
+                            </div>
+                            <button type="submit" name="action" value="connect" class="btn btn-primary mt-2">
+                                <i class="fas fa-plug"></i> Connect to Existing World
+                            </button>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="mb-4">
+                            <h5>Option 2: Create a New World</h5>
+                            <p>
+                                This will create a new world and initialize your warehouses in it.
+                                You'll need to share the World ID with your UPS partner.
+                            </p>
+                            
+                            <div class="form-group mb-3">
+                                <label for="sim_speed" class="form-label">Simulation Speed</label>
+                                <input type="number" class="form-control" id="sim_speed" name="sim_speed" value="100" min="1" max="1000">
+                                <div class="form-text">Higher values make the simulation run faster. Default is 100.</div>
+                            </div>
+                            
+                            {% if warehouses %}
+                            <div class="mb-3">
+                                <label class="form-label">Available Warehouses</label>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-bordered">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>Location</th>
+                                                <th>Include</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for warehouse in warehouses %}
+                                            <tr>
+                                                <td>{{ warehouse.warehouse_id }}</td>
+                                                <td>({{ warehouse.x }}, {{ warehouse.y }})</td>
+                                                <td>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox" name="warehouse_ids" value="{{ warehouse.warehouse_id }}" id="warehouse{{ warehouse.warehouse_id }}" checked>
+                                                        <label class="form-check-label" for="warehouse{{ warehouse.warehouse_id }}">
+                                                            Include
+                                                        </label>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle"></i> You don't have any warehouses yet. <a href="{{ url_for('admin.add_warehouse') }}">Add a warehouse</a> before creating a world.
+                            </div>
+                            {% endif %}
+                            
+                            <button type="submit" name="action" value="create" class="btn btn-success mt-2" {% if not warehouses %}disabled{% endif %}>
+                                <i class="fas fa-plus-circle"></i> Create New World
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.8/dist/clipboard.min.js"></script>
+<script>
+    $(document).ready(function() {
+        // Initialize clipboard for copying World ID
+        new ClipboardJS('.copy-btn');
+        
+        // Show tooltip when copying
+        $('.copy-btn').click(function() {
+            const originalHtml = $(this).html();
+            $(this).html('<i class="fas fa-check"></i>');
+            
+            setTimeout(() => {
+                $(this).html(originalHtml);
+            }, 1000);
+        });
+    });
+</script>
+{% endblock %}

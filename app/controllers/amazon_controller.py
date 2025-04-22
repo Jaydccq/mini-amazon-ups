@@ -606,3 +606,33 @@ def api_tracking(tracking_id):
         return jsonify({'error': 'Error retrieving shipment status'}), 500
     
     return jsonify(shipment_data)
+
+
+
+
+from app.models.review import ReviewService
+# Integrate with existing amazon_controller.py
+
+@amazon_bp.route('/product/<int:product_id>/reviews')
+def product_reviews(product_id):
+    """Show product reviews"""
+    product = Product.query.get_or_404(product_id)
+    reviews = ReviewService.get_product_reviews(product_id)
+    avg_rating = sum(r.rating for r in reviews) / len(reviews) if reviews else 0
+    
+    return render_template('product/reviews.html',
+                          product=product,
+                          reviews=reviews,
+                          avg_rating=avg_rating)
+
+@amazon_bp.route('/seller/<int:seller_id>/reviews')
+def seller_reviews(seller_id):
+    """Show seller reviews"""
+    seller = User.query.get_or_404(seller_id)
+    reviews = ReviewService.get_seller_reviews(seller_id)
+    avg_rating = sum(r.rating for r in reviews) / len(reviews) if reviews else 0
+    
+    return render_template('seller/reviews.html',
+                          seller=seller,
+                          reviews=reviews,
+                          avg_rating=avg_rating)

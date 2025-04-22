@@ -1,0 +1,140 @@
+{% extends "layout.html" %}
+
+{% block title %}Checkout | Mini-Amazon{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h3 class="mb-0">Checkout</h3>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('cart.checkout') }}">
+                        <!-- Delivery Location Section -->
+                        <h4 class="mb-3">Delivery Location</h4>
+                        <div class="mb-4 pb-3 border-bottom">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="destination_x" class="form-label">X Coordinate</label>
+                                    <input type="number" class="form-control" id="destination_x" name="destination_x" required>
+                                    <div class="form-text">X coordinate for delivery location</div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="destination_y" class="form-label">Y Coordinate</label>
+                                    <input type="number" class="form-control" id="destination_y" name="destination_y" required>
+                                    <div class="form-text">Y coordinate for delivery location</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Warehouse Selection -->
+                        <h4 class="mb-3">Shipping Warehouse</h4>
+                        <div class="mb-4 pb-3 border-bottom">
+                            <div class="form-group">
+                                <label for="warehouse_id" class="form-label">Select Warehouse</label>
+                                <select class="form-select" id="warehouse_id" name="warehouse_id">
+                                    <option value="">-- Select nearest warehouse (optional) --</option>
+                                    {% for warehouse in warehouses %}
+                                    <option value="{{ warehouse.warehouse_id }}">
+                                        Warehouse #{{ warehouse.warehouse_id }} - Location ({{ warehouse.x }}, {{ warehouse.y }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">If no warehouse is selected, the nearest one will be used automatically</div>
+                            </div>
+                        </div>
+                        
+                        <!-- UPS Account (Optional) -->
+                        <h4 class="mb-3">UPS Account (Optional)</h4>
+                        <div class="mb-4 pb-3 border-bottom">
+                            <div class="form-group">
+                                <label for="ups_account" class="form-label">UPS Account ID</label>
+                                <input type="text" class="form-control" id="ups_account" name="ups_account">
+                                <div class="form-text">Enter your UPS account ID for tracking (optional)</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Payment Information -->
+                        <h4 class="mb-3">Payment Information</h4>
+                        <div class="mb-4">
+                            <div class="form-group mb-3">
+                                <label for="card_number" class="form-label">Card Number</label>
+                                <input type="text" class="form-control" id="card_number" placeholder="**** **** **** ****" required>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="expiry" class="form-label">Expiration Date</label>
+                                    <input type="text" class="form-control" id="expiry" placeholder="MM/YY" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="cvv" class="form-label">CVV</label>
+                                    <input type="text" class="form-control" id="cvv" placeholder="***" required>
+                                </div>
+                            </div>
+                            <div class="form-text text-muted">
+                                <i class="fas fa-info-circle"></i> This is a simulation. No real payment will be processed.
+                            </div>
+                        </div>
+                        
+                        <!-- Buttons -->
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{{ url_for('cart.view_cart') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left"></i> Back to Cart
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-shopping-bag"></i> Place Order
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Order Summary -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h3 class="mb-0">Order Summary</h3>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush mb-3">
+                        {% for item in cart_items %}
+                        <li class="list-group-item d-flex justify-content-between lh-sm">
+                            <div>
+                                <h6 class="my-0">{{ item[3] }}</h6>
+                                <small class="text-muted">Qty: {{ item[2] }}</small>
+                            </div>
+                            <span>${{ "%.2f"|format(item[7]) }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    
+                    <hr>
+                    
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Subtotal:</span>
+                        <strong>${{ "%.2f"|format(total) }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Shipping:</span>
+                        <strong>$0.00</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Tax:</span>
+                        <strong>${{ "%.2f"|format(total * 0.08) }}</strong>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Total:</span>
+                        <strong class="text-success">${{ "%.2f"|format(total * 1.08) }}</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

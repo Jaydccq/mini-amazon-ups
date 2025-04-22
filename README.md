@@ -1,6 +1,49 @@
 # amazon-ups
 
-
+amazon/
+├── app/
+│   ├── __init__.py
+│   ├── models.py
+│   ├── proto/
+│   │   └── amazon_pb2.py
+│   ├── services/
+│   │   ├── __init__.py
+│   │   ├── world_simulator_service.py
+│   │   ├── ups_integration_service.py
+│   │   ├── shipment_service.py
+│   │   ├── warehouse_service.py
+│   │   └── world_event_handler.py
+│   ├── controllers/
+│   │   ├── __init__.py
+│   │   ├── amazon_controller.py
+│   │   └── webhook_controller.py
+│   └── templates/
+│       ├── base.html
+│       ├── index.html
+│       ├── login.html
+│       ├── register.html
+│       ├── products/
+│       │   ├── list.html
+│       │   └── detail.html
+│       ├── orders/
+│       │   ├── list.html
+│       │   └── detail.html
+│       ├── shipments/
+│       │   └── detail.html
+│       ├── cart.html
+│       ├── checkout.html
+│       └── admin/
+│           ├── warehouses.html
+│           ├── add_warehouse.html
+│           └── connect_world.html
+├── migrations/
+├── instance/
+│   └── uploads/
+├── Dockerfile
+├── docker-compose.yml
+├── docker-entrypoint.sh
+├── requirements.txt
+└── README.md
 
 ## Getting started
 

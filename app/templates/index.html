@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Mini-Amazon - Home{% endblock %}
+
+{% block content %}
+<div class="jumbotron bg-light p-5 rounded">
+    <h1 class="display-4">Welcome to Mini-Amazon</h1>
+    <p class="lead">Your one-stop shop for all your mini needs.</p>
+    <hr class="my-4">
+    <p>Browse our extensive catalog of products and enjoy fast delivery with our UPS integration.</p>
+    <a class="btn btn-primary btn-lg" href="{{ url_for('amazon.product_list') }}" role="button">Shop Now</a>
+</div>
+
+<!-- Featured Products -->
+<div class="mt-5">
+    <h2 class="mb-4">Featured Products</h2>
+    <div class="row">
+        {% for product in products %}
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                {% if product.image %}
+                <img src="{{ product.image }}" class="card-img-top" alt="{{ product.product_name }}">
+                {% else %}
+                <img src="https://via.placeholder.com/300x200?text=No+Image" class="card-img-top" alt="No Image">
+                {% endif %}
+                <div class="card-body">
+                    <h5 class="card-title">{{ product.product_name }}</h5>
+                    <p class="card-text">{{ product.description|truncate(100) }}</p>
+                    <p class="card-text text-primary fw-bold">${{ product.price }}</p>
+                </div>
+                <div class="card-footer bg-white border-top-0">
+                    <a href="{{ url_for('amazon.product_detail', product_id=product.product_id) }}" class="btn btn-primary">View Details</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Categories -->
+<div class="mt-5">
+    <h2 class="mb-4">Shop by Category</h2>
+    <div class="row">
+        {% for category in categories %}
+        <div class="col-md-3 mb-4">
+            <div class="card h-100 text-center">
+                <div class="card-body">
+                    <h5 class="card-title">{{ category.category_name }}</h5>
+                    <a href="{{ url_for('amazon.product_list', category_id=category.category_id) }}" class="btn btn-outline-primary">Browse</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- How it Works -->
+<div class="mt-5">
+    <h2 class="mb-4">How It Works</h2>
+    <div class="row text-center">
+        <div class="col-md-4">
+            <div class="p-3">
+                <i class="fas fa-search fa-4x mb-3 text-primary"></i>
+                <h4>Browse and Order</h4>
+                <p>Search our catalog, add items to your cart, and complete your purchase.</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="p-3">
+                <i class="fas fa-box fa-4x mb-3 text-primary"></i>
+                <h4>Packing and Shipping</h4>
+                <p>We pack your order in our warehouse and prepare it for shipping.</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="p-3">
+                <i class="fas fa-truck fa-4x mb-3 text-primary"></i>
+                <h4>Delivery</h4>
+                <p>UPS delivers your package right to your doorstep. Track it every step of the way.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

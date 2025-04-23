@@ -4,29 +4,28 @@ from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_wtf.csrf import CSRFProtect
 from app.model import db, User
-from app.controllers.amazon_controller import amazon_bp, api_bp, admin_bp
-from app.controllers.webhook_controller import world_bp, ups_bp
 
-# Update the imports for app/__init__.py
+# Import blueprints
 from app.controllers.amazon_controller import amazon_bp, api_bp, admin_bp
 from app.controllers.webhook_controller import world_bp, ups_bp
 from app.controllers.cart_controller import bp as cart_bp
 from app.controllers.review_controller import bp as review_bp
 
-# Then in the create_app function, register all blueprints
-
-
 def create_app(test_config=None):
     # Create and configure the app
-    
     app = Flask(__name__, instance_relative_config=True)
     
     # Set up configuration
     if test_config is None:
-        # Load the instance config, if it exists, when not testing
+        # For local development outside Docker
+        if not os.environ.get('DATABASE_URL'):
+            database_url = 'postgresql:///mini_amazon'  # Local connection with no username/password
+        else:
+            database_url = os.environ.get('DATABASE_URL')
+        
         app.config.from_mapping(
             SECRET_KEY=os.environ.get('SECRET_KEY', 'dev'),
-            SQLALCHEMY_DATABASE_URI=os.environ.get('DATABASE_URL', 'postgresql://postgres:postgres@db:5432/mini_amazon'),
+            SQLALCHEMY_DATABASE_URI=database_url,
             SQLALCHEMY_TRACK_MODIFICATIONS=False,
             UPLOAD_FOLDER=os.path.join(app.instance_path, 'uploads'),
             MAX_CONTENT_LENGTH=16 * 1024 * 1024  # 16MB max upload
@@ -45,6 +44,7 @@ def create_app(test_config=None):
     # Initialize Flask extensions
     db.init_app(app)
     
+    # Register blueprints - ONLY REGISTER ONCE
     app.register_blueprint(amazon_bp)
     app.register_blueprint(api_bp)
     app.register_blueprint(admin_bp)
@@ -66,13 +66,6 @@ def create_app(test_config=None):
     @login_manager.user_loader
     def load_user(user_id):
         return User.query.get(int(user_id))
-    
-    # Register blueprints
-    app.register_blueprint(amazon_bp)
-    app.register_blueprint(api_bp)
-    app.register_blueprint(admin_bp)
-    app.register_blueprint(world_bp)
-    app.register_blueprint(ups_bp)
     
     # Create tables if they don't exist
     with app.app_context():

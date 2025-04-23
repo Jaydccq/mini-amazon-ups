@@ -1,4 +1,4 @@
-{% extends "layout.html" %}
+{% raw %}{% extends "layout.html" %}
 
 {% block title %}Shipment Tracking | Mini-Amazon{% endblock %}
 
@@ -95,9 +95,9 @@
 <div class="container mt-4">
     <nav aria-label="breadcrumb" class="mb-4">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ url_for('index.index') }}">Home</a></li>
-            <li class="breadcrumb-item"><a href="{{ url_for('order.order_list') }}">My Orders</a></li>
-            <li class="breadcrumb-item"><a href="{{ url_for('order.order_detail', order_id=shipment.order_id) }}">Order #{{ shipment.order_id }}</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('amazon.index') }}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('amazon.order_list') }}">My Orders</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('amazon.order_detail', order_id=shipment.order_id) }}">Order #{{ shipment.order_id }}</a></li>
             <li class="breadcrumb-item active" aria-current="page">Shipment #{{ shipment.shipment_id }}</li>
         </ol>
     </nav>
@@ -256,7 +256,7 @@
                     </div>
 
                     <div class="text-center mt-4">
-                        <a href="{{ url_for('shipment.shipment_detail', shipment_id=shipment.shipment_id) }}" class="btn btn-outline-primary btn-sm">
+                        <a href="{{ url_for('amazon.shipment_detail', shipment_id=shipment.shipment_id) }}" class="btn btn-outline-primary btn-sm">
                             <i class="fas fa-sync-alt me-1"></i> Refresh Status
                         </a>
                     </div>
@@ -308,7 +308,7 @@
                     </li>
                      <li class="list-group-item d-flex justify-content-between">
                         <span>Order ID:</span>
-                        <a href="{{ url_for('order.order_detail', order_id=shipment.order_id) }}">#{{ shipment.order_id }}</a>
+                        <a href="{{ url_for('amazon.order_detail', order_id=shipment.order_id) }}">#{{ shipment.order_id }}</a>
                     </li>
                     <li class="list-group-item d-flex justify-content-between">
                         <span>Warehouse:</span>
@@ -357,7 +357,7 @@
                 </div>
                 {% endif %}
                 <div class="card-footer text-center">
-                    <a href="{{ url_for('order.order_detail', order_id=shipment.order_id) }}" class="btn btn-outline-secondary btn-sm">
+                    <a href="{{ url_for('amazon.order_detail', order_id=shipment.order_id) }}" class="btn btn-outline-secondary btn-sm">
                         <i class="fas fa-arrow-left me-1"></i> Back to Order Details
                     </a>
                 </div>
@@ -376,4 +376,4 @@
         location.reload();
     }, 60000);
 </script>
-{% endblock %}
+{% endblock %}{% endraw %}

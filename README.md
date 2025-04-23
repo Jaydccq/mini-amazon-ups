@@ -85,8 +85,8 @@ review_controller.py (评论控制器):
 用户评论管理: 提供用户查看自己发布的评论 (/reviews/)、添加新评论 (/reviews/add) 和编辑已有评论 (/reviews/edit/<review_id>) 的功能。
 公开评论查看: 定义了查看特定产品所有评论 (/reviews/product/<product_id>) 和特定卖家所有评论 (/reviews/seller/<seller_id>) 的路由。
 评论展示: 处理评论的排序和筛选逻辑，并在相应的页面上展示评论列表、平均评分和评分分布。
-webhook_controller.py (Webhook 控制器):
 
+webhook_controller.py (Webhook 控制器):
 作用: 这个文件作为接收外部系统（世界模拟器和 UPS 系统）发送的异步通知或事件的入口点。Webhook 是一种允许外部服务在特定事件发生时向您的应用程序发送数据的机制。
 具体功能:
 接收世界模拟器事件: 定义了 /api/world/event 路由，用于接收来自世界模拟器的事件（如商品到达、包裹打包完成、包裹装载完成），并将这些事件传递给 WorldEventHandler 服务进行处理。
@@ -130,15 +130,16 @@ warehouse_service.py (仓库服务):
 库存查询: 提供查询特定产品在所有仓库的库存情况 (get_product_inventory) 或查询特定仓库的完整库存列表 (get_warehouse_inventory) 的功能。
 库存补充: 调用 world_simulator_service 向世界模拟器请求补充特定仓库的特定产品库存 (replenish_product)。
 处理产品到达: 包含处理由世界模拟器发出的“产品到达仓库”事件的逻辑 (handle_product_arrived)，并更新仓库库存。
-world_event_handler.py (世界事件处理器):
 
+
+world_event_handler.py (世界事件处理器):
 作用: 这是一个事件分发器或调度器，专门用于处理来自世界模拟器的事件。它作为 webhook_controller 和具体业务服务之间的桥梁。
 具体功能:
 接收和分发: 提供一个统一的入口方法 handle_world_event，接收来自 webhook_controller 的事件类型和数据。
 路由逻辑: 根据传入的 event_type（例如 'product_arrived', 'package_ready', 'package_loaded'），将事件数据转发给相应的服务进行处理（调用 warehouse_service 的 handle_product_arrived 或 shipment_service 的 handle_package_packed / handle_package_loaded）。
 解耦: 将事件的接收逻辑（在 webhook_controller 中）与事件的具体处理逻辑（在 warehouse_service 和 shipment_service 中）解耦。
-world_simulator_service.py (世界模拟器服务):
 
+world_simulator_service.py (世界模拟器服务):
 作用: 这个文件负责直接与世界模拟器进行底层通信。
 具体功能:
 连接管理: 处理与世界模拟器建立 TCP Socket 连接 (connect) 和断开连接 (disconnect)。

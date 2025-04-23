@@ -1,6 +1,10 @@
-{% extends "layout.html" %}
+{% raw %}{% extends "layout.html" %}
 
-{% block title %}{{ product.name }} | Mini-Amazon{% endblock %}
+{# *** Assuming 'product' object passed from controller has attributes like 'name', 'product_id', 'category_name', 'category_id', 'image', 'avg_rating', 'review_count', 'owner_name', 'price', 'description', 'inventory', 'brand', 'model', 'rating_distribution', 'warehouses' *** #}
+{# *** Also assuming 'product.inventory' is a list of items with 'seller_name', 'quantity', 'unit_price', 'seller_id' *** #}
+{# *** Assuming 'related_products' is a list of product objects *** #}
+
+{% block title %}{{ product.product_name or 'Product' }} | Mini-Amazon{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -43,29 +47,26 @@
 
 {% block content %}
 <div class="container mt-4">
-    <!-- Breadcrumb -->
     <nav aria-label="breadcrumb" class="mb-4">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ url_for('index.index') }}">Home</a></li>
-            <li class="breadcrumb-item"><a href="{{ url_for('index.index') }}">Products</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('amazon.index') }}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('amazon.product_list') }}">Products</a></li>
             {% if product.category_name %}
-            <li class="breadcrumb-item"><a href="{{ url_for('index.index', category_id=product.category_id) }}">{{ product.category_name }}</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('amazon.product_list', category_id=product.category_id) }}">{{ product.category_name }}</a></li>
             {% endif %}
-            <li class="breadcrumb-item active" aria-current="page">{{ product.name }}</li>
+            <li class="breadcrumb-item active" aria-current="page">{{ product.product_name }}</li>
         </ol>
     </nav>
     
     <div class="row">
-        <!-- Product Details Section -->
         <div class="col-lg-9">
             <div class="card shadow-sm mb-4">
                 <div class="card-body">
                     <div class="row">
-                        <!-- Product Image -->
                         <div class="col-md-5 mb-4 mb-md-0">
                             <div class="text-center p-3">
                                 {% if product.image %}
-                                <img src="{{ product.image }}" alt="{{ product.name }}" class="img-fluid product-image rounded">
+                                <img src="{{ product.image }}" alt="{{ product.product_name }}" class="img-fluid product-image rounded">
                                 {% else %}
                                 <div class="bg-light d-flex align-items-center justify-content-center rounded" style="height: 300px;">
                                     <i class="fas fa-image fa-4x text-secondary"></i>
@@ -74,12 +75,10 @@
                             </div>
                         </div>
                         
-                        <!-- Product Information -->
                         <div class="col-md-7">
-                            <h1 class="mb-2">{{ product.name }}</h1>
+                            <h1 class="mb-2">{{ product.product_name }}</h1>
                             
                             <div class="mb-3">
-                                <!-- Rating Summary -->
                                 <div class="d-flex align-items-center mb-2">
                                     <div class="rating-stars me-2">
                                         {% set avg_rating = product.avg_rating|default(0) %}
@@ -98,19 +97,15 @@
                                     </span>
                                 </div>
                                 
-                                <!-- Seller Information -->
                                 <div class="text-muted">
-                                    Sold by: <a href="#">{{ product.owner_name }}</a>
+                                    Sold by: <a href="#">{{ product.owner_name or 'Unknown Seller' }}</a>
                                 </div>
                             </div>
                             
-                            <!-- Price -->
                             <h2 class="text-primary mb-3">${{ "%.2f"|format(product.price) }}</h2>
                             
-                            <!-- Quick Description -->
                             <p>{{ product.description|truncate(150) }}</p>
                             
-                            <!-- Purchase Options -->
                             {% if product.inventory %}
                             <div class="card mb-3">
                                 <div class="card-header bg-light">
@@ -138,9 +133,10 @@
                                                 <span class="h5 text-primary me-3 mb-0">${{ "%.2f"|format(item.unit_price) }}</span>
                                                 
                                                 {% if current_user.is_authenticated and item.quantity > 0 %}
-                                                <form action="{{ url_for('cart.add_to_cart') }}" method="POST" class="d-flex">
-                                                    <input type="hidden" name="product_id" value="{{ product.id }}">
-                                                    <input type="hidden" name="seller_id" value="{{ item.seller_id }}">
+                                                <form action="{{ url_for('amazon.add_to_cart') }}" method="POST" class="d-flex">
+                                                    <input type="hidden" name="product_id" value="{{ product.product_id }}">
+                                                    {# Assuming controller handles seller_id or defaults based on owner if needed #}
+                                                    {# <input type="hidden" name="seller_id" value="{{ item.seller_id }}"> #}
                                                     <div class="input-group quantity-input me-2">
                                                         <button class="btn btn-outline-secondary" type="button" onclick="decrementQuantity(this)">-</button>
                                                         <input type="number" class="form-control text-center" name="quantity" value="1" min="1" max="{{ item.quantity }}">
@@ -151,7 +147,7 @@
                                                     </button>
                                                 </form>
                                                 {% elif not current_user.is_authenticated %}
-                                                <a href="{{ url_for('users.login') }}" class="btn btn-outline-primary">
+                                                <a href="{{ url_for('amazon.login') }}" class="btn btn-outline-primary">
                                                     <i class="fas fa-sign-in-alt"></i> Login to Purchase
                                                 </a>
                                                 {% else %}
@@ -175,7 +171,6 @@
                 </div>
             </div>
             
-            <!-- Product Details Tabs -->
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-light p-0">
                     <ul class="nav nav-pills nav-fill" id="productDetailTabs" role="tablist">
@@ -192,12 +187,10 @@
                 </div>
                 <div class="card-body">
                     <div class="tab-content" id="productDetailTabsContent">
-                        <!-- Description Tab -->
                         <div class="tab-pane fade show active" id="description" role="tabpanel" aria-labelledby="description-tab">
                             <h4>Product Details</h4>
                             <p>{{ product.description }}</p>
                             
-                            <!-- Additional product details could go here -->
                             <div class="row mt-4">
                                 <div class="col-md-6">
                                     <h5>Features</h5>
@@ -230,26 +223,23 @@
                             </div>
                         </div>
                         
-                        <!-- Reviews Tab -->
                         <div class="tab-pane fade" id="reviews" role="tabpanel" aria-labelledby="reviews-tab">
-                            <!-- Add Review Button -->
                             {% if current_user.is_authenticated %}
                             <div class="d-flex justify-content-between align-items-center mb-4">
                                 <h4 class="mb-0">Customer Reviews</h4>
-                                <a href="{{ url_for('reviews.add_review', product_id=product.id) }}" class="btn btn-primary">
+                                <a href="{{ url_for('reviews.add_review', product_id=product.product_id) }}" class="btn btn-primary">
                                     <i class="fas fa-star"></i> Write a Review
                                 </a>
                             </div>
                             {% else %}
                             <div class="d-flex justify-content-between align-items-center mb-4">
                                 <h4 class="mb-0">Customer Reviews</h4>
-                                <a href="{{ url_for('users.login') }}" class="btn btn-outline-primary">
+                                <a href="{{ url_for('amazon.login') }}" class="btn btn-outline-primary">
                                     <i class="fas fa-sign-in-alt"></i> Login to Write a Review
                                 </a>
                             </div>
                             {% endif %}
                             
-                            <!-- Reviews Summary -->
                             <div class="card bg-light mb-4">
                                 <div class="card-body">
                                     <div class="row align-items-center">
@@ -270,10 +260,9 @@
                                             <p class="mb-0">{{ product.review_count|default(0) }} reviews</p>
                                         </div>
                                         <div class="col-md-8">
-                                            <!-- Rating Distribution -->
                                             {% for star in [5, 4, 3, 2, 1] %}
                                                 {% set count = product.rating_distribution[star]|default(0) if product.rating_distribution else 0 %}
-                                                {% set percent = (count / product.review_count * 100)|default(0) if product.review_count else 0 %}
+                                                {% set percent = (count / (product.review_count or 1) * 100) %} {# Avoid division by zero #}
                                                 <div class="d-flex align-items-center mb-2">
                                                     <div style="width: 40px;">{{ star }} <i class="fas fa-star" style="font-size: 0.8rem;"></i></div>
                                                     <div class="progress flex-grow-1 mx-2" style="height: 8px;">
@@ -287,10 +276,9 @@
                                 </div>
                             </div>
                             
-                            <!-- Reviews List -->
                             {% if product.review_count > 0 %}
                                 <div class="d-flex justify-content-center mb-3">
-                                    <a href="{{ url_for('reviews.product_reviews', product_id=product.id) }}" class="btn btn-outline-primary">
+                                    <a href="{{ url_for('reviews.product_reviews', product_id=product.product_id) }}" class="btn btn-outline-primary">
                                         <i class="fas fa-list"></i> View All Reviews
                                     </a>
                                 </div>
@@ -303,7 +291,6 @@
                             {% endif %}
                         </div>
                         
-                        <!-- Shipping Tab -->
                         <div class="tab-pane fade" id="shipping" role="tabpanel" aria-labelledby="shipping-tab">
                             <h4>Shipping Information</h4>
                             <p>All orders are processed and shipped from our warehouses. Shipping time depends on your location and the warehouse availability.</p>
@@ -315,6 +302,7 @@
                             <h5 class="mt-4">Available Warehouses</h5>
                             <p>Your order will be shipped from the nearest warehouse with available inventory:</p>
                             
+                            {# Assuming product.warehouses is passed from the controller #}
                             {% if product.warehouses %}
                             <div class="table-responsive">
                                 <table class="table table-striped">
@@ -347,9 +335,7 @@
             </div>
         </div>
         
-        <!-- Sidebar -->
         <div class="col-lg-3">
-            <!-- Delivery Information -->
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-light">
                     <h5 class="mb-0">Delivery Information</h5>
@@ -358,8 +344,8 @@
                     <div class="d-flex align-items-start mb-3">
                         <i class="fas fa-truck-moving text-success me-3 mt-1"></i>
                         <div>
-                            <h6 class="mb-1">Free Shipping</h6>
-                            <p class="mb-0 text-muted small">On all orders</p>
+                            <h6 class="mb-1">Fast Shipping</h6>
+                            <p class="mb-0 text-muted small">Via simulated UPS</p>
                         </div>
                     </div>
                     
@@ -381,7 +367,6 @@
                 </div>
             </div>
             
-            <!-- Related Products -->
             {% if related_products %}
             <div class="card shadow-sm">
                 <div class="card-header bg-light">
@@ -399,7 +384,7 @@
                             </div>
                             {% endif %}
                             <div>
-                                <a href="{{ url_for('product.product_detail', product_id=related.product_id) }}" class="text-decoration-none">{{ related.product_name }}</a>
+                                <a href="{{ url_for('amazon.product_detail', product_id=related.product_id) }}" class="text-decoration-none">{{ related.product_name }}</a>
                                 <div class="text-primary">${{ "%.2f"|format(related.price) }}</div>
                             </div>
                         </div>
@@ -407,7 +392,7 @@
                     {% endfor %}
                 </div>
                 <div class="card-footer text-center">
-                    <a href="{{ url_for('index.index', category_id=product.category_id) }}" class="btn btn-sm btn-outline-primary">View More</a>
+                    <a href="{{ url_for('amazon.product_list', category_id=product.category_id) }}" class="btn btn-sm btn-outline-primary">View More</a>
                 </div>
             </div>
             {% endif %}
@@ -441,4 +426,4 @@
         });
     });
 </script>
-{% endblock %}
+{% endblock %}{% endraw %}

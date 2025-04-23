@@ -1,4 +1,4 @@
-{% extends "layout.html" %}
+{% raw %}{% extends "layout.html" %}
 
 {% block title %}Admin - Warehouses | Mini-Amazon{% endblock %}
 
@@ -7,39 +7,42 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Warehouse Management</h1>
         <div>
+             {# url_for points to correct admin endpoint #}
             <a href="{{ url_for('admin.add_warehouse') }}" class="btn btn-primary">
                 <i class="fas fa-plus"></i> Add Warehouse
             </a>
+             {# url_for points to correct admin endpoint #}
             <a href="{{ url_for('admin.connect_world') }}" class="btn btn-success">
                 <i class="fas fa-globe"></i> Connect to World
             </a>
         </div>
     </div>
     
-    <!-- World Connection Status -->
     <div class="card mb-4">
         <div class="card-header bg-light">
             <h5 class="mb-0">World Connection Status</h5>
         </div>
         <div class="card-body">
+             {# Depends on 'world_connected' and 'world_id' passed from controller #}
             {% if world_connected %}
                 <div class="alert alert-success mb-0">
                     <i class="fas fa-check-circle"></i> Connected to World ID: <strong>{{ world_id }}</strong>
                 </div>
             {% else %}
                 <div class="alert alert-warning mb-0">
+                     {# url_for points to correct admin endpoint #}
                     <i class="fas fa-exclamation-triangle"></i> Not connected to any world. Please <a href="{{ url_for('admin.connect_world') }}">connect to a world</a> to enable warehouse operations.
                 </div>
             {% endif %}
         </div>
     </div>
     
-    <!-- Warehouses Table -->
     <div class="card">
         <div class="card-header bg-light">
             <h5 class="mb-0">Warehouses</h5>
         </div>
         <div class="card-body">
+            {# Depends on 'warehouses' passed from controller #}
             {% if warehouses %}
                 <div class="table-responsive">
                     <table class="table table-hover">
@@ -65,13 +68,16 @@
                                         <span class="badge bg-danger">Inactive</span>
                                     {% endif %}
                                 </td>
+                                 {# Assumes warehouse object has product_count attribute #}
                                 <td>{{ warehouse.product_count|default(0) }}</td>
                                 <td>{{ warehouse.created_at.strftime('%Y-%m-%d') }}</td>
                                 <td>
                                     <div class="btn-group">
+                                         {# Assumes 'admin.view_warehouse' endpoint exists #}
                                         <a href="{{ url_for('admin.view_warehouse', warehouse_id=warehouse.warehouse_id) }}" class="btn btn-sm btn-outline-primary">
                                             <i class="fas fa-search"></i> View
                                         </a>
+                                         {# Assumes 'admin.edit_warehouse' endpoint exists #}
                                         <a href="{{ url_for('admin.edit_warehouse', warehouse_id=warehouse.warehouse_id) }}" class="btn btn-sm btn-outline-secondary">
                                             <i class="fas fa-edit"></i> Edit
                                         </a>
@@ -80,7 +86,6 @@
                                         </button>
                                     </div>
                                     
-                                    <!-- Delete Warehouse Modal -->
                                     <div class="modal fade" id="deleteWarehouseModal{{ warehouse.warehouse_id }}" tabindex="-1" aria-hidden="true">
                                         <div class="modal-dialog">
                                             <div class="modal-content">
@@ -98,6 +103,7 @@
                                                 </div>
                                                 <div class="modal-footer">
                                                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                     {# Assumes 'admin.delete_warehouse' endpoint exists #}
                                                     <form action="{{ url_for('admin.delete_warehouse', warehouse_id=warehouse.warehouse_id) }}" method="POST">
                                                         <button type="submit" class="btn btn-danger">Delete Warehouse</button>
                                                     </form>
@@ -116,13 +122,13 @@
                     <i class="fas fa-warehouse fa-3x mb-3"></i>
                     <h4>No warehouses found</h4>
                     <p>You haven't added any warehouses yet.</p>
+                     {# url_for points to correct admin endpoint #}
                     <a href="{{ url_for('admin.add_warehouse') }}" class="btn btn-primary mt-2">Add Warehouse</a>
                 </div>
             {% endif %}
         </div>
     </div>
     
-    <!-- Warehouse Map -->
     {% if warehouses %}
     <div class="card mt-4">
         <div class="card-header bg-light">
@@ -130,13 +136,14 @@
         </div>
         <div class="card-body">
             <div id="warehouseMap" style="height: 400px; background-color: #f8f9fa; position: relative; border: 1px solid #dee2e6; border-radius: 0.25rem;">
-                <!-- Map grid -->
                 <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-size: 20px 20px; background-image: linear-gradient(to right, #e9ecef 1px, transparent 1px), linear-gradient(to bottom, #e9ecef 1px, transparent 1px);"></div>
                 
-                <!-- Warehouse markers -->
                 {% for warehouse in warehouses %}
-                <div style="position: absolute; width: 12px; height: 12px; background-color: {% if warehouse.active %}#28a745{% else %}#dc3525{% endif %}; border-radius: 50%; left: {{ (warehouse.x / 100) * 100 }}%; top: {{ (warehouse.y / 100) * 100 }}%; margin-left: -6px; margin-top: -6px;"></div>
-                <div style="position: absolute; white-space: nowrap; background-color: rgba(255, 255, 255, 0.8); padding: 2px 5px; border-radius: 3px; font-size: 0.8rem; left: {{ (warehouse.x / 100) * 100 }}%; top: {{ (warehouse.y / 100) * 100 }}%; transform: translate(-50%, -100%); margin-top: -5px;">
+                 {# Basic validation for coordinates #}
+                {% set x_pos = [(warehouse.x|default(0)|float / 100 * 100)|int, 0]|max %}
+                {% set y_pos = [(warehouse.y|default(0)|float / 100 * 100)|int, 0]|max %}
+                <div style="position: absolute; width: 12px; height: 12px; background-color: {% if warehouse.active %}#28a745{% else %}#dc3525{% endif %}; border-radius: 50%; left: {{ [x_pos, 100]|min }}%; top: {{ [y_pos, 100]|min }}%; margin-left: -6px; margin-top: -6px;"></div>
+                <div style="position: absolute; white-space: nowrap; background-color: rgba(255, 255, 255, 0.8); padding: 2px 5px; border-radius: 3px; font-size: 0.8rem; left: {{ [x_pos, 100]|min }}%; top: {{ [y_pos, 100]|min }}%; transform: translate(-50%, -100%); margin-top: -5px;">
                     Warehouse #{{ warehouse.warehouse_id }}
                 </div>
                 {% endfor %}
@@ -145,4 +152,4 @@
     </div>
     {% endif %}
 </div>
-{% endblock %}
+{% endblock %}{% endraw %}

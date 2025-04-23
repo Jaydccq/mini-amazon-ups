@@ -12,7 +12,6 @@ world_event_handler = WorldEventHandler()
 ups_integration = UPSIntegrationService()
 shipment_service = ShipmentService()
 
-#world simulator 接收事件（如：产品到达仓库、包裹准备好等）。
 @world_bp.route('/event', methods=['POST'])
 def handle_world_event():
     data = request.json
@@ -125,7 +124,6 @@ def add_tracking_number():
 #UPS 包裹状态更新：/api/ups/status-update
 @ups_bp.route('/status-update', methods=['POST'])
 def handle_status_update():
-    """Endpoint for UPS to provide status updates for a shipment"""
     data = request.json
     if not data or 'shipment_id' not in data or 'status' not in data:
         return jsonify({

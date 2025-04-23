@@ -1,4 +1,4 @@
-{% extends "layout.html" %}
+{% raw %}{% extends "layout.html" %}
 
 {% block title %}My Orders | Mini-Amazon{% endblock %}
 
@@ -8,6 +8,7 @@
         <h1>My Orders</h1>
         
         <div class="d-flex">
+            {# Form action defaults to current URL, which is correct for filtering #}
             <form method="GET" class="me-2">
                 <div class="input-group">
                     <select name="status" class="form-select" onchange="this.form.submit()">
@@ -18,15 +19,16 @@
                 </div>
             </form>
             
-            <a href="{{ url_for('index.index') }}" class="btn btn-outline-primary">
+             <a href="{{ url_for('amazon.index') }}" class="btn btn-outline-primary">
                 <i class="fas fa-shopping-cart"></i> Continue Shopping
             </a>
         </div>
     </div>
     
+    {# Assuming 'orders' here is the list of order items, and 'pagination' holds the pagination object #}
     {% if orders %}
         <div class="row">
-            {% for order in orders %}
+            {% for order in orders %} {# Assuming orders is the list of order objects from pagination.items #}
             <div class="col-12 mb-4">
                 <div class="card">
                     <div class="card-header bg-light">
@@ -49,10 +51,12 @@
                             <div class="col-md-8">
                                 <h6>Order Items:</h6>
                                 <ul class="list-group mb-3">
+                                     {# Assuming order object has 'items' relationship loaded #}
                                     {% for item in order.items %}
                                     <li class="list-group-item d-flex justify-content-between lh-sm">
                                         <div>
-                                            <h6 class="my-0">{{ item.product_name }}</h6>
+                                             {# Assuming item has 'product' relationship loaded #}
+                                            <h6 class="my-0">{{ item.product.product_name if item.product else 'Unknown Product' }}</h6>
                                             <small class="text-muted">Quantity: {{ item.quantity }}</small>
                                         </div>
                                         <span>${{ "%.2f"|format(item.price) }} each</span>
@@ -76,11 +80,12 @@
                                 </div>
                                 
                                 <div class="mt-3">
+                                     {# Assuming order object has 'shipments' relationship loaded #}
                                     {% if order.shipments %}
                                         <h6>Shipments:</h6>
                                         {% for shipment in order.shipments %}
                                         <div class="mb-2">
-                                            <a href="{{ url_for('shipment.shipment_detail', shipment_id=shipment.shipment_id) }}" class="btn btn-outline-primary btn-sm w-100">
+                                             <a href="{{ url_for('amazon.shipment_detail', shipment_id=shipment.shipment_id) }}" class="btn btn-outline-primary btn-sm w-100">
                                                 <i class="fas fa-truck"></i> Track Shipment #{{ shipment.shipment_id }}
                                             </a>
                                         </div>
@@ -91,7 +96,7 @@
                         </div>
                     </div>
                     <div class="card-footer text-center">
-                        <a href="{{ url_for('order.order_detail', order_id=order.order_id) }}" class="btn btn-primary">
+                         <a href="{{ url_for('amazon.order_detail', order_id=order.order_id) }}" class="btn btn-primary">
                             <i class="fas fa-info-circle"></i> View Order Details
                         </a>
                     </div>
@@ -100,26 +105,31 @@
             {% endfor %}
         </div>
         
-        <!-- Pagination -->
-        {% if pagination.pages > 1 %}
+        {# Check if pagination object exists and has more than one page #}
+        {% if pagination and pagination.pages > 1 %}
         <nav aria-label="Order pagination" class="mt-4">
             <ul class="pagination justify-content-center">
                 <li class="page-item {% if pagination.page == 1 %}disabled{% endif %}">
-                    <a class="page-link" href="{{ url_for('order.order_list', status=status, page=pagination.page-1) }}">Previous</a>
+                    <a class="page-link" href="{{ url_for('amazon.order_list', status=status, page=pagination.prev_num) }}">Previous</a>
                 </li>
                 
-                {% for p in range(1, pagination.pages + 1) %}
-                    {% if p == pagination.page %}
-                        <li class="page-item active"><span class="page-link">{{ p }}</span></li>
+                {# Use iter_pages for better pagination links #}
+                {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                    {% if p %}
+                        {% if p == pagination.page %}
+                            <li class="page-item active"><span class="page-link">{{ p }}</span></li>
+                        {% else %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('amazon.order_list', status=status, page=p) }}">{{ p }}</a>
+                            </li>
+                        {% endif %}
                     {% else %}
-                        <li class="page-item">
-                            <a class="page-link" href="{{ url_for('order.order_list', status=status, page=p) }}">{{ p }}</a>
-                        </li>
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
                     {% endif %}
                 {% endfor %}
                 
                 <li class="page-item {% if pagination.page == pagination.pages %}disabled{% endif %}">
-                    <a class="page-link" href="{{ url_for('order.order_list', status=status, page=pagination.page+1) }}">Next</a>
+                    <a class="page-link" href="{{ url_for('amazon.order_list', status=status, page=pagination.next_num) }}">Next</a>
                 </li>
             </ul>
         </nav>
@@ -129,8 +139,8 @@
             <i class="fas fa-shopping-bag fa-3x mb-3"></i>
             <h4>No orders found</h4>
             <p>Looks like you haven't placed any orders yet.</p>
-            <a href="{{ url_for('index.index') }}" class="btn btn-primary mt-2">Start Shopping</a>
+             <a href="{{ url_for('amazon.index') }}" class="btn btn-primary mt-2">Start Shopping</a>
         </div>
     {% endif %}
 </div>
-{% endblock %}
+{% endblock %}{% endraw %}

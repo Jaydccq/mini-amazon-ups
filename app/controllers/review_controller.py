@@ -2,7 +2,7 @@
 from flask import render_template, Blueprint, jsonify, request, redirect, url_for, flash, current_app as app
 from flask_login import current_user, login_required
 from datetime import datetime
-from app.models.review import Review
+from app.models.review import ReviewService as Review
 from app.models.product import ProductService
 from app.models.user import UserService
 

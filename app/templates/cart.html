@@ -1,4 +1,4 @@
-{% extends "layout.html" %}
+{% raw %}{% extends "layout.html" %}
 
 {% block title %}Shopping Cart | Mini-Amazon{% endblock %}
 
@@ -25,7 +25,7 @@
                             <tr>
                                 <td>
                                     <div class="d-flex align-items-center">
-                                        {% if item[5] %}
+                                        {% if item[5] %} {# Assuming image URL is at index 5 #}
                                             <img src="{{ item[5] }}" alt="{{ item[3] }}" class="img-thumbnail me-3" style="max-width: 80px;">
                                         {% else %}
                                             <div class="bg-light text-center me-3 p-3" style="width: 80px; height: 80px;">
@@ -33,14 +33,17 @@
                                             </div>
                                         {% endif %}
                                         <div>
+                                             {# Assuming product name at index 3, seller name at index 8 #}
                                             <h6 class="mb-0">{{ item[3] }}</h6>
                                             <small class="text-muted">Seller: {{ item[8] }}</small>
                                         </div>
                                     </div>
                                 </td>
+                                 {# Assuming unit price at index 6 #}
                                 <td class="text-center align-middle">${{ "%.2f"|format(item[6]) }}</td>
                                 <td class="text-center align-middle" style="width: 150px;">
                                     <form action="{{ url_for('cart.update_cart') }}" method="POST" class="d-flex justify-content-center">
+                                         {# Assuming product_id at index 0, seller_id at index 1, quantity at index 2 #}
                                         <input type="hidden" name="product_id" value="{{ item[0] }}">
                                         <input type="hidden" name="seller_id" value="{{ item[1] }}">
                                         <div class="input-group input-group-sm" style="max-width: 120px;">
@@ -55,9 +58,11 @@
                                         </div>
                                     </form>
                                 </td>
+                                 {# Assuming item total price at index 7 #}
                                 <td class="text-center align-middle"><strong>${{ "%.2f"|format(item[7]) }}</strong></td>
                                 <td class="text-center align-middle">
                                     <form action="{{ url_for('cart.remove_from_cart') }}" method="POST">
+                                         {# Assuming product_id at index 0, seller_id at index 1 #}
                                         <input type="hidden" name="product_id" value="{{ item[0] }}">
                                         <input type="hidden" name="seller_id" value="{{ item[1] }}">
                                         <button type="submit" class="btn btn-sm btn-outline-danger">
@@ -71,7 +76,8 @@
                     </table>
                 </div>
             </div>
-            <div class="card-footer">
+            {# Assuming card-footer was misplaced inside card-body in original, moved it out #}
+            <div class="card-footer bg-light border-top">
                 <div class="row">
                     <div class="col-md-6 offset-md-6">
                         <div class="d-flex justify-content-between mb-2">
@@ -93,15 +99,15 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </div> {# End card #}
 
-        <div class="d-flex justify-content-between">
-            <a href="{{ url_for('index.index') }}" class="btn btn-outline-secondary">
+        <div class="d-flex justify-content-between mt-4"> {# Moved outside card #}
+            <a href="{{ url_for('amazon.index') }}" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left"></i> Continue Shopping
             </a>
             <form method="POST" action="{{ url_for('cart.checkout') }}">
                 <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-shopping-cart"></i> Proceed to Checkout
+                    <i class="fas fa-credit-card"></i> Proceed to Checkout {# Changed icon for clarity #}
                 </button>
             </form>            
         </div>
@@ -111,7 +117,7 @@
                 <i class="fas fa-shopping-cart fa-4x mb-3 text-muted"></i>
                 <h3>Your cart is empty</h3>
                 <p class="mb-4">Looks like you haven't added any products to your cart yet.</p>
-                <a href="{{ url_for('index.index') }}" class="btn btn-primary">
+                <a href="{{ url_for('amazon.index') }}" class="btn btn-primary">
                     <i class="fas fa-shopping-bag"></i> Start Shopping
                 </a>
             </div>
@@ -123,17 +129,35 @@
 {% block extra_js %}
 <script>
     function incrementQuantity(button) {
-        const input = button.parentNode.querySelector('input[type=number]');
-        input.value = parseInt(input.value) + 1;
-        input.form.submit();
+        const input = button.closest('.input-group').querySelector('input[type=number]');
+        const max = parseInt(input.getAttribute('max')) || 999; // Add max check if available
+        if (parseInt(input.value) < max) {
+            input.value = parseInt(input.value) + 1;
+            input.form.submit();
+        } else {
+            // Optional: Provide feedback if max quantity reached
+            console.log("Maximum quantity reached");
+        }
     }
     
     function decrementQuantity(button) {
-        const input = button.parentNode.querySelector('input[type=number]');
+        const input = button.closest('.input-group').querySelector('input[type=number]');
         if (parseInt(input.value) > 1) {
             input.value = parseInt(input.value) - 1;
             input.form.submit();
         }
     }
+    // Ensure forms are submitted on change as intended
+    document.querySelectorAll('input[name="quantity"]').forEach(input => {
+        input.addEventListener('change', function() {
+            // Basic validation before submitting
+            if (parseInt(this.value) >= 1) {
+                 this.form.submit();
+            } else {
+                // Reset to 1 if invalid value entered manually
+                this.value = 1; 
+            }
+        });
+    });
 </script>
-{% endblock %}
+{% endblock %}{% endraw %}

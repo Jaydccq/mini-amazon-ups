@@ -1,4 +1,4 @@
-{% extends "layout.html" %}
+{% raw %}{% extends "layout.html" %}
 
 {% block title %}Order Details | Mini-Amazon{% endblock %}
 
@@ -6,8 +6,8 @@
 <div class="container mt-4">
     <nav aria-label="breadcrumb" class="mb-4">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ url_for('index.index') }}">Home</a></li>
-            <li class="breadcrumb-item"><a href="{{ url_for('order.order_list') }}">My Orders</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('amazon.index') }}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('amazon.order_list') }}">My Orders</a></li>
             <li class="breadcrumb-item active">Order #{{ order.order_id }}</li>
         </ol>
     </nav>
@@ -43,12 +43,15 @@
                                 </tr>
                             </thead>
                             <tbody>
+                                {# Assuming 'items' is a list of OrderProduct objects with relationships #}
                                 {% for item in items %}
                                 <tr>
                                     <td>
                                         <div class="d-flex align-items-center">
                                             <div>
-                                                <h6 class="mb-0">{{ item.product_name }}</h6>
+                                                {# Assuming item has 'product' relationship/attribute with 'product_name' #}
+                                                <h6 class="mb-0">{{ item.product.product_name if item.product else 'Unknown Product' }}</h6>
+                                                 {# Assuming item has 'seller' relationship/attribute #}
                                                 <small class="text-muted">Seller: {{ item.seller.first_name }} {{ item.seller.last_name }}</small>
                                             </div>
                                         </div>
@@ -113,17 +116,19 @@
                                     <span>Status:</span>
                                     <span>
                                         {% if shipment.status == 'packing' %}
-                                            <span class="badge bg-info">Packing</span>
+                                            <span class="badge bg-info text-dark">Packing</span> {# Made consistent with other badge styles #}
                                         {% elif shipment.status == 'packed' %}
-                                            <span class="badge bg-info">Packed</span>
+                                            <span class="badge bg-info text-dark">Packed</span> {# Made consistent with other badge styles #}
                                         {% elif shipment.status == 'loading' %}
-                                            <span class="badge bg-info">Loading</span>
+                                             <span class="badge bg-warning text-dark">Loading</span> {# Made consistent with other badge styles #}
                                         {% elif shipment.status == 'loaded' %}
                                             <span class="badge bg-primary">Loaded</span>
                                         {% elif shipment.status == 'delivering' %}
                                             <span class="badge bg-primary">Delivering</span>
                                         {% elif shipment.status == 'delivered' %}
                                             <span class="badge bg-success">Delivered</span>
+                                        {% else %}
+                                             <span class="badge bg-secondary">{{ shipment.status|title }}</span> {# Default/unknown status #}
                                         {% endif %}
                                     </span>
                                 </div>
@@ -147,24 +152,24 @@
                                     </button>
                                 </div>
                                 
-                                <!-- Update Address Modal -->
                                 <div class="modal fade" id="updateAddressModal{{ shipment.shipment_id }}" tabindex="-1" aria-hidden="true">
                                     <div class="modal-dialog">
                                         <div class="modal-content">
                                             <div class="modal-header">
-                                                <h5 class="modal-title">Update Delivery Address</h5>
+                                                <h5 class="modal-title">Update Delivery Address for Shipment #{{ shipment.shipment_id }}</h5>
                                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                             </div>
-                                            <form action="{{ url_for('shipment.update_address', shipment_id=shipment.shipment_id) }}" method="POST">
+                                             {# IMPORTANT: Ensure you have a route defined for 'amazon.update_address' that handles POST #}
+                                            <form action="{{ url_for('amazon.update_address', shipment_id=shipment.shipment_id) }}" method="POST">
                                                 <div class="modal-body">
                                                     <div class="row">
                                                         <div class="col-md-6 mb-3">
-                                                            <label for="destination_x" class="form-label">X Coordinate</label>
-                                                            <input type="number" class="form-control" id="destination_x" name="destination_x" value="{{ shipment.destination_x }}" required>
+                                                            <label for="destination_x_{{ shipment.shipment_id }}" class="form-label">X Coordinate</label>
+                                                            <input type="number" class="form-control" id="destination_x_{{ shipment.shipment_id }}" name="destination_x" value="{{ shipment.destination_x }}" required>
                                                         </div>
                                                         <div class="col-md-6 mb-3">
-                                                            <label for="destination_y" class="form-label">Y Coordinate</label>
-                                                            <input type="number" class="form-control" id="destination_y" name="destination_y" value="{{ shipment.destination_y }}" required>
+                                                            <label for="destination_y_{{ shipment.shipment_id }}" class="form-label">Y Coordinate</label>
+                                                            <input type="number" class="form-control" id="destination_y_{{ shipment.shipment_id }}" name="destination_y" value="{{ shipment.destination_y }}" required>
                                                         </div>
                                                     </div>
                                                     <p class="text-muted">
@@ -182,7 +187,7 @@
                                 {% endif %}
                                 
                                 <div class="mt-2">
-                                    <a href="{{ url_for('shipment.shipment_detail', shipment_id=shipment.shipment_id) }}" class="btn btn-primary btn-sm w-100">
+                                     <a href="{{ url_for('amazon.shipment_detail', shipment_id=shipment.shipment_id) }}" class="btn btn-primary btn-sm w-100">
                                         <i class="fas fa-truck"></i> Track Shipment
                                     </a>
                                 </div>
@@ -195,13 +200,13 @@
             </div>
         </div>
         <div class="card-footer text-center">
-            <a href="{{ url_for('order.order_list') }}" class="btn btn-outline-secondary">
+             <a href="{{ url_for('amazon.order_list') }}" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left"></i> Back to Orders
             </a>
-            <a href="{{ url_for('index.index') }}" class="btn btn-primary">
+             <a href="{{ url_for('amazon.index') }}" class="btn btn-primary">
                 <i class="fas fa-shopping-cart"></i> Continue Shopping
             </a>
         </div>
     </div>
 </div>
-{% endblock %}
+{% endblock %}{% endraw %}

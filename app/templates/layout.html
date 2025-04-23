@@ -6,11 +6,8 @@
     
     <title>{% block title %}Mini-Amazon{% endblock %}</title>
     
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
@@ -164,10 +161,9 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <!-- Fixed top navigation -->
     <nav class="navbar navbar-expand-lg navbar-light fixed-top">
         <div class="container-fluid px-4">
-            <a class="navbar-brand d-flex align-items-center" href="{{ url_for('index.index') }}">
+            <a class="navbar-brand d-flex align-items-center" href="{{ url_for('amazon.index') }}">
                 <i class="fas fa-box-open me-2"></i> Mini-Amazon
             </a>
             
@@ -179,7 +175,7 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                     <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'index.index' %}active{% endif %}" href="{{ url_for('index.index') }}">
+                        <a class="nav-link {% if request.endpoint == 'amazon.index' %}active{% endif %}" href="{{ url_for('amazon.index') }}">
                             <i class="fas fa-home me-1"></i> Home
                         </a>
                     </li>
@@ -250,7 +246,6 @@
         </div>
     </nav>
 
-    <!-- Flash Messages -->
     <div class="container mt-4">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -264,12 +259,10 @@
         {% endwith %}
     </div>
     
-    <!-- Main Content -->
     <main class="container py-4 fade-in">
         {% block content %}{% endblock %}
     </main>
 
-    <!-- Footer -->
     <footer class="footer py-4">
         <div class="container">
             <div class="row">
@@ -327,7 +320,6 @@
         </div>
     </footer>
 
-    <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
     {% block extra_js %}{% endblock %}

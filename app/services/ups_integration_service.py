@@ -19,7 +19,7 @@ class UPSIntegrationService:
         self.pending_messages = {}  # Store messages waiting for acks
         
         # Load last sequence number from database
-        self.load_last_seqnum()
+        #self.load_last_seqnum()
         
         # Start background workers
         self.running = True
@@ -27,13 +27,28 @@ class UPSIntegrationService:
         self.message_processor.daemon = True
         self.message_processor.start()
     
-    def load_last_seqnum(self):
-        last_message = UPSMessage.query.order_by(UPSMessage.seqnum.desc()).first()
-        if last_message:
-            with self.lock:
-                self.seqnum = last_message.seqnum
+    # def load_last_seqnum(self):
+    #     last_message = UPSMessage.query.order_by(UPSMessage.seqnum.desc()).first()
+    #     if last_message:
+    #         with self.lock:
+    #             self.seqnum = last_message.seqnum
     
+    # def get_next_seqnum(self):
+    #     with self.lock:
+    #         self.seqnum += 1
+    #         return self.seqnum
+
     def get_next_seqnum(self):
+        # Try to load the last sequence number if we haven't yet
+        if self.seqnum == 0:
+            try:
+                from flask import current_app
+                with current_app.app_context():
+                    self.load_last_seqnum()
+            except Exception:
+                # Continue with default if we can't access the database
+                pass
+                
         with self.lock:
             self.seqnum += 1
             return self.seqnum

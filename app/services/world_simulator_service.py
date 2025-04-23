@@ -7,8 +7,10 @@ import queue
 from datetime import datetime
 from google.protobuf.message import Message
 
-from model import db, WorldMessage, Warehouse
-from proto import world_amazon_1_pb2 as amazon_pb2
+from app.model import db, WorldMessage, Warehouse
+
+from app.proto import world_amazon_1_pb2 as amazon_pb2
+
 
 logger = logging.getLogger(__name__)
 
@@ -27,17 +29,27 @@ class WorldSimulatorService:
         self.message_queue = queue.Queue()
         self.running = True
         
-        self._load_last_seqnum()
+    #     self._load_last_seqnum()
     
-    # Load the last used sequence number 
-    def _load_last_seqnum(self):
-        last_message = WorldMessage.query.order_by(WorldMessage.seqnum.desc()).first()
-        if last_message:
-            with self.lock:
-                self.seqnum = last_message.seqnum
+    # # Load the last used sequence number 
+    # def _load_last_seqnum(self):
+    #     last_message = WorldMessage.query.order_by(WorldMessage.seqnum.desc()).first()
+    #     if last_message:
+    #         with self.lock:
+    #             self.seqnum = last_message.seqnum
 
     # Get the next sequence number    
     def _get_next_seqnum(self):
+        # Try to load the last sequence number if we haven't yet
+        if self.seqnum == 0:
+            try:
+                from flask import current_app
+                with current_app.app_context():
+                    self._load_last_seqnum()
+            except Exception:
+                # Continue with default if we can't access the database
+                pass
+                
         with self.lock:
             self.seqnum += 1
             return self.seqnum

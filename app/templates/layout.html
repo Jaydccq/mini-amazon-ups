@@ -6,135 +6,330 @@
     
     <title>{% block title %}Mini-Amazon{% endblock %}</title>
     
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" 
-          rel="stylesheet" 
-          integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" 
-          crossorigin="anonymous">
-          
-    <link rel="stylesheet" 
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" 
-          integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" 
-          crossorigin="anonymous" 
-          referrerpolicy="no-referrer" />
-
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
+        :root {
+            --primary-color: #4F46E5;
+            --secondary-color: #10B981;
+            --accent-color: #F59E0B;
+            --text-color: #1F2937;
+            --light-text-color: #6B7280;
+            --bg-color: #F9FAFB;
+            --card-bg: #FFFFFF;
+            --border-color: #E5E7EB;
+        }
+        
         body {
+            font-family: 'Poppins', sans-serif;
+            color: var(--text-color);
+            background-color: var(--bg-color);
             display: flex;
             flex-direction: column;
-            min-height: 100vh; /* Ensure footer stays at bottom */
+            min-height: 100vh;
             padding-top: 56px; /* Adjust based on navbar height */
-            background-color: #f8f9fa; /* Light background for the page */
         }
+        
         main {
-            flex: 1; /* Allow main content to grow and push footer down */
+            flex: 1;
         }
+        
+        /* Navbar Styles */
+        .navbar {
+            background-color: var(--card-bg);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        
+        .navbar-brand {
+            font-weight: 700;
+            color: var(--primary-color) !important;
+        }
+        
+        .navbar .nav-link {
+            color: var(--text-color);
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .navbar .nav-link:hover,
+        .navbar .nav-link.active {
+            color: var(--primary-color) !important;
+        }
+        
+        /* Buttons */
+        .btn {
+            font-weight: 500;
+            padding: 0.5rem 1.25rem;
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .btn-primary:hover {
+            background-color: #4338CA;
+            border-color: #4338CA;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(79, 70, 229, 0.2);
+        }
+        
+        .btn-outline-primary {
+            color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .btn-outline-primary:hover {
+            background-color: var(--primary-color);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(79, 70, 229, 0.2);
+        }
+        
+        /* Cards */
+        .card {
+            border: 1px solid var(--border-color);
+            border-radius: 0.75rem;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+        }
+        
+        /* Footer */
         .footer {
-            background-color: #e9ecef; /* Slightly darker than page background */
-            padding: 1rem 0;
-            margin-top: auto; /* Push footer to bottom */
-            font-size: 0.9rem;
-            color: #6c757d;
+            background-color: #1F2937;
+            color: white;
+            padding: 2rem 0;
+            margin-top: auto;
         }
-        .navbar-brand i { /* Style for logo icon */
-            margin-right: 5px;
+        
+        .footer a {
+            color: #E5E7EB;
+            transition: all 0.3s ease;
         }
-        /* Add more global styles here if needed */
+        
+        .footer a:hover {
+            color: white;
+            text-decoration: none;
+        }
+        
+        /* Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        /* Additional utility classes */
+        .text-primary {
+            color: var(--primary-color) !important;
+        }
+        
+        .bg-primary {
+            background-color: var(--primary-color) !important;
+        }
+        
+        .rounded-xl {
+            border-radius: 1rem !important;
+        }
+        
+        .shadow-sm {
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+        }
+        
+        .shadow-md {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+        }
     </style>
 
     {% block extra_css %}{% endblock %}
-    
-    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
-
 </head>
 <body>
-
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top shadow-sm">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="{{ url_for('index.index') }}">
-                <i class="fas fa-box-open"></i> Mini-Amazon
+    <!-- Fixed top navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light fixed-top">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand d-flex align-items-center" href="{{ url_for('index.index') }}">
+                <i class="fas fa-box-open me-2"></i> Mini-Amazon
             </a>
             
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" 
+                    aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                     <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'index.index' %}active{% endif %}" aria-current="page" href="{{ url_for('index.index') }}">
-                            <i class="fas fa-home me-1"></i>Home
+                        <a class="nav-link {% if request.endpoint == 'index.index' %}active{% endif %}" href="{{ url_for('index.index') }}">
+                            <i class="fas fa-home me-1"></i> Home
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint.startswith('order.') %}active{% endif %}" href="{{ url_for('order.order_list') }}">
-                           <i class="fas fa-receipt me-1"></i> My Orders
+                        <a class="nav-link {% if request.endpoint.startswith('product.') %}active{% endif %}" href="{{ url_for('amazon.product_list') }}">
+                            <i class="fas fa-th me-1"></i> Products
                         </a>
                     </li>
-                     <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint.startswith('user.') %}active{% endif %}" href="#"> <i class="fas fa-user me-1"></i> Account
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint.startswith('order.') %}active{% endif %}" href="{{ url_for('amazon.order_list') }}">
+                            <i class="fas fa-receipt me-1"></i> Orders
                         </a>
                     </li>
                 </ul>
                 
                 <form class="d-flex me-3" role="search">
-                    <input class="form-control form-control-sm me-2" type="search" placeholder="Search products..." aria-label="Search">
-                    <button class="btn btn-outline-light btn-sm" type="submit">
-                        <i class="fas fa-search"></i>
-                    </button>
+                    <div class="input-group">
+                        <input class="form-control" type="search" placeholder="Search..." aria-label="Search">
+                        <button class="btn btn-primary" type="submit">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
                 </form>
 
                 <ul class="navbar-nav">
-                     <li class="nav-item">
-                        <a class="nav-link" href="#"> <i class="fas fa-shopping-cart me-1"></i> Cart 
-                            <span class="badge rounded-pill bg-primary ms-1">0</span> </a>
-                    </li>
-                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-user-circle me-1"></i> User
+                    <li class="nav-item me-2">
+                        <a class="nav-link position-relative" href="{{ url_for('amazon.cart') }}">
+                            <i class="fas fa-shopping-cart"></i>
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary">
+                                0
+                                <span class="visually-hidden">items in cart</span>
+                            </span>
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="#">Profile</a></li>
-                            <li><a class="dropdown-item" href="#">Settings</a></li>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" 
+                           data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-user-circle me-1"></i>
+                            <span>Account</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-lg" aria-labelledby="userDropdown">
+                            {% if current_user.is_authenticated %}
+                            <li><a class="dropdown-item" href="{{ url_for('amazon.order_list') }}">
+                                <i class="fas fa-box me-2"></i> My Orders
+                            </a></li>
+                            <li><a class="dropdown-item" href="#">
+                                <i class="fas fa-user me-2"></i> Profile
+                            </a></li>
+                            <li><a class="dropdown-item" href="#">
+                                <i class="fas fa-cog me-2"></i> Settings
+                            </a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="#">Logout</a></li>
-                            </ul>
+                            <li><a class="dropdown-item" href="{{ url_for('amazon.logout') }}">
+                                <i class="fas fa-sign-out-alt me-2"></i> Logout
+                            </a></li>
+                            {% else %}
+                            <li><a class="dropdown-item" href="{{ url_for('amazon.login') }}">
+                                <i class="fas fa-sign-in-alt me-2"></i> Login
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('amazon.register') }}">
+                                <i class="fas fa-user-plus me-2"></i> Register
+                            </a></li>
+                            {% endif %}
+                        </ul>
                     </li>
                 </ul>
             </div>
         </div>
     </nav>
 
-    <main class="container my-4"> 
+    <!-- Flash Messages -->
+    <div class="container mt-4">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="alert alert-{{ category or 'info' }} alert-dismissible fade show" role="alert">
+                    <div class="alert alert-{{ category or 'info' }} alert-dismissible fade show rounded-lg shadow-sm" role="alert">
                         {{ message }}
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 {% endfor %}
             {% endif %}
         {% endwith %}
-        
+    </div>
+    
+    <!-- Main Content -->
+    <main class="container py-4 fade-in">
         {% block content %}{% endblock %}
     </main>
 
-    <footer class="footer mt-auto py-3 bg-light border-top">
-        <div class="container text-center">
-            <span class="text-muted">© {{ current_time.year }} Mini-Amazon. All Rights Reserved. | 
-                <a href="#">Privacy Policy</a> | 
-                <a href="#">Terms of Service</a>
-            </span>
-            <br>
-             <small class="text-muted">Made with <i class="fas fa-heart text-danger"></i> and Bootstrap</small>
+    <!-- Footer -->
+    <footer class="footer py-4">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-4 col-md-6 mb-4 mb-md-0">
+                    <h5 class="text-uppercase mb-4"><i class="fas fa-box-open me-2"></i> Mini-Amazon</h5>
+                    <p>Your one-stop shop for online shopping. Fast deliveries, great products, and excellent customer service.</p>
+                    <div class="d-flex mt-4">
+                        <a href="#" class="btn btn-outline-light btn-sm me-2"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#" class="btn btn-outline-light btn-sm me-2"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="btn btn-outline-light btn-sm me-2"><i class="fab fa-instagram"></i></a>
+                        <a href="#" class="btn btn-outline-light btn-sm"><i class="fab fa-linkedin-in"></i></a>
+                    </div>
+                </div>
+                
+                <div class="col-lg-2 col-md-6 mb-4 mb-md-0">
+                    <h5 class="text-uppercase mb-4">Shop</h5>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="{{ url_for('amazon.index') }}" class="text-decoration-none">Home</a></li>
+                        <li class="mb-2"><a href="{{ url_for('amazon.product_list') }}" class="text-decoration-none">Products</a></li>
+                        <li class="mb-2"><a href="#" class="text-decoration-none">Categories</a></li>
+                        <li class="mb-2"><a href="#" class="text-decoration-none">New Arrivals</a></li>
+                    </ul>
+                </div>
+                
+                <div class="col-lg-2 col-md-6 mb-4 mb-md-0">
+                    <h5 class="text-uppercase mb-4">My Account</h5>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="{{ url_for('amazon.order_list') }}" class="text-decoration-none">My Orders</a></li>
+                        <li class="mb-2"><a href="{{ url_for('amazon.cart') }}" class="text-decoration-none">My Cart</a></li>
+                        <li class="mb-2"><a href="#" class="text-decoration-none">Wishlist</a></li>
+                        <li class="mb-2"><a href="#" class="text-decoration-none">Account Settings</a></li>
+                    </ul>
+                </div>
+                
+                <div class="col-lg-4 col-md-6">
+                    <h5 class="text-uppercase mb-4">Contact Us</h5>
+                    <p><i class="fas fa-map-marker-alt me-2"></i> 123 E-Commerce St, Digital City, DC 12345</p>
+                    <p><i class="fas fa-phone me-2"></i> (123) 456-7890</p>
+                    <p><i class="fas fa-envelope me-2"></i> support@mini-amazon.example.com</p>
+                </div>
+            </div>
+            
+            <hr class="my-4 bg-light opacity-25">
+            
+            <div class="row align-items-center">
+                <div class="col-md-6 small text-center text-md-start">
+                    <p class="mb-0">© 2025 Mini-Amazon. All rights reserved.</p>
+                </div>
+                <div class="col-md-6 small text-center text-md-end">
+                    <a href="#" class="text-decoration-none me-3">Privacy Policy</a>
+                    <a href="#" class="text-decoration-none me-3">Terms of Service</a>
+                    <a href="#" class="text-decoration-none">FAQ</a>
+                </div>
+            </div>
         </div>
     </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" 
-            integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" 
-            crossorigin="anonymous"></script>
-
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
     {% block extra_js %}{% endblock %}
-
 </body>
 </html>

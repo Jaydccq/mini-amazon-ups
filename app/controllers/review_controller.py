@@ -21,7 +21,6 @@ def user_reviews_page():
     else:
         reviews = Review.get_all_by_user(current_user.id)
 
-    # Apply filtering
     if rating_filter:
         reviews = [r for r in reviews if r.rating == rating_filter]
 

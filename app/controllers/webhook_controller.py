@@ -12,9 +12,9 @@ world_event_handler = WorldEventHandler()
 ups_integration = UPSIntegrationService()
 shipment_service = ShipmentService()
 
+#world simulator 接收事件（如：产品到达仓库、包裹准备好等）。
 @world_bp.route('/event', methods=['POST'])
 def handle_world_event():
-    """Endpoint for receiving events from the world simulator"""
     data = request.json
     if not data or 'event_type' not in data or 'event_data' not in data:
         return jsonify({
@@ -25,7 +25,6 @@ def handle_world_event():
     event_type = data['event_type']
     event_data = data['event_data']
     
-    # Process acknowledgments if present
     acks = []
     if 'seqnum' in data:
         acks.append(data['seqnum'])
@@ -39,6 +38,7 @@ def handle_world_event():
         'acks': acks
     })
 
+# UPS 卡车到达：/api/ups/truck-arrived
 @ups_bp.route('/truck-arrived', methods=['POST'])
 def handle_truck_arrived():
     """Endpoint for receiving truck arrived notifications from UPS"""
@@ -61,7 +61,7 @@ def handle_truck_arrived():
         'success': success,
         'acks': acks
     })
-
+#UPS 包裹已送达：/api/ups/package-delivered
 @ups_bp.route('/package-delivered', methods=['POST'])
 def handle_package_delivered():
     """Endpoint for receiving package delivered notifications from UPS"""
@@ -72,12 +72,10 @@ def handle_package_delivered():
             'error': 'Missing required fields'
         }), 400
     
-    # Process acknowledgments if present
     acks = []
     if 'seqnum' in data:
         acks.append(data['seqnum'])
     
-    # Handle the package delivery
     success, message = shipment_service.handle_package_delivered(data['shipment_id'])
     
     return jsonify({
@@ -86,6 +84,7 @@ def handle_package_delivered():
         'acks': acks
     })
 
+# UPS 记录追踪号：/api/ups/tracking
 @ups_bp.route('/tracking', methods=['POST'])
 def add_tracking_number():
     """Endpoint for UPS to provide tracking number for a shipment"""
@@ -102,7 +101,6 @@ def add_tracking_number():
         acks.append(data['seqnum'])
     
     try:
-        # Update tracking number in shipment
         from app.model import db, Shipment
         
         shipment = Shipment.query.filter_by(shipment_id=data['shipment_id']).first()
@@ -124,6 +122,7 @@ def add_tracking_number():
         'acks': acks
     })
 
+#UPS 包裹状态更新：/api/ups/status-update
 @ups_bp.route('/status-update', methods=['POST'])
 def handle_status_update():
     """Endpoint for UPS to provide status updates for a shipment"""

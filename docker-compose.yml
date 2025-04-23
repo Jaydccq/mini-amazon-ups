@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+    environment:
+      - FLASK_APP=app
+      - FLASK_ENV=development
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/mini_amazon
+      - SECRET_KEY=dev
+    depends_on:
+      - db
+    networks:
+      - app-network
+  
+  db:
+    image: postgres:12-alpine3.15
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=mini_amazon
+    ports:
+      - "5432:5432"
+    networks:
+      - app-network
+
+  # This appears to be the world simulator referenced in your code
+  world-simulator:
+    image: postgres:12-alpine3.15  # This should be replaced with the actual world simulator image
+    ports:
+      - "23456:23456"
+    volumes:
+      - world_data:/var/lib/postgresql/data/
+    networks:
+      - app-network
+
+  # Optional: UPS service if needed
+  ups-service:
+    build: ./ups  # Assuming UPS code is in a subdirectory called 'ups'
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  world_data:

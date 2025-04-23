@@ -20,7 +20,6 @@ shipment_service = ShipmentService()
 # Authentication routes
 @amazon_bp.route('/login', methods=['GET', 'POST'])
 def login():
-    """User login"""
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
@@ -50,7 +49,6 @@ def login():
 
 @amazon_bp.route('/register', methods=['GET', 'POST'])
 def register():
-    """User registration"""
     if request.method == 'POST':
         email = request.form.get('email')
         first_name = request.form.get('first_name')
@@ -96,10 +94,9 @@ def logout():
     flash('You have been logged out.', 'info')
     return redirect(url_for('amazon.index'))
 
-# Main routes
+# home page
 @amazon_bp.route('/')
-def index():
-    """Homepage"""
+def index(): 
     # Get featured products
     products = Product.query.order_by(Product.created_at.desc()).limit(6).all()
     
@@ -120,18 +117,15 @@ def product_list():
     sort_dir = request.args.get('sort_dir', 'asc')
     page = request.args.get('page', 1, type=int)
     
-    # Get products with filters and pagination
     per_page = 12
     products_query = Product.query
     
-    # Apply search filter
     if search_query:
         products_query = products_query.filter(
             Product.product_name.ilike(f'%{search_query}%') | 
             Product.description.ilike(f'%{search_query}%')
         )
     
-    # Apply category filter
     if category_id:
         products_query = products_query.filter(Product.category_id == category_id)
     
@@ -166,7 +160,6 @@ def product_list():
 
 @amazon_bp.route('/products/<int:product_id>')
 def product_detail(product_id):
-    """Show detailed product information"""
     product = Product.query.get_or_404(product_id)
     
     # Get warehouse inventory for this product
@@ -187,7 +180,6 @@ def product_detail(product_id):
 @amazon_bp.route('/cart')
 @login_required
 def cart():
-    """Show shopping cart"""
     cart = Cart.query.filter_by(user_id=current_user.user_id).first()
     
     if not cart:
@@ -209,7 +201,6 @@ def cart():
 @amazon_bp.route('/cart/add', methods=['POST'])
 @login_required
 def add_to_cart():
-    """Add a product to the cart"""
     product_id = request.form.get('product_id', type=int)
     quantity = request.form.get('quantity', 1, type=int)
     
@@ -256,7 +247,6 @@ def add_to_cart():
 @amazon_bp.route('/cart/update', methods=['POST'])
 @login_required
 def update_cart():
-    """Update cart quantities"""
     cart_id = request.form.get('cart_id', type=int)
     product_id = request.form.get('product_id', type=int)
     seller_id = request.form.get('seller_id', type=int)
@@ -292,7 +282,6 @@ def update_cart():
 @amazon_bp.route('/cart/remove', methods=['POST'])
 @login_required
 def remove_from_cart():
-    """Remove a product from the cart"""
     cart_id = request.form.get('cart_id', type=int)
     product_id = request.form.get('product_id', type=int)
     seller_id = request.form.get('seller_id', type=int)
@@ -323,7 +312,6 @@ def remove_from_cart():
 @amazon_bp.route('/orders')
 @login_required
 def order_list():
-    """List user's orders"""
     page = request.args.get('page', 1, type=int)
     status = request.args.get('status')
     
@@ -347,7 +335,6 @@ def order_list():
 @amazon_bp.route('/orders/<int:order_id>')
 @login_required
 def order_detail(order_id):
-    """Show detailed order information"""
     order = Order.query.get_or_404(order_id)
     
     # Check if user owns this order
@@ -370,7 +357,6 @@ def order_detail(order_id):
 @amazon_bp.route('/shipments/<int:shipment_id>')
 @login_required
 def shipment_detail(shipment_id):
-    """Show detailed shipment information"""
     # Get shipment details
     shipment_data = shipment_service.get_shipment_status(shipment_id)
     
@@ -395,7 +381,6 @@ def shipment_detail(shipment_id):
 @amazon_bp.route('/checkout', methods=['GET', 'POST'])
 @login_required
 def checkout():
-    """Checkout process with destination selection"""
     # Get user's cart
     cart = Cart.query.filter_by(user_id=current_user.user_id).first()
     
@@ -426,7 +411,6 @@ def checkout():
                 flash('No warehouse available for delivery', 'error')
                 return redirect(url_for('amazon.checkout'))
         
-        # Process checkout from cart
         success, result = Cart.checkout_cart(current_user.user_id)
         
         if success:
@@ -459,11 +443,9 @@ def checkout():
                           total=total,
                           warehouses=warehouses)
 
-# Admin routes for warehouse management
 @admin_bp.route('/warehouses')
 @login_required
 def warehouses():
-    """Admin view for warehouse management"""
     # Check if user is admin
     if not current_user.is_seller:
         flash('Access denied', 'error')
@@ -474,11 +456,10 @@ def warehouses():
     return render_template('admin/warehouses.html', 
                           warehouses=warehouses)
 
+# adding a new warehouse
 @admin_bp.route('/warehouses/add', methods=['GET', 'POST'])
 @login_required
 def add_warehouse():
-    """Add a new warehouse"""
-    # Check if user is admin
     if not current_user.is_seller:
         flash('Access denied', 'error')
         return redirect(url_for('amazon.index'))
@@ -504,24 +485,20 @@ def add_warehouse():
     
     return render_template('admin/add_warehouse.html')
 
+# connecting to world simulator
 @admin_bp.route('/connect-world', methods=['GET', 'POST'])
 @login_required
 def connect_world():
-    """Connect to world simulator"""
-    # Check if user is admin
     if not current_user.is_seller:
         flash('Access denied', 'error')
         return redirect(url_for('amazon.index'))
     
     if request.method == 'POST':
-        # Process form data
         world_id = request.form.get('world_id', type=int)
         
-        # Initialize world simulator service
         from app.services.world_simulator_service import WorldSimulatorService
         world_simulator = WorldSimulatorService()
         
-        # Get all warehouses for initialization
         warehouses = Warehouse.query.filter_by(active=True).all()
         
         # Connect to world simulator
@@ -542,7 +519,6 @@ def connect_world():
     
     return render_template('admin/connect_world.html')
 
-# API routes for AJAX calls
 @api_bp.route('/products/search')
 def api_product_search():
     """Search products and return JSON results"""
@@ -578,7 +554,6 @@ def api_warehouses():
 @api_bp.route('/shipments/<int:shipment_id>/status')
 @login_required
 def api_shipment_status(shipment_id):
-    """Get current shipment status"""
     shipment_data = shipment_service.get_shipment_status(shipment_id)
     
     if not shipment_data:
@@ -595,7 +570,6 @@ def api_shipment_status(shipment_id):
 
 @api_bp.route('/tracking/<tracking_id>')
 def api_tracking(tracking_id):
-    """Get shipment status by tracking ID"""
     shipment = Shipment.query.filter_by(ups_tracking_id=tracking_id).first()
     
     if not shipment:
@@ -611,11 +585,9 @@ def api_tracking(tracking_id):
 
 
 from app.models.review import ReviewService
-# Integrate with existing amazon_controller.py
 
 @amazon_bp.route('/product/<int:product_id>/reviews')
 def product_reviews(product_id):
-    """Show product reviews"""
     product = Product.query.get_or_404(product_id)
     reviews = ReviewService.get_product_reviews(product_id)
     avg_rating = sum(r.rating for r in reviews) / len(reviews) if reviews else 0
@@ -627,7 +599,6 @@ def product_reviews(product_id):
 
 @amazon_bp.route('/seller/<int:seller_id>/reviews')
 def seller_reviews(seller_id):
-    """Show seller reviews"""
     seller = User.query.get_or_404(seller_id)
     reviews = ReviewService.get_seller_reviews(seller_id)
     avg_rating = sum(r.rating for r in reviews) / len(reviews) if reviews else 0

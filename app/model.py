@@ -19,7 +19,6 @@ class User(UserMixin, db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Relationships
     orders = db.relationship('Order', back_populates='user', foreign_keys='Order.buyer_id')
     cart = db.relationship('Cart', uselist=False, back_populates='user')
     

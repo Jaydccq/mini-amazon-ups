@@ -1,0 +1,429 @@
+{
+  "info": {
+    "name": "Mini-Amazon API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Auto-generated Postman collection for Mini-Amazon Flask API"
+  },
+  "item": [
+    {
+      "name": "Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\": \"user@example.com\", \"password\": \"password\"}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/login"
+        }
+      }
+    },
+    {
+      "name": "Register",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\": \"user@example.com\", \"first_name\": \"John\", \"last_name\": \"Doe\", \"password\": \"password\"}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/register"
+        }
+      }
+    },
+    {
+      "name": "Logout",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:5000/logout"
+        }
+      }
+    },
+    {
+      "name": "List Products",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:5000/products"
+        }
+      }
+    },
+    {
+      "name": "Get Product by ID",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:5000/products/{{product_id}}"
+        }
+      }
+    },
+    {
+      "name": "View Cart (Amazon)",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:5000/cart"
+        }
+      }
+    },
+    {
+      "name": "Add to Cart (Amazon)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"product_id\": 1, \"seller_id\": 1, \"quantity\": 1}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/cart/add"
+        }
+      }
+    },
+    {
+      "name": "Update Cart Item (Amazon)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"product_id\": 1, \"seller_id\": 1, \"quantity\": 2}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/cart/update"
+        }
+      }
+    },
+    {
+      "name": "Remove from Cart (Amazon)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"product_id\": 1, \"seller_id\": 1}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/cart/remove"
+        }
+      }
+    },
+    {
+      "name": "List Orders",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:5000/orders"
+        }
+      }
+    },
+    {
+      "name": "Get Order by ID",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:5000/orders/{{order_id}}"
+        }
+      }
+    },
+    {
+      "name": "Get Shipment by ID",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:5000/shipments/{{shipment_id}}"
+        }
+      }
+    },
+    {
+      "name": "Checkout",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"address\": [2, 4]}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/checkout"
+        }
+      }
+    },
+    {
+      "name": "List Warehouses (Admin)",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:5000/admin/warehouses"
+        }
+      }
+    },
+    {
+      "name": "Add Warehouse (Admin)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"location\": [0, 0]}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/admin/warehouses/add"
+        }
+      }
+    },
+    {
+      "name": "Connect to World (Admin)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/admin/connect-world"
+        }
+      }
+    },
+    {
+      "name": "Search Products (API)",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:5000/api/products/search?query=keyword"
+        }
+      }
+    },
+    {
+      "name": "List Warehouses (API)",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:5000/api/warehouses"
+        }
+      }
+    },
+    {
+      "name": "Shipment Status (API)",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:5000/api/shipments/{{shipment_id}}/status"
+        }
+      }
+    },
+    {
+      "name": "Tracking Info (API)",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:5000/api/tracking/{{tracking_id}}"
+        }
+      }
+    },
+    {
+      "name": "List User Reviews",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:5000/reviews"
+        }
+      }
+    },
+    {
+      "name": "Add Review",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"product_id\": 1, \"rating\": 5, \"comment\": \"Great product!\"}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/reviews/add"
+        }
+      }
+    },
+    {
+      "name": "Edit Review",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"rating\": 4, \"comment\": \"Updated comment\"}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/reviews/edit/{{review_id}}"
+        }
+      }
+    },
+    {
+      "name": "List Product Reviews",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:5000/reviews/product/{{product_id}}"
+        }
+      }
+    },
+    {
+      "name": "List Seller Reviews",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:5000/reviews/seller/{{seller_id}}"
+        }
+      }
+    },
+    {
+      "name": "World Event Webhook",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/world/event"
+        }
+      }
+    },
+    {
+      "name": "UPS Truck Arrived Webhook",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/ups/truck-arrived"
+        }
+      }
+    },
+    {
+      "name": "UPS Package Delivered Webhook",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/ups/package-delivered"
+        }
+      }
+    },
+    {
+      "name": "UPS Tracking Webhook",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/ups/tracking"
+        }
+      }
+    },
+    {
+      "name": "UPS Status Update Webhook",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/ups/status-update"
+        }
+      }
+    }
+  ]
+}

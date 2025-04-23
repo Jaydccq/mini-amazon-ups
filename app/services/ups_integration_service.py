@@ -19,30 +19,27 @@ class UPSIntegrationService:
         self.pending_messages = {}  # Store messages waiting for acks
         
         # Load last sequence number from database
-        self._load_last_seqnum()
+        self.load_last_seqnum()
         
         # Start background workers
         self.running = True
-        self.message_processor = threading.Thread(target=self._process_pending_messages)
+        self.message_processor = threading.Thread(target=self.process_pending_messages)
         self.message_processor.daemon = True
         self.message_processor.start()
     
-    def _load_last_seqnum(self):
-        """Load the last used sequence number from database"""
+    def load_last_seqnum(self):
         last_message = UPSMessage.query.order_by(UPSMessage.seqnum.desc()).first()
         if last_message:
             with self.lock:
                 self.seqnum = last_message.seqnum
     
-    def _get_next_seqnum(self):
-        """Get the next sequence number"""
+    def get_next_seqnum(self):
         with self.lock:
             self.seqnum += 1
             return self.seqnum
     
     def notify_package_created(self, shipment_id, destination_x, destination_y, ups_account=None):
-        """Notify UPS about a newly created package"""
-        seqnum = self._get_next_seqnum()
+        seqnum = self.get_next_seqnum()
         
         message = {
             'shipment_id': shipment_id,
@@ -78,9 +75,9 @@ class UPSIntegrationService:
         
         return seqnum
     
+    # Notify UPS that a package has been packed
     def notify_package_packed(self, shipment_id):
-        """Notify UPS that a package is packed and ready for pickup"""
-        seqnum = self._get_next_seqnum()
+        seqnum = self.get_next_seqnum()
         
         message = {
             'shipment_id': shipment_id,
@@ -109,9 +106,9 @@ class UPSIntegrationService:
         
         return seqnum
     
+    # Notify UPS that a package has been loaded onto a truck
     def notify_package_loaded(self, shipment_id, truck_id):
-        """Notify UPS that a package has been loaded onto a truck"""
-        seqnum = self._get_next_seqnum()
+        seqnum = self.get_next_seqnum()
         
         message = {
             'shipment_id': shipment_id,
@@ -119,7 +116,6 @@ class UPSIntegrationService:
             'seqnum': seqnum
         }
         
-        # Save message to database
         db_message = UPSMessage(
             seqnum=seqnum,
             message_type='package_loaded',
@@ -140,27 +136,26 @@ class UPSIntegrationService:
             }
         
         return seqnum
-    
+
+    # Handle truck arrival notification from UPS    
     def handle_truck_arrived(self, data):
-        """Handle truck arrival notification from UPS"""
         try:
             truck_id = data.get('truck_id')
             warehouse_id = data.get('warehouse_id')
             seqnum = data.get('seqnum')
             
-            # Process acknowledgments
             if seqnum:
-                self._process_ack(seqnum)
+                self.process_ack(seqnum)
             
-            # Update shipments that are in 'packed' status
+            # Update shipments packed status
             shipments = Shipment.query.filter_by(
                 warehouse_id=warehouse_id,
                 status='packed'
             ).all()
             
             for shipment in shipments:
-                # Update shipment with truck_id
-                shipment.truck_id = truck_id
+                shipment.truck_id = truck_id       # Update shipment with truck_id
+
                 shipment.status = 'loading'
                 shipment.updated_at = datetime.utcnow()
             
@@ -174,16 +169,14 @@ class UPSIntegrationService:
             return False, str(e)
     
     def handle_package_delivered(self, data):
-        """Handle package delivered notification from UPS"""
         try:
             shipment_id = data.get('shipment_id')
             seqnum = data.get('seqnum')
             
-            # Process acknowledgments
             if seqnum:
-                self._process_ack(seqnum)
+                self.process_ack(seqnum)
             
-            # Update shipment status
+            # Update shipment delivered status
             shipment = Shipment.query.filter_by(shipment_id=shipment_id).first()
             if not shipment:
                 return False, "Shipment not found"
@@ -191,7 +184,7 @@ class UPSIntegrationService:
             shipment.status = 'delivered'
             shipment.updated_at = datetime.utcnow()
             
-            # Also update order status if all shipments are delivered
+            #  update order status if all shipments are delivered
             order = Order.query.filter_by(order_id=shipment.order_id).first()
             if order:
                 all_shipments = Shipment.query.filter_by(order_id=order.order_id).all()
@@ -208,8 +201,7 @@ class UPSIntegrationService:
             db.session.rollback()
             return False, str(e)
     
-    def _process_ack(self, seqnum):
-        """Process acknowledgment from UPS"""
+    def process_ack(self, seqnum):
         with self.lock:
             if seqnum in self.pending_messages:
                 message_id = self.pending_messages[seqnum]['id']
@@ -221,8 +213,7 @@ class UPSIntegrationService:
                 # Remove from pending messages
                 del self.pending_messages[seqnum]
     
-    def _send_message(self, message_type, message_content):
-        """Send message to UPS service"""
+    def send_message(self, message_type, message_content):
         try:
             endpoint = f"{self.ups_url}/{message_type}"
             response = self.session.post(
@@ -236,57 +227,51 @@ class UPSIntegrationService:
                 # Process acknowledgments
                 if 'acks' in response_data:
                     for ack in response_data['acks']:
-                        self._process_ack(ack)
+                        self.process_ack(ack)
                 return True, response_data
             else:
                 return False, f"UPS service responded with status {response.status_code}: {response.text}"
         except requests.exceptions.RequestException as e:
             return False, f"Error sending message to UPS: {str(e)}"
     
-    def _process_pending_messages(self):
-        """Process pending messages that haven't been acknowledged"""
+    def process_pending_messages(self):
         while self.running:
             try:
                 current_time = time.time()
                 messages_to_retry = []
                 
-                # Find messages that need to be retried
                 with self.lock:
                     for seqnum, message_info in self.pending_messages.items():
-                        # Retry if no previous attempt or last attempt was more than 5 seconds ago
                         if (message_info['last_attempt'] is None or 
                             current_time - message_info['last_attempt'] > 5):
                             messages_to_retry.append((seqnum, message_info))
                 
-                # Process messages outside of the lock
                 for seqnum, message_info in messages_to_retry:
                     message_type = message_info['type']
                     message = message_info['message']
                     
                     # Send the message
-                    success, _ = self._send_message(message_type, message)
+                    success, _ = self.send_message(message_type, message)
                     
-                    # Update retry information
                     with self.lock:
-                        if seqnum in self.pending_messages:  # Check if still pending
+                        if seqnum in self.pending_messages:  
                             if success:
                                 # Message sent successfully, wait for ack
                                 self.pending_messages[seqnum]['last_attempt'] = current_time
                             else:
-                                # Message failed, increment retry count
+                                # Message failed
                                 self.pending_messages[seqnum]['retries'] += 1
                                 self.pending_messages[seqnum]['last_attempt'] = current_time
                                 
                                 # If too many retries, mark as failed
                                 if self.pending_messages[seqnum]['retries'] >= 5:
                                     message_id = self.pending_messages[seqnum]['id']
-                                    # Update message status in database
+                                    # Update message status
                                     db_message = UPSMessage.query.filter_by(id=message_id).first()
                                     if db_message:
                                         db_message.status = 'failed'
                                         db_message.retries = self.pending_messages[seqnum]['retries']
                                         db.session.commit()
-                                    # Remove from pending messages
                                     del self.pending_messages[seqnum]
             
             except Exception as e:
@@ -296,6 +281,5 @@ class UPSIntegrationService:
             time.sleep(1)
     
     def shutdown(self):
-        """Shutdown the service"""
         self.running = False
         self.message_processor.join(timeout=5)

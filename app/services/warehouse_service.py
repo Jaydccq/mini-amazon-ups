@@ -10,7 +10,6 @@ class WarehouseService:
         self.world_simulator = WorldSimulatorService()
     
     def initialize_warehouse(self, x, y, world_id=None):
-        """Initialize a new warehouse"""
         try:
             warehouse = Warehouse(
                 x=x,
@@ -21,6 +20,7 @@ class WarehouseService:
             db.session.commit()
             
             return warehouse.warehouse_id
+        
         except SQLAlchemyError as e:
             db.session.rollback()
             logger.error(f"Database error initializing warehouse: {str(e)}")
@@ -29,36 +29,32 @@ class WarehouseService:
             db.session.rollback()
             logger.error(f"Error initializing warehouse: {str(e)}")
             return None
-    
+    #get a warehouse by ID
     def get_warehouse(self, warehouse_id):
-        """Get a warehouse by ID"""
         return Warehouse.query.filter_by(warehouse_id=warehouse_id).first()
     
+    #get all active warehouses
     def get_all_warehouses(self):
-        """Get all active warehouses"""
         return Warehouse.query.filter_by(active=True).all()
     
+    #get all warehouses by distance
     def get_nearest_warehouse(self, x, y):
-        """Get the warehouse nearest to given coordinates"""
         return Warehouse.query.filter_by(active=True).order_by(
             (Warehouse.x - x) * (Warehouse.x - x) + 
             (Warehouse.y - y) * (Warehouse.y - y)
         ).first()
     
+    # add a product to a warehouse
     def add_product_to_warehouse(self, warehouse_id, product_id, quantity):
-        """Add a product to a warehouse's inventory"""
         try:
-            # Check if warehouse exists
             warehouse = Warehouse.query.filter_by(warehouse_id=warehouse_id).first()
             if not warehouse:
                 return False, "Warehouse not found"
             
-            # Check if product exists
             product = Product.query.filter_by(product_id=product_id).first()
             if not product:
                 return False, "Product not found"
             
-            # Check if product already exists in warehouse
             warehouse_product = WarehouseProduct.query.filter_by(
                 warehouse_id=warehouse_id,
                 product_id=product_id
@@ -87,10 +83,9 @@ class WarehouseService:
             logger.error(f"Error adding product to warehouse: {str(e)}")
             return False, str(e)
     
+    # remove a product from a warehouse
     def remove_product_from_warehouse(self, warehouse_id, product_id, quantity):
-        """Remove a product from a warehouse's inventory"""
         try:
-            # Check if warehouse product exists
             warehouse_product = WarehouseProduct.query.filter_by(
                 warehouse_id=warehouse_id,
                 product_id=product_id
@@ -102,10 +97,8 @@ class WarehouseService:
             if warehouse_product.quantity < quantity:
                 return False, "Insufficient quantity available"
             
-            # Update quantity
             warehouse_product.quantity -= quantity
             
-            # Remove entry if quantity becomes zero
             if warehouse_product.quantity == 0:
                 db.session.delete(warehouse_product)
             
@@ -120,20 +113,17 @@ class WarehouseService:
             logger.error(f"Error removing product from warehouse: {str(e)}")
             return False, str(e)
     
+    # replenish a product from the world simulator
     def replenish_product(self, warehouse_id, product_id, quantity):
-        """Request more of a product from the world simulator"""
         try:
-            # Check if warehouse exists
             warehouse = Warehouse.query.filter_by(warehouse_id=warehouse_id).first()
             if not warehouse:
                 return False, "Warehouse not found"
             
-            # Check if product exists
             product = Product.query.filter_by(product_id=product_id).first()
             if not product:
                 return False, "Product not found"
             
-            # Request from world simulator
             success, result = self.world_simulator.buy_product(
                 warehouse_id=warehouse_id,
                 product_id=product_id,
@@ -149,8 +139,8 @@ class WarehouseService:
             logger.error(f"Error requesting product replenishment: {str(e)}")
             return False, str(e)
     
+    # check if a product is available in a warehouse
     def check_product_availability(self, warehouse_id, product_id, quantity_needed):
-        """Check if a product is available in the specified quantity"""
         warehouse_product = WarehouseProduct.query.filter_by(
             warehouse_id=warehouse_id,
             product_id=product_id
@@ -162,7 +152,7 @@ class WarehouseService:
         return warehouse_product.quantity >= quantity_needed
     
     def get_product_inventory(self, product_id):
-        """Get all warehouse inventory for a specific product"""
+
         inventory = WarehouseProduct.query.filter_by(
             product_id=product_id
         ).all()
@@ -180,9 +170,7 @@ class WarehouseService:
         return result
     
     def handle_product_arrived(self, warehouse_id, product_id, description, quantity):
-        """Handle notification that products have arrived at the warehouse"""
         try:
-            # Check if the product exists
             product = Product.query.filter_by(product_id=product_id).first()
             
             # If not, create it
@@ -191,14 +179,13 @@ class WarehouseService:
                     product_id=product_id,
                     product_name=description,
                     description=description,
-                    category_id=1,  # Default category
-                    owner_id=1,     # Default owner (system)
-                    price=10.00     # Default price
+                    category_id=1,  
+                    owner_id=1,     
+                    price=10.00     # Default price？？？
                 )
                 db.session.add(product)
                 db.session.flush()
             
-            # Add product to warehouse inventory
             success, result = self.add_product_to_warehouse(
                 warehouse_id=warehouse_id,
                 product_id=product_id,
@@ -215,7 +202,6 @@ class WarehouseService:
             return False, str(e)
     
     def get_warehouse_inventory(self, warehouse_id):
-        """Get complete inventory for a warehouse"""
         try:
             inventory = WarehouseProduct.query.filter_by(warehouse_id=warehouse_id).all()
             

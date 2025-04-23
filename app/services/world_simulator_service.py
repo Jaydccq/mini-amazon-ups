@@ -8,7 +8,7 @@ from datetime import datetime
 from google.protobuf.message import Message
 
 from model import db, WorldMessage, Warehouse
-from proto import amazon_pb2
+from proto import world_amazon_1_pb2 as amazon_pb2
 
 logger = logging.getLogger(__name__)
 
@@ -27,24 +27,23 @@ class WorldSimulatorService:
         self.message_queue = queue.Queue()
         self.running = True
         
-        # Load last used sequence number from database
         self._load_last_seqnum()
     
+    # Load the last used sequence number 
     def _load_last_seqnum(self):
-        """Load the last used sequence number from database"""
         last_message = WorldMessage.query.order_by(WorldMessage.seqnum.desc()).first()
         if last_message:
             with self.lock:
                 self.seqnum = last_message.seqnum
-    
+
+    # Get the next sequence number    
     def _get_next_seqnum(self):
-        """Get the next sequence number"""
         with self.lock:
             self.seqnum += 1
             return self.seqnum
     
+    # Connect to the world simulator
     def connect(self, world_id=None, init_warehouses=None):
-        """Connect to the world simulator"""
         try:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.connect((self.host, self.port))
@@ -63,10 +62,11 @@ class WorldSimulatorService:
                     new_wh.y = wh.y
             
             # Send connection message
-            self._send_protobuf(connect_msg)
+            self.send_protobuf(connect_msg)
             
-            # Receive response
-            data = self._receive_message()
+            # Receive 
+            data = self.receive_message()
+            # connect response
             response = amazon_pb2.AConnected()
             response.ParseFromString(data)
             
@@ -77,11 +77,11 @@ class WorldSimulatorService:
                 logger.error(f"Failed to connect to World Simulator: {response.result}")
                 return None, response.result
             
-            # Start background threads
-            self.receiver_thread = threading.Thread(target=self._receive_loop)
+            # receiver_thread
+            self.receiver_thread = threading.Thread(target=self.receive_loop)
             self.receiver_thread.daemon = True
             self.receiver_thread.start()
-            
+            # sender_thread
             self.sender_thread = threading.Thread(target=self._send_loop)
             self.sender_thread.daemon = True
             self.sender_thread.start()
@@ -94,13 +94,12 @@ class WorldSimulatorService:
             return None, str(e)
     
     def disconnect(self):
-        """Disconnect from the world simulator"""
         try:
             if self.connected:
-                # Send disconnect command
+                # disconnect command
                 command = amazon_pb2.ACommands()
                 command.disconnect = True
-                self._queue_command(command)
+                self.queue_command(command)
                 
                 # Wait for threads to finish
                 self.running = False
@@ -118,7 +117,6 @@ class WorldSimulatorService:
             logger.error(f"Error disconnecting from World Simulator: {e}")
     
     def buy_product(self, warehouse_id, product_id, description, quantity):
-        """Purchase more products for a warehouse"""
         if not self.connected:
             return False, "Not connected to World Simulator"
         
@@ -133,7 +131,6 @@ class WorldSimulatorService:
             product.description = description
             product.count = quantity
             
-            # Save command to database
             db_message = WorldMessage(
                 seqnum=buy.seqnum,
                 message_type='buy',
@@ -143,15 +140,13 @@ class WorldSimulatorService:
             db.session.add(db_message)
             db.session.commit()
             
-            # Create event for this sequence number
             event = threading.Event()
             with self.lock:
                 self.response_events[buy.seqnum] = event
             
             # Queue the command
-            self._queue_command(command)
+            self.queue_command(command)
             
-            # Wait for response
             if event.wait(timeout=10):
                 with self.lock:
                     if buy.seqnum in self.pending_responses:
@@ -166,7 +161,6 @@ class WorldSimulatorService:
             return False, str(e)
     
     def pack_shipment(self, warehouse_id, shipment_id, items):
-        """Request packing of a shipment"""
         if not self.connected:
             return False, "Not connected to World Simulator"
         
@@ -183,7 +177,7 @@ class WorldSimulatorService:
                 product.description = item['description']
                 product.count = item['quantity']
             
-            # Save command to database
+            # save command to database
             db_message = WorldMessage(
                 seqnum=pack.seqnum,
                 message_type='topack',
@@ -193,15 +187,12 @@ class WorldSimulatorService:
             db.session.add(db_message)
             db.session.commit()
             
-            # Create event for this sequence number
             event = threading.Event()
             with self.lock:
                 self.response_events[pack.seqnum] = event
             
-            # Queue the command
-            self._queue_command(command)
+            self.queue_command(command)
             
-            # Wait for response
             if event.wait(timeout=10):
                 with self.lock:
                     if pack.seqnum in self.pending_responses:
@@ -216,7 +207,6 @@ class WorldSimulatorService:
             return False, str(e)
     
     def load_shipment(self, warehouse_id, truck_id, shipment_id):
-        """Request loading a shipment onto a truck"""
         if not self.connected:
             return False, "Not connected to World Simulator"
         
@@ -238,15 +228,14 @@ class WorldSimulatorService:
             db.session.add(db_message)
             db.session.commit()
             
-            # Create event for this sequence number
+            # ceate event sequence number
             event = threading.Event()
             with self.lock:
                 self.response_events[load.seqnum] = event
             
-            # Queue the command
-            self._queue_command(command)
+            # queue the command
+            self.queue_command(command)
             
-            # Wait for response
             if event.wait(timeout=10):
                 with self.lock:
                     if load.seqnum in self.pending_responses:
@@ -261,7 +250,6 @@ class WorldSimulatorService:
             return False, str(e)
     
     def query_package(self, package_id):
-        """Query the status of a package"""
         if not self.connected:
             return False, "Not connected to World Simulator"
         
@@ -271,7 +259,6 @@ class WorldSimulatorService:
             query.packageid = package_id
             query.seqnum = self._get_next_seqnum()
             
-            # Save command to database
             db_message = WorldMessage(
                 seqnum=query.seqnum,
                 message_type='query',
@@ -281,15 +268,13 @@ class WorldSimulatorService:
             db.session.add(db_message)
             db.session.commit()
             
-            # Create event for this sequence number
+            # create event sequence number
             event = threading.Event()
             with self.lock:
                 self.response_events[query.seqnum] = event
             
-            # Queue the command
-            self._queue_command(command)
+            self.queue_command(command)
             
-            # Wait for response
             if event.wait(timeout=10):
                 with self.lock:
                     if query.seqnum in self.pending_responses:
@@ -303,8 +288,7 @@ class WorldSimulatorService:
             logger.error(f"Error querying package: {e}")
             return False, str(e)
     
-    def _queue_command(self, command):
-        """Add pending acks to command and queue it for sending"""
+    def queue_command(self, command):
         # Add acks for received messages
         with self.lock:
             for ack in self.acks:
@@ -325,7 +309,7 @@ class WorldSimulatorService:
                     continue
                 
                 # Send the command
-                self._send_protobuf(command)
+                self.send_protobuf(command)
                 
                 # Mark as done
                 self.message_queue.task_done()
@@ -333,12 +317,11 @@ class WorldSimulatorService:
                 logger.error(f"Error in send loop: {e}")
                 time.sleep(1)  # Avoid tight loop on error
     
-    def _receive_loop(self):
-        """Background thread for receiving responses"""
+    def receive_loop(self):
         while self.running:
             try:
                 # Receive response
-                data = self._receive_message()
+                data = self.receive_message()
                 if not data:
                     logger.warning("Empty response received")
                     continue
@@ -348,65 +331,50 @@ class WorldSimulatorService:
                 response.ParseFromString(data)
                 
                 # Process response
-                self._process_response(response)
+                self.process_response(response)
             except Exception as e:
                 logger.error(f"Error in receive loop: {e}")
-                time.sleep(1)  # Avoid tight loop on error
+                time.sleep(1)  
     
-    def _process_response(self, response):
-        """Process a response from the world simulator"""
+    def process_response(self, response):
         try:
-            # Process acknowledgments
             for ack in response.acks:
-                self._process_ack(ack)
+                self.process_ack(ack)
             
-            # Process arrived products
             for package in response.arrived:
-                self._process_arrived(package)
+                self.process_arrived(package)
             
-            # Process ready packages
             for package in response.ready:
-                self._process_ready(package)
+                self.process_ready(package)
             
-            # Process loaded packages
             for package in response.loaded:
-                self._process_loaded(package)
+                self.process_loaded(package)
             
-            # Process package status responses
             for package in response.packagestatus:
-                self._process_package_status(package)
+                self.process_package_status(package)
             
-            # Process errors
             for error in response.error:
-                self._process_error(error)
+                self.process_error(error)
             
-            # Add to pending acks
             with self.lock:
                 self.acks.add(response.seqnum)
         except Exception as e:
             logger.error(f"Error processing response: {e}")
     
-    def _process_ack(self, seqnum):
-        """Process acknowledgment from world simulator"""
+    def process_ack(self, seqnum):
         logger.debug(f"Received ack for seqnum {seqnum}")
-        
-        # Update message status in database
         message = WorldMessage.query.filter_by(seqnum=seqnum).first()
         if message:
             message.status = 'acked'
             db.session.commit()
         
-        # Set event to notify waiting threads
         with self.lock:
             if seqnum in self.response_events:
                 self.pending_responses[seqnum] = "ACK"
                 self.response_events[seqnum].set()
     
-    def _process_arrived(self, package):
-        """Process arrived products notification"""
+    def process_arrived(self, package):
         logger.info(f"Products arrived for warehouse {package.whnum}")
-        
-        # Handle the product arrival through the event handler
         from app.services.world_event_handler import WorldEventHandler
         handler = WorldEventHandler()
         
@@ -418,35 +386,26 @@ class WorldSimulatorService:
                 'quantity': product.count
             })
         
-        # Notify world that we've received this message
         with self.lock:
             self.acks.add(package.seqnum)
     
-    def _process_ready(self, package):
-        """Process ready package notification"""
+    def process_ready(self, package):
         logger.info(f"Package {package.shipid} is ready")
-        
-        # Handle the package ready event through the event handler
         from app.services.world_event_handler import WorldEventHandler
         handler = WorldEventHandler()
         handler.handle_world_event('package_ready', {
             'shipment_id': package.shipid
         })
-        
-        # Notify world that we've received this message
         with self.lock:
             self.acks.add(package.seqnum)
     
-    def _process_loaded(self, package):
-        """Process loaded package notification"""
+    def process_loaded(self, package):
         logger.info(f"Package {package.shipid} is loaded")
         
-        # Get the shipment to find out which truck it was loaded on
         from app.model import Shipment
         shipment = Shipment.query.filter_by(shipment_id=package.shipid).first()
         
         if shipment and shipment.truck_id:
-            # Handle the package loaded event through the event handler
             from app.services.world_event_handler import WorldEventHandler
             handler = WorldEventHandler()
             handler.handle_world_event('package_loaded', {
@@ -454,50 +413,43 @@ class WorldSimulatorService:
                 'truck_id': shipment.truck_id
             })
         
-        # Notify world that we've received this message
         with self.lock:
             self.acks.add(package.seqnum)
     
-    def _process_package_status(self, package):
-        """Process package status response"""
+    def process_package_status(self, package):
         logger.info(f"Package {package.packageid} status: {package.status}")
         
-        # Store the status in the pending responses
         with self.lock:
             if package.seqnum in self.response_events:
                 self.pending_responses[package.seqnum] = package.status
                 self.response_events[package.seqnum].set()
         
-        # Notify world that we've received this message
         with self.lock:
             self.acks.add(package.seqnum)
     
-    def _process_error(self, error):
-        """Process error response"""
+    def process_error(self, error):
         logger.error(f"Error from world simulator: {error.err} (seqnum: {error.originseqnum})")
         
-        # Store the error in the pending responses
+        # Store the error
         with self.lock:
             if error.originseqnum in self.response_events:
                 self.pending_responses[error.originseqnum] = f"Error: {error.err}"
                 self.response_events[error.originseqnum].set()
         
-        # Notify world that we've received this message
         with self.lock:
             self.acks.add(error.seqnum)
     
-    def _send_protobuf(self, message):
-        """Send a Protocol Buffer message"""
+    def send_protobuf(self, message):
         serialized = message.SerializeToString()
         # Send message size as 4-byte integer
         self.socket.sendall(struct.pack("!I", len(serialized)))
         # Send the message
         self.socket.sendall(serialized)
     
-    def _receive_message(self):
-        """Receive a message from the socket"""
+    # receive a message
+    def receive_message(self):
         # Receive message size (4 bytes)
-        size_data = self._recvall(4)
+        size_data = self.recvall(4)
         if not size_data:
             return None
         
@@ -505,10 +457,10 @@ class WorldSimulatorService:
         message_size = struct.unpack("!I", size_data)[0]
         
         # Receive message data
-        return self._recvall(message_size)
+        return self.recvall(message_size)
     
-    def _recvall(self, n):
-        """Receive exactly n bytes"""
+    # Helper function to receive all data
+    def recvall(self, n):
         data = b''
         while len(data) < n:
             packet = self.socket.recv(n - len(data))
@@ -516,3 +468,23 @@ class WorldSimulatorService:
                 return None
             data += packet
         return data
+    
+    # Add to world_simulator_service.py
+    def _reconnect_with_backoff(self):
+        """Reconnect to world simulator with exponential backoff"""
+        retry_count = 0
+        max_retries = 5
+        base_delay = 1  # seconds
+        
+        while retry_count < max_retries:
+            try:
+                self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.socket.connect((self.host, self.port))
+                return True
+            except Exception as e:
+                retry_count += 1
+                delay = base_delay * (2 ** retry_count)
+                logger.warning(f"Reconnection attempt {retry_count} failed. Retrying in {delay} seconds.")
+                time.sleep(delay)
+        
+        return False

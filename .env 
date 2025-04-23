@@ -1,0 +1,4 @@
+FLASK_APP=app
+FLASK_ENV=development
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/mini_amazon
+SECRET_KEY=dev

@@ -23,4 +23,13 @@ class RegistrationForm(FlaskForm):
     terms = BooleanField('I agree', validators=[DataRequired(message='You must agree to the terms and conditions.')])
     submit = SubmitField('Create Account')
 
+from wtforms import StringField, TextAreaField, SubmitField
+from wtforms.validators import DataRequired, Length
+
+class EditProfileForm(FlaskForm):
+    first_name = StringField('First Name', validators=[DataRequired(), Length(min=1, max=50)])
+    last_name = StringField('Last Name', validators=[DataRequired(), Length(min=1, max=50)])
+    address = TextAreaField('Address', validators=[Length(max=500)]) # Address can be optional? Adjust if needed.
+    submit = SubmitField('Save Changes')
+
    

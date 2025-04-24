@@ -694,3 +694,63 @@ def product_reviews(product_id):
 #                            avg_rating=avg_rating,
 #                            review_count=review_count,
 #                            rating_distribution=rating_distribution)
+@amazon_bp.route('/seller/<int:seller_id>/reviews')
+def seller_reviews(seller_id):
+    seller = User.query.get_or_404(seller_id)
+    # Assuming get_seller_reviews exists and returns review objects
+    reviews = ReviewService.get_seller_reviews(seller_id)
+    # Assuming get_avg_rating_seller exists
+    avg_rating, review_count = ReviewService.get_avg_rating_seller(seller_id)
+    # Assuming get_rating_distribution_seller exists
+    rating_distribution = ReviewService.get_rating_distribution_seller(seller_id)
+
+    return render_template('seller/reviews.html',
+                           seller=seller,
+                           reviews=reviews,
+                           avg_rating=avg_rating,
+                           review_count=review_count,
+                           rating_distribution=rating_distribution)
+
+
+@amazon_bp.route('/profile')
+@login_required
+def profile():
+
+    return render_template('profile.html', user=current_user)
+
+from app.forms import EditProfileForm
+@amazon_bp.route('/profile/edit', methods=['GET', 'POST'])
+@login_required
+def edit_profile():
+    user = db.session.get(User, current_user.user_id)
+    if not user:
+        flash('User not found.', 'error')
+        return redirect(url_for('amazon.index'))
+
+    # Instantiate the form
+    form = EditProfileForm()
+
+    if form.validate_on_submit():
+
+        user.first_name = form.first_name.data
+        user.last_name = form.last_name.data
+        user.address = form.address.data
+        # Note: Email and password changes are not handled here
+
+        try:
+            db.session.commit()
+            flash('Profile updated successfully!', 'success')
+            return redirect(url_for('amazon.profile')) # Redirect back to the profile view
+        except Exception as e:
+            db.session.rollback()
+            flash(f'An error occurred while updating profile: {e}', 'danger')
+            current_app.logger.error(f"Error updating profile for user {user.user_id}: {e}")
+
+    # For GET requests (or if form validation fails on POST)
+    # Populate the form fields with the user's current data
+    elif request.method == 'GET':
+        form.first_name.data = user.first_name
+        form.last_name.data = user.last_name
+        form.address.data = user.address
+
+    return render_template('edit_profile.html', user=user, form=form)

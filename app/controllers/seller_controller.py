@@ -1,14 +1,15 @@
 # File: app/controllers/seller_controller.py
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify # Added jsonify
 from flask_login import login_required, current_user
 from functools import wraps
 from werkzeug.utils import secure_filename
 import os
-from datetime import datetime
-from sqlalchemy import func
+from datetime import datetime, timedelta # Added timedelta
+from sqlalchemy import func, cast, Date # Added cast, Date
 
 # Import necessary models and db object from your app.model
+# Added Order, OrderProduct
 from app.model import db, User, Product, ProductCategory, Inventory, Order, OrderProduct
 
 # Helper function to check if user is logged in as a seller
@@ -30,40 +31,90 @@ seller_bp = Blueprint('seller', __name__, url_prefix='/seller')
 @seller_bp.route('/dashboard')
 @seller_required
 def dashboard():
-    """Seller dashboard overview"""
+    """Seller dashboard overview with sales reports"""
     seller_id = current_user.user_id
 
-    # Get recent unfulfilled order items for this seller
+    # --- Existing Inventory Stats ---
+    inventory_items_query = Inventory.query.filter_by(seller_id=seller_id)
+    inventory_items = inventory_items_query.all()
+    total_value = sum(item.quantity * float(item.unit_price) for item in inventory_items)
+    low_stock_count = sum(1 for item in inventory_items if item.quantity < 5)
+    inventory_count = len(inventory_items)
+
+    # --- Order Item Stats ---
+    fulfilled_items_count = db.session.query(func.sum(OrderProduct.quantity))\
+        .filter(OrderProduct.seller_id == seller_id, OrderProduct.status == 'Fulfilled').scalar() or 0
+    unfulfilled_items_count = db.session.query(func.sum(OrderProduct.quantity))\
+        .filter(OrderProduct.seller_id == seller_id, OrderProduct.status == 'Unfulfilled')\
+        .join(Order)\
+        .scalar() or 0 # Joined Order to filter by order date later if needed
+
     recent_order_items = db.session.query(OrderProduct).join(Order)\
         .filter(OrderProduct.seller_id == seller_id, OrderProduct.status == 'Unfulfilled')\
         .order_by(Order.order_date.desc())\
         .limit(5).all()
 
-    # Get all inventory items for stats
-    inventory_items = Inventory.query.filter_by(seller_id=seller_id).all()
+    # --- NEW: Sales Report Data ---
 
-    total_value = sum(item.quantity * float(item.unit_price) for item in inventory_items)
-    low_stock_count = sum(1 for item in inventory_items if item.quantity < 5)
-    inventory_count = len(inventory_items)
+    # 1. Total Sales Value (Last 30 days)
+    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    total_sales_last_30d = db.session.query(func.sum(OrderProduct.price * OrderProduct.quantity))\
+        .join(Order)\
+        .filter(OrderProduct.seller_id == seller_id, OrderProduct.status == 'Fulfilled', Order.order_date >= thirty_days_ago)\
+        .scalar() or 0.0
 
-    # Count fulfilled/unfulfilled items associated with this seller
-    fulfilled_items_count = db.session.query(func.sum(OrderProduct.quantity))\
-        .filter(OrderProduct.seller_id == seller_id, OrderProduct.status == 'Fulfilled').scalar() or 0
-    unfulfilled_items_count = db.session.query(func.sum(OrderProduct.quantity))\
-        .filter(OrderProduct.seller_id == seller_id, OrderProduct.status == 'Unfulfilled').scalar() or 0
+    # 2. Sales Over Time (Last 30 days for Chart)
+    sales_over_time = db.session.query(
+            cast(Order.order_date, Date).label('sale_date'),
+            func.sum(OrderProduct.price * OrderProduct.quantity).label('daily_total')
+        )\
+        .join(OrderProduct, Order.order_id == OrderProduct.order_id)\
+        .filter(OrderProduct.seller_id == seller_id, OrderProduct.status == 'Fulfilled', Order.order_date >= thirty_days_ago)\
+        .group_by(cast(Order.order_date, Date))\
+        .order_by(cast(Order.order_date, Date))\
+        .all()
+
+    # Format for Chart.js
+    sales_chart_labels = [d.sale_date.strftime('%Y-%m-%d') for d in sales_over_time]
+    sales_chart_data = [float(d.daily_total) for d in sales_over_time]
+
+    # 3. Top 5 Best Selling Products (by Quantity Fulfilled)
+    top_products_query = db.session.query(
+            Product.product_name,
+            func.sum(OrderProduct.quantity).label('total_quantity')
+        )\
+        .join(OrderProduct, Product.product_id == OrderProduct.product_id)\
+        .filter(OrderProduct.seller_id == seller_id, OrderProduct.status == 'Fulfilled')\
+        .group_by(Product.product_name)\
+        .order_by(func.sum(OrderProduct.quantity).desc())\
+        .limit(5)\
+        .all()
+
+    # Format for Chart.js
+    top_products_labels = [p.product_name for p in top_products_query]
+    top_products_data = [int(p.total_quantity) for p in top_products_query]
+
 
     return render_template(
-        'seller/dashboard.html', # You will need to create this template
+        'seller/dashboard.html', # Ensure this template exists
         recent_order_items=recent_order_items,
-        inventory_items=inventory_items[:5], # Display first 5
+        inventory_items=inventory_items[:5], # Display first 5 inventory items
         total_value=total_value,
         low_stock_count=low_stock_count,
         inventory_count=inventory_count,
         fulfilled_items_count=fulfilled_items_count,
-        unfulfilled_items_count=unfulfilled_items_count
+        unfulfilled_items_count=unfulfilled_items_count,
+        # --- NEW DATA FOR REPORTS ---
+        total_sales_last_30d=total_sales_last_30d,
+        sales_chart_labels=sales_chart_labels,
+        sales_chart_data=sales_chart_data,
+        top_products_labels=top_products_labels,
+        top_products_data=top_products_data
     )
 
+
 # --- Inventory Management ---
+# ... (keep existing inventory routes: inventory_list, add_inventory, create_product, edit_inventory, delete_inventory) ...
 @seller_bp.route('/inventory')
 @seller_required
 def inventory_list():
@@ -207,7 +258,13 @@ def create_product():
                     try:
                         file.save(file_path)
                         # Store a relative URL accessible via static endpoint
-                        image_url = f"uploads/{unique_filename}" # Adjust if your static setup differs
+                        # **** IMPORTANT: This assumes you have configured a static route for uploads ****
+                        # **** Example: app.add_url_rule('/uploads/<filename>', endpoint='get_upload', view_func=lambda filename: send_from_directory(app.config['UPLOAD_FOLDER'], filename)) ****
+                        image_url = url_for('static', filename=f"uploads/{unique_filename}") # Use url_for if static route is set up
+
+                        # If not using a static route, store the relative path accessible by the web server
+                        # image_url = f"instance/uploads/{unique_filename}" # Or just f"uploads/{unique_filename}" depending on server setup
+
                         flash(f"Image '{filename}' uploaded.", 'info')
                     except Exception as e:
                         flash(f"Failed to save image: {str(e)}", 'danger')
@@ -259,7 +316,8 @@ def create_product():
 def edit_inventory(inventory_id):
     """Edit quantity and price for an inventory item"""
     seller_id = current_user.user_id
-    item = Inventory.query.get_or_404(inventory_id)
+    # Use db.get_or_404 for simpler fetching by primary key
+    item = db.session.get_or_404(Inventory, inventory_id)
 
     # Ensure the seller owns this inventory item
     if item.seller_id != seller_id:
@@ -272,13 +330,13 @@ def edit_inventory(inventory_id):
 
         if quantity is None or unit_price is None:
             flash('Quantity and price are required.', 'danger')
-            return render_template('seller/edit_inventory.html', item=item)
+            return render_template('seller/edit_inventory.html', item=item) # Pass item back
         if quantity < 0:
             flash('Quantity cannot be negative.', 'danger')
-            return render_template('seller/edit_inventory.html', item=item)
+            return render_template('seller/edit_inventory.html', item=item) # Pass item back
         if unit_price <= 0:
             flash('Price must be positive.', 'danger')
-            return render_template('seller/edit_inventory.html', item=item)
+            return render_template('seller/edit_inventory.html', item=item) # Pass item back
 
         try:
             item.quantity = quantity
@@ -293,9 +351,12 @@ def edit_inventory(inventory_id):
             current_app.logger.error(f"Error updating inventory {inventory_id}: {e}")
 
     # GET request
+    # Fetch product details for display
+    product = db.session.get(Product, item.product_id)
     return render_template(
         'seller/edit_inventory.html', # You will need to create this template
-        item=item
+        item=item,
+        product=product # Pass product details
     )
 
 @seller_bp.route('/inventory/delete/<int:inventory_id>', methods=['POST'])
@@ -303,7 +364,7 @@ def edit_inventory(inventory_id):
 def delete_inventory(inventory_id):
     """Remove an item from seller's inventory"""
     seller_id = current_user.user_id
-    item = Inventory.query.get_or_404(inventory_id)
+    item = db.session.get_or_404(Inventory, inventory_id)
 
     if item.seller_id != seller_id:
         flash('You do not have permission to delete this item.', 'danger')
@@ -320,7 +381,9 @@ def delete_inventory(inventory_id):
 
     return redirect(url_for('seller.inventory_list'))
 
+
 # --- Order Fulfillment ---
+# ... (keep existing order routes: list_orders, fulfill_item) ...
 @seller_bp.route('/orders')
 @seller_required
 def list_orders():
@@ -354,12 +417,11 @@ def list_orders():
 def fulfill_item(order_item_id):
     """Mark an order item sold by this seller as fulfilled"""
     seller_id = current_user.user_id
-    order_item = OrderProduct.query.get_or_404(order_item_id)
+    # Use db.get_or_404 for simpler fetching by primary key
+    order_item = db.session.get_or_404(OrderProduct, order_item_id)
 
     if order_item.seller_id != seller_id:
         flash('You cannot fulfill this item as you are not the seller.', 'danger')
-        # Redirect back to the order details or orders list
-        # Need order_id, find it via the relationship
         return redirect(request.referrer or url_for('seller.list_orders'))
 
     if order_item.status == 'Fulfilled':
@@ -370,9 +432,10 @@ def fulfill_item(order_item_id):
         order_item.status = 'Fulfilled'
         order_item.fulfillment_date = datetime.utcnow()
 
-        # Optional: Check if all items in the parent order are fulfilled
-        order = order_item.order
-        all_fulfilled = all(item.status == 'Fulfilled' for item in order.items)
+
+        order = order_item.order # Access via relationship
+        all_items = order.items # Access via relationship
+        all_fulfilled = all(item.status == 'Fulfilled' for item in all_items)
         if all_fulfilled:
             order.order_status = 'Fulfilled'
 

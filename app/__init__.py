@@ -5,7 +5,7 @@ from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
 from app.model import db, User
-
+from app.controllers.seller_controller import seller_bp
 # Import blueprints
 from app.controllers.amazon_controller import amazon_bp, api_bp, admin_bp
 from app.controllers.webhook_controller import world_bp, ups_bp
@@ -54,6 +54,7 @@ def create_app(test_config=None):
     app.register_blueprint(ups_bp)
     app.register_blueprint(cart_bp)
     app.register_blueprint(review_bp)
+    app.register_blueprint(seller_bp)
     
     # Setup Flask-Migrate
     migrate = Migrate(app, db)

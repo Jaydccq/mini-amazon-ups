@@ -310,3 +310,26 @@ class Review(db.Model):
         ),
         db.CheckConstraint('rating >= 1 AND rating <= 5', name='review_rating_check'),
     )
+
+class Inventory(db.Model):
+    __tablename__ = 'inventory' 
+
+    inventory_id = db.Column(db.Integer, primary_key=True)
+    seller_id = db.Column(db.Integer, db.ForeignKey('accounts.user_id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.product_id'), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False)
+    unit_price = db.Column(db.Numeric(10, 2), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # owner_id might be redundant if product.owner_id is always the same,
+    # but keeping it if your SQL defines it. Check if needed.
+    owner_id = db.Column(db.Integer, db.ForeignKey('accounts.user_id'), nullable=True)
+
+    # Relationships
+    seller = db.relationship('User', foreign_keys=[seller_id])
+    product = db.relationship('Product') # Add backref in Product model if needed
+    product_owner = db.relationship('User', foreign_keys=[owner_id])
+
+    __table_args__ = (
+        db.UniqueConstraint('seller_id', 'product_id', name='uq_inventory_seller_product'),
+    )

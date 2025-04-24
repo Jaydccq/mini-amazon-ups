@@ -34,6 +34,7 @@ if app_dir not in sys.path:
 
 try:
     # Try importing from app.model, including the Review model
+    # ** IMPORTANT: Ensure WarehouseProduct in app.model has the new fields **
     from app.model import (
         db as imported_db, User, ProductCategory, Product, Warehouse,
         WarehouseProduct, Cart, CartProduct, Order, OrderProduct, Shipment,
@@ -71,7 +72,7 @@ except Exception as e:
 Session = sessionmaker(bind=engine)
 session = Session()
 
-# --- Enhanced Data Generation Functions ---
+# --- (Other functions like create_users, create_categories, etc. remain here) ---
 
 def create_users(n_users, n_sellers):
     """Creates regular users and seller users, including default admin."""
@@ -288,11 +289,13 @@ def create_warehouses(n):
         print(f"Error creating warehouses: {e}")
         return []
 
+# --- MODIFIED FUNCTION ---
 def create_inventory(products, warehouses, max_qty):
-    """Adds or updates product inventory in warehouses."""
+    """Adds or updates product inventory in warehouses with more details."""
     WarehouseProduct = db_models['WarehouseProduct']
     inventory_items_to_add = []
     inventory_items_to_update = 0
+    inventory_updates_applied = [] # To track changes on existing items
 
     if not warehouses or not products:
         print("Error: Warehouses and products are required to create inventory.")
@@ -313,22 +316,50 @@ def create_inventory(products, warehouses, max_qty):
 
         for warehouse in assigned_warehouses:
             key = (warehouse.warehouse_id, product.product_id)
+
+            # --- New Fields Data Generation ---
+            current_time = datetime.now()
+            last_restock = fake.date_time_between(start_date="-90d", end_date="now", tzinfo=None) # Restocked in last 3 months
+            # Cost price as a percentage of product price (e.g., 50-80%)
+            cost = round(product.price * random.uniform(0.5, 0.8), 2)
+            # Simple shelf location format
+            aisle = random.randint(1, 20)
+            shelf_letter = random.choice('ABCDEFG')
+            shelf_number = random.randint(1, 10)
+            location = f"A{aisle}S{shelf_letter}-{shelf_number}"
+            # Inventory status - mostly available, sometimes reserved or damaged
+            status = random.choices(['Available', 'Reserved', 'Damaged'], weights=[0.95, 0.03, 0.02])[0]
+            quantity = random.randint(1, max_qty) if status == 'Available' else random.randint(0, int(max_qty * 0.1)) # Lower qty if not available
+
             if key not in existing_inventory:
-                 # Add new inventory record
+                 # Add new inventory record with detailed info
                  inventory_item = WarehouseProduct(
                     warehouse_id=warehouse.warehouse_id,
                     product_id=product.product_id,
-                    quantity=random.randint(1, max_qty)
-                )
+                    quantity=quantity,
+                    # --- Add new fields ---
+                    last_restock_date=last_restock,
+                    cost_price=cost,
+                    shelf_location=location,
+                    status=status
+                 )
                  inventory_items_to_add.append(inventory_item)
                  # Add to cache to prevent duplicates within this run
                  existing_inventory[key] = inventory_item
             else:
-                 # Update existing inventory record quantity (more dynamic)
+                 # Update existing inventory record (potentially changing all fields)
                  existing_item = existing_inventory[key]
-                 change = random.randint(-int(existing_item.quantity * 0.3), int(max_qty * 0.5)) # Allow reduction
-                 existing_item.quantity = max(0, existing_item.quantity + change) # Allow stock to go to 0
-                 inventory_items_to_update += 1
+
+                 # Decide whether to update based on random chance or logic (e.g., recent restock)
+                 if random.random() < 0.25: # ~25% chance to update an existing record's details
+                    change = random.randint(-int(existing_item.quantity * 0.3), int(max_qty * 0.5)) # Allow reduction
+                    existing_item.quantity = max(0, existing_item.quantity + change) # Allow stock to go to 0
+                    existing_item.last_restock_date = last_restock # Update restock date on change
+                    existing_item.cost_price = cost # Update cost (maybe price changed)
+                    existing_item.shelf_location = location # Maybe it moved
+                    existing_item.status = status # Status might change
+                    inventory_items_to_update += 1
+                    inventory_updates_applied.append(existing_item) # Track for logging/debugging if needed
 
         product_count += 1
         if product_count % 100 == 0:
@@ -337,15 +368,17 @@ def create_inventory(products, warehouses, max_qty):
     try:
         if inventory_items_to_add:
              session.add_all(inventory_items_to_add)
-        # Updates to existing items are tracked by the session automatically
+        # Updates to existing items are tracked by the session automatically if they were fetched from it
         session.commit()
-        print(f"Successfully created {len(inventory_items_to_add)} new inventory records and updated {inventory_items_to_update} existing records.")
-        # Return all inventory records
+        print(f"Successfully created {len(inventory_items_to_add)} new inventory records and initiated updates for {inventory_items_to_update} existing records.")
+        # Return all inventory records (new and existing/updated)
         return session.query(WarehouseProduct).all()
     except SQLAlchemyError as e:
         session.rollback()
         print(f"Error creating/updating inventory: {e}")
         return []
+
+# --- (Rest of the functions: create_carts_and_orders, create_shipments, create_reviews) ---
 
 def create_carts_and_orders(users, products, n_orders_per_user, max_items):
     """Simulates users adding items to cart and creating orders with varied dates."""
@@ -413,7 +446,10 @@ def create_carts_and_orders(users, products, n_orders_per_user, max_items):
                     'seller_id': product.owner_id
                 })
                 product_ids_in_order.add(product.product_id)
-                available_products.remove(product)
+                # Simulate removing product from available pool for this order attempt
+                # Note: This doesn't prevent the *same* product being chosen by another concurrent process or even the next iteration if available_products is large.
+                # For true stock checking, you'd need to query and lock inventory, which is beyond this script's scope.
+                # available_products.remove(product) # Removing can be slow on large lists, consider alternatives if performance matters
 
             if not items_for_order: continue
 
@@ -467,6 +503,7 @@ def create_carts_and_orders(users, products, n_orders_per_user, max_items):
     # Return all orders created in this run
     return orders_created_list # Return list of created orders
 
+
 def create_shipments(orders, warehouses, n_shipments_to_create):
     """Creates shipments for a subset of orders with varied statuses and timings."""
     Shipment = db_models['Shipment']
@@ -475,7 +512,7 @@ def create_shipments(orders, warehouses, n_shipments_to_create):
     Order = db_models['Order']
 
     shipments_created_list = []
-    # shipment_statuses = ['packing', 'packed', 'loading', 'loaded', 'delivering', 'delivered'] [cite: 45]
+    # shipment_statuses = ['packing', 'packed', 'loading', 'loaded', 'delivering', 'delivered']
     # Statuses will be determined based on order date and random chance
 
     if not orders:
@@ -521,7 +558,9 @@ def create_shipments(orders, warehouses, n_shipments_to_create):
 
         # Determine status based on order date and randomness
         now = datetime.now()
-        days_since_order = (now - order.order_date).days
+        # Ensure order_date is offset-naive if 'now' is offset-naive
+        order_date_naive = order.order_date.replace(tzinfo=None) if order.order_date.tzinfo else order.order_date
+        days_since_order = (now - order_date_naive).days
         status = 'packing' # Default
         ups_tracking_id = None
         truck_id = None
@@ -536,12 +575,12 @@ def create_shipments(orders, warehouses, n_shipments_to_create):
         # Otherwise stays 'packing'
 
         if status != 'packing':
-             ups_tracking_id = fake.ean(length=13)
+             ups_tracking_id = fake.ean(length=13) # Use ean for tracking id like format
         if status in ['loading', 'loaded', 'delivering', 'delivered']:
              truck_id = random.randint(1, 50) # More trucks available
         if status == 'delivered':
              # Set fulfillment date somewhere between order date + 1 day and now
-             min_fulfill_date = order.order_date + timedelta(days=1)
+             min_fulfill_date = order_date_naive + timedelta(days=1)
              if min_fulfill_date < now:
                  fulfillment_date = fake.date_time_between(start_date=min_fulfill_date, end_date=now, tzinfo=None)
              else:
@@ -583,12 +622,28 @@ def create_shipments(orders, warehouses, n_shipments_to_create):
 
         # If status is 'delivered', update associated order and order items
         if status == 'delivered':
-            order.order_status = 'Fulfilled'
-            for item in order_items:
-                item.status = 'Fulfilled'
-                item.fulfillment_date = fulfillment_date
+            try:
+                 # Find the order in the session or query it
+                 order_to_update = session.get(Order, order.order_id) # Use session.get for primary key lookup
+                 if order_to_update:
+                     order_to_update.order_status = 'Fulfilled'
+                     # Update related order items
+                     for item in order_items:
+                         item_to_update = session.get(OrderProduct, item.id) # Assuming OrderProduct has a primary key 'id'
+                         if item_to_update:
+                             item_to_update.status = 'Fulfilled'
+                             item_to_update.fulfillment_date = fulfillment_date
+                 else:
+                      print(f"Warning: Could not find order {order.order_id} in session to mark as Fulfilled.")
 
-        # Commit shipment and its items
+            except Exception as e:
+                 # This might happen if the Order or OrderProduct models don't match expectations (e.g., no 'id' PK)
+                 print(f"Error updating order/item status for delivered shipment {shipment.shipment_id}: {e}")
+                 # Decide whether to rollback or just log the warning
+                 # session.rollback() # Optional: Rollback if updating status is critical
+                 # continue
+
+        # Commit shipment and its items (and potential status updates)
         try:
             session.commit()
             shipments_created_list.append(shipment)
@@ -620,7 +675,12 @@ def create_reviews(users, products, n_reviews_to_create):
     existing_product_reviews = {(r.user_id, r.product_id) for r in session.query(Review.user_id, Review.product_id).filter(Review.product_id != None).all()}
     existing_seller_reviews = {(r.user_id, r.seller_id) for r in session.query(Review.user_id, Review.seller_id).filter(Review.seller_id != None).all()}
 
-    while reviews_created < n_reviews_to_create:
+    # Generate reviews iteratively
+    attempts = 0
+    max_attempts = n_reviews_to_create * 3 # Set a limit to prevent infinite loops if collisions are high
+
+    while reviews_created < n_reviews_to_create and attempts < max_attempts:
+        attempts += 1
         reviewer = random.choice(buyers)
         review_target_type = random.choice(['product', 'seller'])
 
@@ -661,7 +721,7 @@ def create_reviews(users, products, n_reviews_to_create):
             existing_seller_reviews.add(target_key)
             reviews_created += 1
 
-        if reviews_created % 200 == 0 and reviews_created > 0:
+        if reviews_created % 200 == 0 and reviews_created > 0 and len(reviews_to_add) > 0: # Only print if count increased
              print(f"  Prepared {reviews_created}/{n_reviews_to_create} reviews...")
 
         # Add reviews in batches to avoid large transactions
@@ -671,6 +731,13 @@ def create_reviews(users, products, n_reviews_to_create):
                  session.commit()
                  print(f"  Committed batch of {len(reviews_to_add)} reviews.")
                  reviews_to_add = [] # Reset batch
+            except IntegrityError as e: # Catch potential unique constraint violations if model enforces them
+                 session.rollback()
+                 print(f"Error creating reviews batch (IntegrityError likely duplicate): {e}")
+                 # Clear the batch and potentially re-fetch existing reviews to update the sets
+                 reviews_to_add = []
+                 existing_product_reviews.update({(r.user_id, r.product_id) for r in session.query(Review.user_id, Review.product_id).filter(Review.product_id != None).all()})
+                 existing_seller_reviews.update({(r.user_id, r.seller_id) for r in session.query(Review.user_id, Review.seller_id).filter(Review.seller_id != None).all()})
             except SQLAlchemyError as e:
                 session.rollback()
                 print(f"Error creating reviews batch: {e}")
@@ -683,12 +750,21 @@ def create_reviews(users, products, n_reviews_to_create):
             session.add_all(reviews_to_add)
             session.commit()
             print(f"  Committed final batch of {len(reviews_to_add)} reviews.")
+        except IntegrityError as e:
+            session.rollback()
+            print(f"Error creating final reviews batch (IntegrityError likely duplicate): {e}")
         except SQLAlchemyError as e:
             session.rollback()
             print(f"Error creating final reviews batch: {e}")
 
-    print(f"Successfully created {reviews_created} reviews.")
-    return session.query(Review).count() # Return count as confirmation
+    if attempts >= max_attempts and reviews_created < n_reviews_to_create:
+        print(f"Warning: Reached max attempts ({max_attempts}) but only created {reviews_created}/{n_reviews_to_create} reviews. Might indicate high collision rate or issues finding unique review targets.")
+
+    print(f"Successfully attempted to create reviews. Final count in DB will reflect committed entries.")
+    # Return the actual count from DB for confirmation
+    final_count = session.query(func.count(Review.review_id)).scalar()
+    print(f"Current total reviews in DB: {final_count}")
+    return final_count
 
 
 # --- Main Execution Logic ---
@@ -700,24 +776,40 @@ if __name__ == "__main__":
     product_count = session.query(func.count(db_models['Product'].product_id)).scalar()
     order_count = session.query(func.count(db_models['Order'].order_id)).scalar()
     review_count = session.query(func.count(db_models['Review'].review_id)).scalar()
+    inventory_count = session.query(func.count(db_models['WarehouseProduct'].id)).scalar() # Check inventory too
 
-    print(f"Current counts - Users: {user_count}, Products: {product_count}, Orders: {order_count}, Reviews: {review_count}")
+    print(f"Current counts - Users: {user_count}, Products: {product_count}, Orders: {order_count}, Reviews: {review_count}, Inventory Items: {inventory_count}")
 
     # Adjust threshold for skipping based on increased target numbers
-    if user_count > 100 and product_count > 200 and order_count > 500:
-        print(f"Database appears to have significant data already. Skipping seeding.")
-        print("To force re-seeding, clear relevant tables first.")
+    # Increase threshold slightly to encourage re-running if needed
+    if user_count > NUM_USERS * 0.8 and product_count > (NUM_CATEGORIES * NUM_PRODUCTS_PER_CATEGORY * 0.8) and order_count > (NUM_USERS * NUM_ORDERS_PER_USER * 0.5):
+        print(f"Database appears to have significant data already. Skipping full seeding run.")
+        # Optionally, run only specific parts like updating inventory or adding reviews
+        # print("Consider running specific functions if you only need to add/update certain data.")
+        # Example: only update inventory
+        # print("-" * 20)
+        # print("Attempting to update existing inventory...")
+        # all_products_existing = session.query(Product).all()
+        # all_warehouses_existing = session.query(Warehouse).all()
+        # if all_products_existing and all_warehouses_existing:
+        #      create_inventory(all_products_existing, all_warehouses_existing, MAX_INITIAL_INVENTORY)
+        #      print(f"Total inventory records in DB after update: {session.query(func.count(db_models['WarehouseProduct'].id)).scalar()}")
+        # else:
+        #      print("Skipping inventory update due to missing products or warehouses.")
+        # print("-" * 20)
+
     else:
+        print("Proceeding with full data seeding...")
         print("-" * 20)
         # 1. Create users
         all_users = create_users(NUM_USERS, NUM_SELLERS)
         sellers = [u for u in all_users if u.is_seller]
-        print(f"Total users in DB after creation: {session.query(func.count(db_models['User'].user_id)).scalar()}")
+        print(f"Total users in DB after creation/fetch: {session.query(func.count(db_models['User'].user_id)).scalar()}")
         print("-" * 20)
 
         # 2. Create categories
         all_categories = create_categories(NUM_CATEGORIES)
-        print(f"Total categories in DB after creation: {session.query(func.count(db_models['ProductCategory'].category_id)).scalar()}")
+        print(f"Total categories in DB after creation/fetch: {session.query(func.count(db_models['ProductCategory'].category_id)).scalar()}")
         print("-" * 20)
 
         # 3. Create products
@@ -734,7 +826,7 @@ if __name__ == "__main__":
         print(f"Total warehouses in DB after creation: {session.query(func.count(db_models['Warehouse'].warehouse_id)).scalar()}")
         print("-" * 20)
 
-        # 5. Create inventory
+        # 5. Create inventory (Uses the modified function)
         if all_products and all_warehouses:
             create_inventory(all_products, all_warehouses, MAX_INITIAL_INVENTORY)
             print(f"Total inventory records in DB after creation/update: {session.query(func.count(db_models['WarehouseProduct'].id)).scalar()}")
@@ -745,6 +837,8 @@ if __name__ == "__main__":
         # 6. Create orders (ensure users and products exist)
         created_orders = []
         if all_users and all_products:
+            # Pass only newly created products if you want orders only for them,
+            # or pass all_products if orders can be for any product in DB
             created_orders = create_carts_and_orders(all_users, all_products, NUM_ORDERS_PER_USER, MAX_ITEMS_PER_ORDER)
             print(f"Total orders in DB after creation: {session.query(func.count(db_models['Order'].order_id)).scalar()}")
         else:
@@ -763,8 +857,9 @@ if __name__ == "__main__":
 
         # 8. Create reviews (ensure users and products exist) - NEW STEP
         if all_users and all_products:
-            final_review_count = create_reviews(all_users, all_products, NUM_REVIEWS_TO_CREATE)
-            print(f"Total reviews in DB after creation: {final_review_count}")
+            # Pass all users and products found/created
+            create_reviews(all_users, all_products, NUM_REVIEWS_TO_CREATE)
+            # Final count is printed within the function now
         else:
             print("Skipping review creation due to missing users or products.")
         print("-" * 20)

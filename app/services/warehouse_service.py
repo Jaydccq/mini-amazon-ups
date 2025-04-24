@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 class WarehouseService:
     def __init__(self):
-        self.world_simulator = WorldSimulatorService()
+        self.world_simulator = WorldSimulatorService(app=None)
     
     def initialize_warehouse(self, x, y, world_id=None):
         try:

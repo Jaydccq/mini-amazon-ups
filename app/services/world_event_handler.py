@@ -2,29 +2,33 @@ import threading
 import logging
 from app.services.warehouse_service import WarehouseService
 from app.services.shipment_service import ShipmentService
+from flask import current_app
 
 logger = logging.getLogger(__name__)
 
 class WorldEventHandler:
-    def __init__(self):
+    def __init__(self,app=None):
+        self.app = app
         self.warehouse_service = WarehouseService()
         self.shipment_service = ShipmentService()
 
     # Handle world events    
     def handle_world_event(self, event_type, event_data):
-        try:
-            if event_type == 'product_arrived':
-                return self.handle_product_arrived(event_data)
-            elif event_type == 'package_ready':
-                return self.handle_package_ready(event_data)
-            elif event_type == 'package_loaded':
-                return self.handle_package_loaded(event_data)
-            else:
-                logger.warning(f"Unknown event type: {event_type}")
-                return False, f"Unknown event type: {event_type}"
-        except Exception as e:
-            logger.error(f"Error handling world event: {str(e)}")
-            return False, str(e)
+
+        with current_app.app_context():
+            try:
+                if event_type == 'product_arrived':
+                    return self.handle_product_arrived(event_data)
+                elif event_type == 'package_ready':
+                    return self.handle_package_ready(event_data)
+                elif event_type == 'package_loaded':
+                    return self.handle_package_loaded(event_data)
+                else:
+                    logger.warning(f"Unknown event type: {event_type}")
+                    return False, f"Unknown event type: {event_type}"
+            except Exception as e:
+                logger.error(f"Error handling world event: {str(e)}")
+                return False, str(e)
     
     # when a product arrives at the warehouse
     def handle_product_arrived(self, event_data):

@@ -6,6 +6,7 @@ import logging
 import queue
 from datetime import datetime
 from google.protobuf.message import Message
+from flask import current_app
 
 from app.model import db, WorldMessage, Warehouse
 from google.protobuf.internal.encoder import _VarintBytes
@@ -16,7 +17,8 @@ from app.proto import world_amazon_1_pb2 as amazon_pb2
 logger = logging.getLogger(__name__)
 
 class WorldSimulatorService:
-    def __init__(self, host='world-simulator', port=23456):
+    def __init__(self, app=None, host='world-simulator', port=23456):
+        self.app = app
         self.host = host
         self.port = port
         self.socket = None
@@ -42,14 +44,14 @@ class WorldSimulatorService:
     # Get the next sequence number    
     def _get_next_seqnum(self):
         # Try to load the last sequence number if we haven't yet
-        if self.seqnum == 0:
-            try:
-                from flask import current_app
-                with current_app.app_context():
-                    self._load_last_seqnum()
-            except Exception:
-                # Continue with default if we can't access the database
-                pass
+        # if self.seqnum == 0:
+        #     try:
+        #         from flask import current_app
+        #         with current_app.app_context():
+        #             self._load_last_seqnum()
+        #     except Exception:
+        #         # Continue with default if we can't access the database
+        #         pass
                 
         with self.lock:
             self.seqnum += 1
@@ -331,49 +333,78 @@ class WorldSimulatorService:
                 time.sleep(1)  # Avoid tight loop on error
     
     def receive_loop(self):
+
         while self.running:
             try:
-                # Receive response
                 data = self.receive_message()
                 if not data:
                     logger.warning("Empty response received")
+                    time.sleep(1) 
                     continue
+
                 
-                # Parse response
                 response = amazon_pb2.AResponses()
                 response.ParseFromString(data)
-                
-                # Process response
-                self.process_response(response)
+
+                if self.app:
+                    with self.app.app_context():
+                        self.process_response(response) # Make sure response processing happens within context
+                else:
+                    # Handle case where app wasn't passed or is None
+                    # This might involve logging an error or skipping context-dependent operations
+                    logger.error("WorldSimulatorService was not initialized with a Flask app object. Cannot create app context in receive_loop.")
+                    # Process response without app context if possible, or handle the error appropriately
+                    # self.process_response(response) # This might fail if process_response needs the context
+
+            except ConnectionAbortedError:
+                 logger.warning("Connection aborted, stopping receive loop.")
+                 self.running = False
+            except socket.timeout:
+                 logger.debug("Socket receive timed out, continuing loop.")
+                 continue 
             except Exception as e:
-                logger.error(f"Error in receive loop: {e}")
-                time.sleep(1)  
+                logger.error(f"Error in receive loop: {e}", exc_info=True)
+                if not self.running:
+                    break
+                time.sleep(1) 
     
+
     def process_response(self, response):
+
         try:
-            for ack in response.acks:
-                self.process_ack(ack)
-            
+            acks_to_send = []
+
+            for ack_seqnum in response.acks:
+                self.process_ack(ack_seqnum) 
+
             for package in response.arrived:
-                self.process_arrived(package)
-            
+                self.process_arrived(package) 
+                acks_to_send.append(package.seqnum) 
+
             for package in response.ready:
                 self.process_ready(package)
-            
+                acks_to_send.append(package.seqnum) 
+
             for package in response.loaded:
-                self.process_loaded(package)
-            
+                self.process_loaded(package) 
+                acks_to_send.append(package.seqnum)
+
             for package in response.packagestatus:
-                self.process_package_status(package)
-            
+                self.process_package_status(package) 
+                acks_to_send.append(package.seqnum) 
+
             for error in response.error:
-                self.process_error(error)
-            
-            # with self.lock:
-            #     self.acks.add(response.seqnum)
+                self.process_error(error) 
+                acks_to_send.append(error.seqnum) 
+
+
+            with self.lock:
+                 self.acks.update(acks_to_send)
+
         except Exception as e:
-            logger.error(f"Error processing response: {e}")
-    
+            logger.error(f"Error processing response content: {e}", exc_info=True)
+
+
     def process_ack(self, seqnum):
         logger.debug(f"Received ack for seqnum {seqnum}")
         message = WorldMessage.query.filter_by(seqnum=seqnum).first()
@@ -382,15 +413,15 @@ class WorldSimulatorService:
             db.session.commit()
         
         with self.lock:
-            if seqnum in self.response_events:
-                self.pending_responses[seqnum] = "ACK"
+                if seqnum not in self.pending_responses or self.pending_responses[seqnum] is None:
+                    self.pending_responses[seqnum] = "ACK"
                 self.response_events[seqnum].set()
     
     def process_arrived(self, package):
         logger.info(f"Products arrived for warehouse {package.whnum}")
         from app.services.world_event_handler import WorldEventHandler
-        handler = WorldEventHandler()
-        
+
+        handler = WorldEventHandler(self.app)
         for product in package.things:
             handler.handle_world_event('product_arrived', {
                 'warehouse_id': package.whnum,
@@ -405,7 +436,8 @@ class WorldSimulatorService:
     def process_ready(self, package):
         logger.info(f"Package {package.shipid} is ready")
         from app.services.world_event_handler import WorldEventHandler
-        handler = WorldEventHandler()
+
+        handler = WorldEventHandler(self.app)
         handler.handle_world_event('package_ready', {
             'shipment_id': package.shipid
         })
@@ -420,7 +452,7 @@ class WorldSimulatorService:
         
         if shipment and shipment.truck_id:
             from app.services.world_event_handler import WorldEventHandler
-            handler = WorldEventHandler()
+            handler = WorldEventHandler(self.app)
             handler.handle_world_event('package_loaded', {
                 'shipment_id': package.shipid,
                 'truck_id': shipment.truck_id
@@ -487,9 +519,7 @@ class WorldSimulatorService:
             data += packet
         return data
     
-    # Add to world_simulator_service.py
     def _reconnect_with_backoff(self):
-        """Reconnect to world simulator with exponential backoff"""
         retry_count = 0
         max_retries = 5
         base_delay = 1  # seconds
@@ -506,3 +536,33 @@ class WorldSimulatorService:
                 time.sleep(delay)
         
         return False
+    
+
+
+
+    def set_sim_speed(self, speed: int):
+
+        if not self.connected:
+            logger.error("Cannot set sim speed: Not connected to World Simulator")
+            # Optionally raise an exception or return False
+            return False
+
+        if not isinstance(speed, int) or speed < 0:
+             logger.error(f"Invalid simulation speed: {speed}. Speed must be a non-negative integer.")
+             return False
+
+        try:
+            # Create the command message
+            command = amazon_pb2.ACommands()
+            command.simspeed = speed
+            logger.info(f"Queueing command to set simulation speed to {speed}")
+
+            # Queue the command for sending using the existing mechanism
+            # queue_command already handles adding acks
+            self.queue_command(command)
+            return True
+
+        except Exception as e:
+            logger.error(f"Error creating or queueing set_sim_speed command: {e}", exc_info=True)
+            return False
+

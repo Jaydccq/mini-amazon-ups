@@ -1,0 +1,2 @@
+docker compose exec web python set_database.py
+http://127.0.0.1:5001

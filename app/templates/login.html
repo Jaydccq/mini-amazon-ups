@@ -13,7 +13,7 @@
                 <div class="card-body p-4">
                     {# Assumes 'form' (a WTForm object) is passed from the controller #}
                     <form method="POST" action="{{ url_for('amazon.login') }}">
-                        {{ form.hidden_tag() }} {# CSRF token #}
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                         <div class="mb-3">
                             {{ form.email.label(class="form-label") }}

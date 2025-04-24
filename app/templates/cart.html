@@ -43,7 +43,7 @@
                                 <td class="text-center align-middle">${{ "%.2f"|format(item[6]) }}</td>
                                 <td class="text-center align-middle" style="width: 150px;">
                                     <form action="{{ url_for('cart.update_cart') }}" method="POST" class="d-flex justify-content-center">
-                                         {# Assuming product_id at index 0, seller_id at index 1, quantity at index 2 #}
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <input type="hidden" name="product_id" value="{{ item[0] }}">
                                         <input type="hidden" name="seller_id" value="{{ item[1] }}">
                                         <div class="input-group input-group-sm" style="max-width: 120px;">
@@ -62,7 +62,7 @@
                                 <td class="text-center align-middle"><strong>${{ "%.2f"|format(item[7]) }}</strong></td>
                                 <td class="text-center align-middle">
                                     <form action="{{ url_for('cart.remove_from_cart') }}" method="POST">
-                                         {# Assuming product_id at index 0, seller_id at index 1 #}
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <input type="hidden" name="product_id" value="{{ item[0] }}">
                                         <input type="hidden" name="seller_id" value="{{ item[1] }}">
                                         <button type="submit" class="btn btn-sm btn-outline-danger">
@@ -106,6 +106,7 @@
                 <i class="fas fa-arrow-left"></i> Continue Shopping
             </a>
             <form method="POST" action="{{ url_for('cart.checkout') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-primary">
                     <i class="fas fa-credit-card"></i> Proceed to Checkout {# Changed icon for clarity #}
                 </button>

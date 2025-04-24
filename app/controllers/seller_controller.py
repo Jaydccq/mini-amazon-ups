@@ -6,6 +6,7 @@ from functools import wraps
 from werkzeug.utils import secure_filename
 import os
 from datetime import datetime
+from sqlalchemy import func
 
 # Import necessary models and db object from your app.model
 from app.model import db, User, Product, ProductCategory, Inventory, Order, OrderProduct

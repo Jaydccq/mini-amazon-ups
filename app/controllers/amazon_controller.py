@@ -140,9 +140,13 @@ def product_list():
                           sort_by=sort_by,
                           sort_dir=sort_dir)
 
+from app.models.inventory import Inventory 
 @amazon_bp.route('/products/<int:product_id>')
 def product_detail(product_id):
     product = Product.query.get_or_404(product_id)
+    sellers_inventory_objects = Inventory.get_sellers_for_product(product_id)
+    product.inventory = sellers_inventory_objects # Assign to product.inventory
+
     inventory = warehouse_service.get_product_inventory(product_id)
     related_products = Product.query.filter(
         Product.category_id == product.category_id,

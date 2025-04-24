@@ -352,13 +352,10 @@ class WorldSimulatorService:
 
                 if self.app:
                     with self.app.app_context():
-                        self.process_response(response) # Make sure response processing happens within context
+                        self.process_response(response) 
                 else:
-                    # Handle case where app wasn't passed or is None
-                    # This might involve logging an error or skipping context-dependent operations
                     logger.error("WorldSimulatorService was not initialized with a Flask app object. Cannot create app context in receive_loop.")
-                    # Process response without app context if possible, or handle the error appropriately
-                    # self.process_response(response) # This might fail if process_response needs the context
+            
 
             except ConnectionAbortedError:
                  logger.warning("Connection aborted, stopping receive loop.")

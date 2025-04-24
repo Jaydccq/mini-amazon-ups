@@ -8,7 +8,8 @@ from datetime import datetime
 from google.protobuf.message import Message
 
 from app.model import db, WorldMessage, Warehouse
-
+from google.protobuf.internal.encoder import _VarintBytes
+from google.protobuf.internal.decoder import _DecodeVarint32
 from app.proto import world_amazon_1_pb2 as amazon_pb2
 
 
@@ -368,8 +369,8 @@ class WorldSimulatorService:
             for error in response.error:
                 self.process_error(error)
             
-            with self.lock:
-                self.acks.add(response.seqnum)
+            # with self.lock:
+            #     self.acks.add(response.seqnum)
         except Exception as e:
             logger.error(f"Error processing response: {e}")
     
@@ -453,22 +454,27 @@ class WorldSimulatorService:
     
     def send_protobuf(self, message):
         serialized = message.SerializeToString()
-        # Send message size as 4-byte integer
-        self.socket.sendall(struct.pack("!I", len(serialized)))
-        # Send the message
-        self.socket.sendall(serialized)
+        # Use Varint32 encoding for message length
+        size_prefix = _VarintBytes(len(serialized))
+        # Send both length prefix and message in one call
+        self.socket.sendall(size_prefix + serialized)
     
     # receive a message
     def receive_message(self):
-        # Receive message size (4 bytes)
-        size_data = self.recvall(4)
-        if not size_data:
-            return None
+        # Read the Varint32-encoded message length
+        buf = b""
+        while True:
+            chunk = self.socket.recv(1)
+            if not chunk:
+                return None  # Connection closed
+            buf += chunk
+            try:
+                message_size, new_pos = _DecodeVarint32(buf, 0)
+                break
+            except IndexError:
+                continue  # Need more bytes for the varint
         
-        # Unpack message size
-        message_size = struct.unpack("!I", size_data)[0]
-        
-        # Receive message data
+        # Receive the message data using existing recvall method
         return self.recvall(message_size)
     
     # Helper function to receive all data

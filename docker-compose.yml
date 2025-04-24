@@ -34,7 +34,7 @@ services:
 
 networks:
   project-network:
-    external: true
+    external: false
 
 volumes:
   postgres_data:

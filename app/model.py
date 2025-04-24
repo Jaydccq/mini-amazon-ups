@@ -281,20 +281,10 @@ class UPSMessage(db.Model):
     __tablename__ = 'ups_messages'
     
     id = db.Column(db.Integer, primary_key=True)
-    seqnum = db.Column(db.BigInteger, nullable=False)
     message_type = db.Column(db.String(50), nullable=False)  # package_created, package_packed, package_loaded, etc.
-    message_content = db.Column(db.Text, nullable=False)  # JSON
-    status = db.Column(db.String(20), nullable=False)  # sent, acked, failed
-    retries = db.Column(db.Integer, default=0)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    __table_args__ = (
-        db.CheckConstraint(
-            "status IN ('sent', 'acked', 'failed')",
-            name='ups_messages_status_check'
-        ),
-    )
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    payload = db.Column(db.Text, nullable=False)  # JSON
+
 # app/model.py
 # ... (all other existing model classes like User, Product, Order, Shipment, etc.) ...
 

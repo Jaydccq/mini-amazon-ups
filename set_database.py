@@ -9,7 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError, OperationalError, IntegrityError
 
 # --- Configuration ---
 # Get database connection string from environment variable or use default
-DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql:///mini_amazon')
+DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres:abc123@localhost:5432/mini_amazon')
 
 # Increased data volume
 NUM_USERS = 500         # Increased from 50

@@ -153,6 +153,10 @@ class WorldSimulatorService:
                 status='sent'
             )
             db.session.add(db_message)
+
+            # TODO: increase the inventory or create a new product and inventory
+
+
             db.session.commit()
             
             event = threading.Event()

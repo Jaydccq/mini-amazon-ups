@@ -19,7 +19,7 @@ def create_app(test_config=None):
     if test_config is None:
         # For local development outside Docker
         if not os.environ.get('DATABASE_URL'):
-            database_url = 'postgresql:///mini_amazon'  # Local connection with no username/password
+            database_url = 'postgresql://postgres:abc123@localhost:5432/mini_amazon'  # Local connection with no username/password
         else:
             database_url = os.environ.get('DATABASE_URL')
         

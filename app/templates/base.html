@@ -271,7 +271,6 @@
                             <a class="nav-link position-relative" href="{{ url_for('amazon.cart') }}">
                                 <i class="fas fa-shopping-cart"></i>
                                 <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary">
-                                    <!-- Number of items in cart -->
                                     <span class="visually-hidden">items in cart</span>
                                 </span>
                             </a>
@@ -283,6 +282,9 @@
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end rounded-lg shadow-sm border-0" aria-labelledby="userDropdown">
                                 <li><a class="dropdown-item" href="{{ url_for('amazon.order_list') }}">My Orders</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('amazon.profile') }}">
+                                    <i class="fas fa-user me-2"></i> Profile
+                                </a></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="{{ url_for('amazon.logout') }}">Logout</a></li>
                             </ul>

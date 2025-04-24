@@ -1,0 +1,82 @@
+{% extends "layout.html" %}
+
+{% block title %}Edit Profile | Mini-Amazon{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Edit Profile</h1>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Update Your Information</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('amazon.edit_profile') }}">
+                {# Use form.hidden_tag() for CSRF and other hidden fields #}
+                {{ form.hidden_tag() }}
+
+                <div class="row mb-3">
+                     {# Render label from form object #}
+                    <label for="{{ form.first_name.id }}" class="col-sm-3 col-form-label">{{ form.first_name.label }}</label>
+                    <div class="col-sm-9">
+                         {# Render input field from form object, add classes and check for errors #}
+                        {{ form.first_name(class="form-control" + (" is-invalid" if form.first_name.errors else ""), required=True) }}
+                        {% if form.first_name.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.first_name.errors %}<span>{{ error }}</span>{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <label for="{{ form.last_name.id }}" class="col-sm-3 col-form-label">{{ form.last_name.label }}</label>
+                    <div class="col-sm-9">
+                        {{ form.last_name(class="form-control" + (" is-invalid" if form.last_name.errors else ""), required=True) }}
+                         {% if form.last_name.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.last_name.errors %}<span>{{ error }}</span>{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <label for="email" class="col-sm-3 col-form-label">Email</label>
+                    <div class="col-sm-9">
+                         {# Keep email display only, not editable via this form #}
+                        <input type="email" class="form-control" id="email" value="{{ user.email }}" readonly disabled>
+                         <div class="form-text">Email cannot be changed.</div>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <label for="{{ form.address.id }}" class="col-sm-3 col-form-label">{{ form.address.label }}</label>
+                    <div class="col-sm-9">
+                         {{ form.address(class="form-control" + (" is-invalid" if form.address.errors else ""), rows=3) }}
+                         {% if form.address.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.address.errors %}<span>{{ error }}</span>{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                 <div class="row mb-3">
+                     <div class="col-sm-9 offset-sm-3">
+                        <a href="#">Change Password</a> (Not implemented)
+                     </div>
+                </div>
+
+                <hr>
+
+                <div class="text-end">
+                    <a href="{{ url_for('amazon.profile') }}" class="btn btn-outline-secondary">Cancel</a>
+                     {# Render submit button from form object #}
+                     {{ form.submit(class="btn btn-success") }}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

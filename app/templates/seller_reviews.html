@@ -1,0 +1,147 @@
+{% extends "layout.html" %}
+
+{% block title %}Reviews for Seller: {{ seller.first_name }} {{ seller.last_name }} | Mini-Amazon{% endblock %}
+
+{% block extra_css %}
+<style>
+    .rating-stars { color: #ffc107; }
+    .rating-stars .far { color: #e4e5e9; }
+    .rating-summary .progress { height: 8px; }
+    .review-card { margin-bottom: 1.5rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('amazon.index') }}">Home</a></li>
+            {# Add link to seller profile page if you have one #}
+            <li class="breadcrumb-item active" aria-current="page">Seller Reviews: {{ seller.first_name }} {{ seller.last_name }}</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card mb-4 sticky-top" style="top: 80px;"> {# Adjust top offset #}
+                <div class="card-header bg-light">
+                    <h4 class="mb-0">Seller Rating Summary</h4>
+                </div>
+                <div class="card-body text-center rating-summary">
+                     <h1 class="display-4 mb-0">{{ "%.1f"|format(avg_rating) }}</h1>
+                     <div class="rating-stars my-2">
+                         {% set rounded_rating = (avg_rating * 2)|round / 2 %}
+                         {% for i in range(1, 6) %}
+                             {% if i <= rounded_rating %}
+                                 <i class="fas fa-star"></i>
+                             {% elif i - 0.5 <= rounded_rating %}
+                                 <i class="fas fa-star-half-alt"></i>
+                             {% else %}
+                                 <i class="far fa-star"></i>
+                             {% endif %}
+                         {% endfor %}
+                     </div>
+                     <p class="text-muted mb-3">{{ review_count }} review{% if review_count != 1 %}s{% endif %}</p>
+
+                     {% set total_reviews = review_count|float %}
+                     {% for star in [5, 4, 3, 2, 1] %}
+                         {% set count = rating_distribution[star]|default(0) %}
+                         {% set percent = (count / total_reviews * 100) if total_reviews > 0 else 0 %}
+                         <div class="d-flex align-items-center mb-1">
+                             <div class="text-nowrap" style="width: 50px;">{{ star }} <i class="fas fa-star" style="font-size: 0.8rem;"></i></div>
+                             <div class="progress flex-grow-1 mx-2">
+                                 <div class="progress-bar bg-warning" role="progressbar" style="width: {{ percent }}%;" aria-valuenow="{{ percent }}" aria-valuemin="0" aria-valuemax="100"></div>
+                             </div>
+                             <div class="text-muted small" style="width: 40px; text-align: right;">{{ count }}</div>
+                         </div>
+                     {% endfor %}
+
+                     <hr>
+                     <a href="{{ url_for('reviews.add_review', seller_id=seller.user_id) }}" class="btn btn-primary mt-2 w-100">
+                         <i class="fas fa-pencil-alt"></i> Write a Review
+                     </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+             <div class="d-flex justify-content-between align-items-center mb-3">
+                 <h2 class="h4 mb-0">Reviews for Seller: {{ seller.first_name }} {{ seller.last_name }}</h2>
+                 {# Sorting Options Dropdown #}
+                 <div class="dropdown">
+                     <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" id="sortDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                          Sort by: {{ 'Rating' if current_sort == 'rating' else 'Date' }} {{ 'Descending' if current_order == 'desc' else 'Ascending' }}
+                     </button>
+                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="sortDropdown">
+                         <li><a class="dropdown-item" href="{{ url_for('reviews.seller_reviews', seller_id=seller.user_id, sort_by='date', sort_order='desc') }}">Newest First</a></li>
+                         <li><a class="dropdown-item" href="{{ url_for('reviews.seller_reviews', seller_id=seller.user_id, sort_by='date', sort_order='asc') }}">Oldest First</a></li>
+                         <li><a class="dropdown-item" href="{{ url_for('reviews.seller_reviews', seller_id=seller.user_id, sort_by='rating', sort_order='desc') }}">Highest Rating</a></li>
+                         <li><a class="dropdown-item" href="{{ url_for('reviews.seller_reviews', seller_id=seller.user_id, sort_by='rating', sort_order='asc') }}">Lowest Rating</a></li>
+                     </ul>
+                 </div>
+             </div>
+
+            {% if reviews %}
+                {% for review in reviews %}
+                <div class="card review-card shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex mb-2">
+                             <div class="flex-shrink-0 me-3">
+                                 <div style="width: 40px; height: 40px; background-color: #e9ecef; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                      <i class="fas fa-user text-secondary"></i>
+                                 </div>
+                             </div>
+                             <div class="flex-grow-1">
+                                 <h6 class="mb-0">{{ review.user.first_name }} {{ review.user.last_name[0]|upper }}.</h6>
+                                 <small class="text-muted">{{ review.review_date.strftime('%B %d, %Y') }}</small>
+                             </div>
+                            <div class="rating-stars ms-auto">
+                                {% for i in range(1, 6) %}
+                                    <i class="{{ 'fas' if i <= review.rating else 'far' }} fa-star"></i>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <p class="card-text">{{ review.comment }}</p>
+                        {% if current_user.is_authenticated and review.user_id == current_user.id %}
+                            <div class="mt-2 text-end">
+                                <a href="{{ url_for('reviews.edit_review', review_id=review.review_id) }}" class="btn btn-sm btn-outline-secondary me-1"><i class="fas fa-edit"></i> Edit</a>
+                                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteReviewModal{{ review.review_id }}"><i class="fas fa-trash"></i> Delete</button>
+                            </div>
+                             <div class="modal fade" id="deleteReviewModal{{ review.review_id }}" tabindex="-1" aria-hidden="true">
+                               <div class="modal-dialog">
+                                 <div class="modal-content">
+                                   <div class="modal-header">
+                                     <h5 class="modal-title">Confirm Deletion</h5>
+                                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                   </div>
+                                   <div class="modal-body">Are you sure you want to delete this review?</div>
+                                   <div class="modal-footer">
+                                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                     <form action="{{ url_for('reviews.delete_review', review_id=review.review_id) }}" method="POST" style="display: inline;">
+                                         <button type="submit" class="btn btn-danger">Delete</button>
+                                     </form>
+                                   </div>
+                                 </div>
+                               </div>
+                             </div>
+                         {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                 <div class="card">
+                     <div class="card-body text-center py-5">
+                         <i class="fas fa-comments fa-3x text-muted mb-3"></i>
+                         <h5>No Reviews Yet</h5>
+                         <p class="text-muted">Be the first to share your experience with this seller.</p>
+                         <a href="{{ url_for('reviews.add_review', seller_id=seller.user_id) }}" class="btn btn-primary mt-2">
+                             Write a Review
+                         </a>
+                     </div>
+                 </div>
+            {% endif %}
+             {# Add pagination if implemented #}
+        </div>
+    </div>
+</div>
+{% endblock %}

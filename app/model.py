@@ -288,25 +288,25 @@ class UPSMessage(db.Model):
 # app/model.py
 # ... (all other existing model classes like User, Product, Order, Shipment, etc.) ...
 
-    class Review(db.Model):
-        __tablename__ = 'reviews'
+class Review(db.Model):
+    __tablename__ = 'reviews'
 
-        review_id = db.Column(db.Integer, primary_key=True)
-        user_id = db.Column(db.Integer, db.ForeignKey('accounts.user_id'), nullable=False)
-        product_id = db.Column(db.Integer, db.ForeignKey('products.product_id'), nullable=True)
-        seller_id = db.Column(db.Integer, db.ForeignKey('accounts.user_id'), nullable=True)
-        rating = db.Column(db.Integer, nullable=False)
-        comment = db.Column(db.Text, nullable=True)
-        review_date = db.Column(db.DateTime, default=datetime.utcnow)
+    review_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('accounts.user_id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.product_id'), nullable=True)
+    seller_id = db.Column(db.Integer, db.ForeignKey('accounts.user_id'), nullable=True)
+    rating = db.Column(db.Integer, nullable=False)
+    comment = db.Column(db.Text, nullable=True)
+    review_date = db.Column(db.DateTime, default=datetime.utcnow)
 
-        user = db.relationship('User', foreign_keys=[user_id])
-        product = db.relationship('Product', foreign_keys=[product_id])
-        seller = db.relationship('User', foreign_keys=[seller_id])
+    user = db.relationship('User', foreign_keys=[user_id])
+    product = db.relationship('Product', foreign_keys=[product_id])
+    seller = db.relationship('User', foreign_keys=[seller_id])
 
-        __table_args__ = (
-            db.CheckConstraint(
-                '(product_id IS NOT NULL AND seller_id IS NULL) OR (product_id IS NULL AND seller_id IS NOT NULL)',
-                name='review_target_check'
-            ),
-            db.CheckConstraint('rating >= 1 AND rating <= 5', name='review_rating_check'),
-        )
+    __table_args__ = (
+        db.CheckConstraint(
+            '(product_id IS NOT NULL AND seller_id IS NULL) OR (product_id IS NULL AND seller_id IS NOT NULL)',
+            name='review_target_check'
+        ),
+        db.CheckConstraint('rating >= 1 AND rating <= 5', name='review_rating_check'),
+    )

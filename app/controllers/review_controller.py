@@ -114,7 +114,7 @@ def product_reviews(product_id):
     sort_by = request.args.get('sort_by', 'date')
     sort_order = request.args.get('sort_order', 'desc')
 
-    reviews = Review.get_product_review(product_id)
+    reviews = Review.get_product_reviews(product_id)
 
     if sort_by == 'rating':
         reviews = sorted(reviews, key=lambda r: r.rating,
@@ -149,7 +149,7 @@ def seller_reviews(seller_id):
     sort_by = request.args.get('sort_by', 'date')
     sort_order = request.args.get('sort_order', 'desc')
 
-    reviews = Review.get_seller_review(seller_id)
+    reviews = Review.get_seller_reviews(seller_id)
 
     if sort_by == 'rating':
         reviews = sorted(reviews, key=lambda r: r.rating,

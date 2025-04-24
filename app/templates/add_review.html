@@ -1,0 +1,74 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    {% if product %}
+        Add Review for {{ product.product_name }}
+    {% elif seller %}
+        Add Review for Seller {{ seller.name }} {# Adjust seller display as needed #}
+    {% else %}
+        Add Review
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">
+        {% if product %}
+            Write a Review for: {{ product.product_name }}
+        {% elif seller %}
+            Write a Review for Seller: {{ seller.name }} {# Adjust seller display as needed #}
+        {% else %}
+            Add a Review
+        {% endif %}
+    </h1>
+
+    {% if product or seller %}
+        <form method="POST" action="{{ url_for('reviews.add_review') }}">
+            {# CSRF token if you have CSRF enabled #}
+            {# {{ form.hidden_tag() }} #}
+
+            {# Determine review type and set hidden fields #}
+            {% if product %}
+                <input type="hidden" name="review_type" value="product">
+                <input type="hidden" name="product_id" value="{{ product.product_id }}">
+            {% elif seller %}
+                <input type="hidden" name="review_type" value="seller">
+                <input type="hidden" name="seller_id" value="{{ seller.user_id }}"> {# Assuming seller object has user_id #}
+            {% endif %}
+
+            <div class="mb-3">
+                <label for="rating" class="form-label">Rating</label>
+                <select class="form-select" id="rating" name="rating" required>
+                    <option value="" selected disabled>Select a rating...</option>
+                    <option value="5">5 Stars (Excellent)</option>
+                    <option value="4">4 Stars (Good)</option>
+                    <option value="3">3 Stars (Average)</option>
+                    <option value="2">2 Stars (Poor)</option>
+                    <option value="1">1 Star (Terrible)</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label for="comment" class="form-label">Your Review</label>
+                <textarea class="form-control" id="comment" name="comment" rows="5" placeholder="Share your thoughts..."></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-paper-plane"></i> Submit Review
+            </button>
+            {# Link back, adjust based on where the user came from #}
+             {% if product %}
+                 <a href="{{ url_for('amazon.product_detail', product_id=product.product_id) }}" class="btn btn-outline-secondary">Cancel</a>
+             {% elif seller %}
+                 <a href="{{ url_for('reviews.seller_reviews', seller_id=seller.user_id) }}" class="btn btn-outline-secondary">Cancel</a>
+             {% else %}
+                 <a href="{{ url_for('amazon.index') }}" class="btn btn-outline-secondary">Cancel</a>
+            {% endif %}
+        </form>
+    {% else %}
+        <div class="alert alert-warning">
+            Cannot add review: Missing product or seller information.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,63 +1,66 @@
 # app/models/product.py
 from flask import current_app as app
-
+from app.model import db, Product, ProductCategory, User
+from sqlalchemy import func, or_
 class ProductService:
     @staticmethod
     def get_product(product_id):
-        """Get a product by ID"""
-        rows = app.db.execute('''
-        SELECT product_id, owner_id, product_name, description, category_id, 
-               price, image, created_at, updated_at
-        FROM Products 
-        WHERE product_id = :product_id
-        ''', product_id=product_id)
-        
-        return rows[0] if rows else None
+        product = db.session.get(Product, product_id)
+
+        if product:
+                    
+            return {
+                'product_id': product.product_id,
+                'owner_id': product.owner_id,
+                'product_name': product.product_name,
+                'description': product.description,
+                'category_id': product.category_id,
+                'price': float(product.price) if product.price is not None else None,
+                'image': product.image,
+                'created_at': product.created_at,
+                'updated_at': product.updated_at,
+                'category_name': product.category.category_name if product.category else None,
+                'owner_name': f"{product.owner.first_name} {product.owner.last_name}" if product.owner else None
+            }
+        else:
+            return None # Return None if not found
+
     
     @staticmethod
-    def get_products(search_query=None, category_id=None, sort_by="name", sort_order="asc", page=1, per_page=12):
-        """Get products with filtering and pagination"""
-        query = '''
-        SELECT p.product_id, p.product_name, p.description, p.price, p.image,
-               p.category_id, c.category_name, p.owner_id,
-               CONCAT(a.first_name, ' ', a.last_name) as seller_name
-        FROM Products p
-        JOIN Products_Categories c ON p.category_id = c.category_id
-        JOIN Accounts a ON p.owner_id = a.user_id
-        WHERE 1=1
-        '''
-        
-        params = {}
-        
+    def get_products(search_query=None, category_id=None, sort_by="name", sort_dir="asc", page=1, per_page=12):
+        """Get products with filtering and pagination using SQLAlchemy"""
+        query = Product.query.join(ProductCategory).join(User, Product.owner_id == User.user_id)
+
         if search_query:
-            query += ''' AND (LOWER(p.product_name) LIKE LOWER(:search) 
-                       OR LOWER(p.description) LIKE LOWER(:search))'''
-            params['search'] = f'%{search_query}%'
-        
+             search_term = f'%{search_query.lower()}%'
+             # Use or_ for searching multiple fields
+             query = query.filter(
+                 or_(
+                     func.lower(Product.product_name).like(search_term),
+                     func.lower(Product.description).like(search_term)
+                 )
+             )
+
         if category_id:
-            query += ' AND p.category_id = :category_id'
-            params['category_id'] = category_id
-        
+            query = query.filter(Product.category_id == category_id)
+
         # Add sorting
-        if sort_by == "name":
-            query += f' ORDER BY p.product_name {sort_order}'
-        elif sort_by == "price":
-            query += f' ORDER BY p.price {sort_order}'
+        order_column = Product.product_name
+        if sort_by == "price":
+            order_column = Product.price
         elif sort_by == "newest":
-            query += ' ORDER BY p.created_at DESC'
-        
-        # Add pagination
-        query += ' LIMIT :per_page OFFSET :offset'
-        params['per_page'] = per_page
-        params['offset'] = (page - 1) * per_page
-        
-        return app.db.execute(query, **params)
-    
+            order_column = Product.created_at
+
+        if sort_dir == "desc":
+            query = query.order_by(order_column.desc())
+        else:
+            query = query.order_by(order_column.asc())
+
+        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+
+        return pagination
+
     @staticmethod
     def get_categories():
-        """Get all product categories"""
-        return app.db.execute('''
-        SELECT category_id, category_name 
-        FROM Products_Categories
-        ORDER BY category_name
-        ''')
+        categories = ProductCategory.query.order_by(ProductCategory.category_name).all()
+        return [{'category_id': c.category_id, 'category_name': c.category_name} for c in categories]

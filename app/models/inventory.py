@@ -1,3 +1,4 @@
+from sqlalchemy import text
 from flask import current_app as app
 from datetime import datetime
 
@@ -22,31 +23,37 @@ class Inventory:
 
     @staticmethod
     def get(inventory_id):
-        rows = app.db.execute('''
-            SELECT i.inventory_id, i.seller_id, i.product_id, i.quantity, i.unit_price, 
-                   i.created_at, i.updated_at, i.owner_id, p.product_name, CONCAT(a.first_name, ' ', a.last_name) AS seller_name,
-                   p.category_id, pc.category_name, p.image
-            FROM Inventory i
-            JOIN Products p ON i.product_id = p.product_id
-            JOIN Accounts a ON i.seller_id = a.user_id
-            JOIN Products_Categories pc ON p.category_id = pc.category_id
-            WHERE i.inventory_id = :inventory_id
-        ''', inventory_id=inventory_id)
+        rows = app.db.session.execute(
+            text('''
+                SELECT i.inventory_id, i.seller_id, i.product_id, i.quantity, i.unit_price, 
+                       i.created_at, i.updated_at, i.owner_id, p.product_name, CONCAT(a.first_name, ' ', a.last_name) AS seller_name,
+                       p.category_id, pc.category_name, p.image
+                FROM Inventory i
+                JOIN Products p ON i.product_id = p.product_id
+                JOIN Accounts a ON i.seller_id = a.user_id
+                JOIN Products_Categories pc ON p.category_id = pc.category_id
+                WHERE i.inventory_id = :inventory_id
+            '''),
+            {"inventory_id": inventory_id}
+        ).fetchall()
 
         return Inventory(*(rows[0])) if rows else None
 
     @staticmethod
     def get_by_seller_and_product(seller_id, product_id):
-        rows = app.db.execute('''
-            SELECT i.inventory_id, i.seller_id, i.product_id, i.quantity, i.unit_price, 
-                   i.created_at, i.updated_at, p.product_name, CONCAT(a.first_name, ' ', a.last_name) AS seller_name,
-                   p.category_id, pc.category_name, p.image
-            FROM Inventory i
-            JOIN Products p ON i.product_id = p.product_id
-            JOIN Accounts a ON i.seller_id = a.user_id
-            JOIN Products_Categories pc ON p.category_id = pc.category_id
-            WHERE i.seller_id = :seller_id AND i.product_id = :product_id
-        ''', seller_id=seller_id, product_id=product_id)
+        rows = app.db.session.execute(
+            text('''
+                SELECT i.inventory_id, i.seller_id, i.product_id, i.quantity, i.unit_price, 
+                       i.created_at, i.updated_at, p.product_name, CONCAT(a.first_name, ' ', a.last_name) AS seller_name,
+                       p.category_id, pc.category_name, p.image
+                FROM Inventory i
+                JOIN Products p ON i.product_id = p.product_id
+                JOIN Accounts a ON i.seller_id = a.user_id
+                JOIN Products_Categories pc ON p.category_id = pc.category_id
+                WHERE i.seller_id = :seller_id AND i.product_id = :product_id
+            '''),
+            {"seller_id": seller_id, "product_id": product_id}
+        ).fetchall()
 
         return Inventory(*(rows[0])) if rows else None
 
@@ -76,7 +83,7 @@ class Inventory:
         params['limit'] = limit
         params['offset'] = offset
 
-        rows = app.db.execute(query, **params)
+        rows = app.db.session.execute(text(query), params).fetchall()
         return [Inventory(*row) for row in rows]
 
     @staticmethod
@@ -97,27 +104,38 @@ class Inventory:
             query += " AND p.category_id = :category_id"
             params['category_id'] = category_id
 
-        result = app.db.execute(query, **params)
+        result = app.db.session.execute(text(query), params).fetchall()
         return result[0][0] if result else 0
 
     @staticmethod
     def create(seller_id, product_id, quantity, unit_price):
         try:
-            owner_rows = app.db.execute('''
-                SELECT owner_id FROM Products WHERE product_id = :product_id
-            ''', product_id=product_id)
+            owner_rows = app.db.session.execute(
+                text('''
+                    SELECT owner_id FROM Products WHERE product_id = :product_id
+                '''),
+                {"product_id": product_id}
+            ).fetchall()
 
             if not owner_rows:
                 return None
 
             owner_id = owner_rows[0][0]
 
-            inventory_id = app.db.execute('''
-                INSERT INTO Inventory (seller_id, product_id, quantity, unit_price, owner_id)
-                VALUES (:seller_id, :product_id, :quantity, :unit_price, :owner_id)
-                RETURNING inventory_id
-            ''', seller_id=seller_id, product_id=product_id,
-                                          quantity=quantity, unit_price=unit_price, owner_id=owner_id)
+            inventory_id = app.db.session.execute(
+                text('''
+                    INSERT INTO Inventory (seller_id, product_id, quantity, unit_price, owner_id)
+                    VALUES (:seller_id, :product_id, :quantity, :unit_price, :owner_id)
+                    RETURNING inventory_id
+                '''),
+                {
+                    "seller_id": seller_id,
+                    "product_id": product_id,
+                    "quantity": quantity,
+                    "unit_price": unit_price,
+                    "owner_id": owner_id
+                }
+            ).fetchall()
 
             return inventory_id[0][0] if inventory_id else None
         except Exception as e:
@@ -168,7 +186,7 @@ class Inventory:
                     RETURNING inventory_id
                 '''
 
-                result = app.db.execute(query, **params)
+                result = app.db.session.execute(text(query), params).fetchall()
                 return result[0][0] if result else None
             return None
 
@@ -180,11 +198,14 @@ class Inventory:
     def delete(inventory_id, seller_id):
         """Remove a product from seller's inventory"""
         try:
-            result = app.db.execute('''
-                DELETE FROM Inventory 
-                WHERE inventory_id = :inventory_id AND seller_id = :seller_id
-                RETURNING inventory_id
-            ''', inventory_id=inventory_id, seller_id=seller_id)
+            result = app.db.session.execute(
+                text('''
+                    DELETE FROM Inventory 
+                    WHERE inventory_id = :inventory_id AND seller_id = :seller_id
+                    RETURNING inventory_id
+                '''),
+                {"inventory_id": inventory_id, "seller_id": seller_id}
+            ).fetchall()
 
             return result[0][0] if result else None
         except Exception as e:
@@ -194,17 +215,20 @@ class Inventory:
     @staticmethod
     def get_sellers_for_product(product_id):
         """Get all sellers offering a specific product"""
-        rows = app.db.execute('''
-            SELECT i.inventory_id, i.seller_id, i.product_id, i.quantity, i.unit_price, 
-                   i.created_at, i.updated_at, i.owner_id, p.product_name, CONCAT(a.first_name, ' ', a.last_name) AS seller_name,
-                   p.category_id, pc.category_name, p.image
-            FROM Inventory i
-            JOIN Products p ON i.product_id = p.product_id
-            JOIN Accounts a ON i.seller_id = a.user_id
-            JOIN Products_Categories pc ON p.category_id = pc.category_id
-            WHERE i.product_id = :product_id AND i.quantity > 0
-            ORDER BY i.unit_price
-        ''', product_id=product_id)
+        rows = app.db.session.execute(
+            text('''
+                SELECT i.inventory_id, i.seller_id, i.product_id, i.quantity, i.unit_price, 
+                       i.created_at, i.updated_at, i.owner_id, p.product_name, CONCAT(a.first_name, ' ', a.last_name) AS seller_name,
+                       p.category_id, pc.category_name, p.image
+                FROM Inventory i
+                JOIN Products p ON i.product_id = p.product_id
+                JOIN Accounts a ON i.seller_id = a.user_id
+                JOIN Products_Categories pc ON p.category_id = pc.category_id
+                WHERE i.product_id = :product_id AND i.quantity > 0
+                ORDER BY i.unit_price
+            '''),
+            {"product_id": product_id}
+        ).fetchall()
 
         return [Inventory(*row) for row in rows]
 
@@ -213,11 +237,14 @@ class Inventory:
         """Update inventory quantity (used for order processing)"""
         try:
             # First get current quantity to check if we have enough
-            current = app.db.execute('''
-                SELECT quantity FROM Inventory 
-                WHERE seller_id = :seller_id AND product_id = :product_id
-                FOR UPDATE
-            ''', seller_id=seller_id, product_id=product_id)
+            current = app.db.session.execute(
+                text('''
+                    SELECT quantity FROM Inventory 
+                    WHERE seller_id = :seller_id AND product_id = :product_id
+                    FOR UPDATE
+                '''),
+                {"seller_id": seller_id, "product_id": product_id}
+            ).fetchall()
 
             if not current:
                 return False
@@ -228,12 +255,19 @@ class Inventory:
             if new_quantity < 0:
                 return False
 
-            app.db.execute('''
-                UPDATE Inventory 
-                SET quantity = :new_quantity, updated_at = :updated_at
-                WHERE seller_id = :seller_id AND product_id = :product_id
-            ''', new_quantity=new_quantity, updated_at=datetime.utcnow(),
-                           seller_id=seller_id, product_id=product_id)
+            app.db.session.execute(
+                text('''
+                    UPDATE Inventory 
+                    SET quantity = :new_quantity, updated_at = :updated_at
+                    WHERE seller_id = :seller_id AND product_id = :product_id
+                '''),
+                {
+                    "new_quantity": new_quantity,
+                    "updated_at": datetime.utcnow(),
+                    "seller_id": seller_id,
+                    "product_id": product_id
+                }
+            )
 
             return True
         except Exception as e:

@@ -2,6 +2,7 @@
 from flask import current_app as app
 from app.model import db, Product, ProductCategory, User
 from sqlalchemy import func, or_
+
 class ProductService:
     @staticmethod
     def get_product(product_id):

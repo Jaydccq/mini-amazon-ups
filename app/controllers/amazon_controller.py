@@ -678,19 +678,19 @@ def product_reviews(product_id):
                           rating_distribution=rating_distribution)
 
 
-@amazon_bp.route('/seller/<int:seller_id>/reviews')
-def seller_reviews(seller_id):
-    seller = User.query.get_or_404(seller_id)
-    # Assuming get_seller_reviews exists and returns review objects
-    reviews = ReviewService.get_seller_reviews(seller_id)
-    # Assuming get_avg_rating_seller exists
-    avg_rating, review_count = ReviewService.get_avg_rating_seller(seller_id)
-    # Assuming get_rating_distribution_seller exists
-    rating_distribution = ReviewService.get_rating_distribution_seller(seller_id)
-
-    return render_template('seller/reviews.html',
-                           seller=seller,
-                           reviews=reviews,
-                           avg_rating=avg_rating,
-                           review_count=review_count,
-                           rating_distribution=rating_distribution)
+# @amazon_bp.route('/seller/<int:seller_id>/reviews')
+# def seller_reviews(seller_id):
+#     seller = User.query.get_or_404(seller_id)
+#     # Assuming get_seller_reviews exists and returns review objects
+#     reviews = ReviewService.get_seller_reviews(seller_id)
+#     # Assuming get_avg_rating_seller exists
+#     avg_rating, review_count = ReviewService.get_avg_rating_seller(seller_id)
+#     # Assuming get_rating_distribution_seller exists
+#     rating_distribution = ReviewService.get_rating_distribution_seller(seller_id)
+#
+#     return render_template('seller/reviews.html',
+#                            seller=seller,
+#                            reviews=reviews,
+#                            avg_rating=avg_rating,
+#                            review_count=review_count,
+#                            rating_distribution=rating_distribution)

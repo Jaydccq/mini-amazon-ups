@@ -2,6 +2,7 @@ import os
 from flask import Flask
 from flask_login import LoginManager
 from flask_migrate import Migrate
+from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
 from app.model import db, User
 
@@ -14,7 +15,8 @@ from app.controllers.review_controller import bp as review_bp
 def create_app(test_config=None):
     # Create and configure the app
     app = Flask(__name__, instance_relative_config=True)
-    
+
+
     # Set up configuration
     if test_config is None:
         # For local development outside Docker

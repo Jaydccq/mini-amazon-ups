@@ -94,7 +94,7 @@
                                 </div>
 
                                 <div class="text-muted">
-                                    Sold by: <a href="{{ url_for('amazon.seller_reviews', seller_id=product.owner_id) if product.owner_id else '#' }}">{{ product.owner_name or 'Unknown Seller' }}</a>
+                                    Sold by: <a href="{{ url_for('reviews.seller_reviews', seller_id=product.owner_id) if product.owner_id else '#' }}">{{ product.owner_name or 'Unknown Seller' }}</a>
                                 </div>
                             </div>
 

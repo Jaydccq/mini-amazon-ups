@@ -193,7 +193,7 @@ class Warehouse(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    products = db.relationship('WarehouseProduct', back_populates='warehouse', cascade='all, delete-orphan')
+    products = db.relationship('WarehouseProduct', back_populates='warehouse', cascade='all, delete-orphan', lazy='dynamic')
     shipments = db.relationship('Shipment', back_populates='warehouse')
 
 class WarehouseProduct(db.Model):

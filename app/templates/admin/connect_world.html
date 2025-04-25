@@ -14,7 +14,7 @@
     
     <div class="row justify-content-center">
         <div class="col-md-8">
-            {# This block depends on 'current_world_id' being passed from the controller #}
+            
             {% if current_world_id %}
             <div class="card mb-4">
                 <div class="card-header bg-success text-white">
@@ -33,12 +33,13 @@
                     </div>
                     
                     <div class="d-flex justify-content-between">
-                         {# Back link points to the correct admin endpoint #}
+                         
                         <a href="{{ url_for('admin.warehouses') }}" class="btn btn-outline-secondary">
                             <i class="fas fa-arrow-left"></i> Back to Warehouses
                         </a>
-                         {# Disconnect form points to the correct admin endpoint (assuming it exists) #}
+                         
                         <form method="POST" action="{{ url_for('admin.disconnect_world') }}">
+                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"> 
                             <button type="submit" class="btn btn-danger">
                                 <i class="fas fa-plug"></i> Disconnect
                             </button>
@@ -61,8 +62,9 @@
                         </p>
                     </div>
                     
-                    {# Connect form points to the correct admin endpoint #}
+                     
                     <form method="POST" action="{{ url_for('admin.connect_world') }}">
+                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"> 
                         <div class="mb-4">
                             <h5>Option 1: Connect to an Existing World</h5>
                             <div class="form-group">
@@ -90,7 +92,7 @@
                                 <div class="form-text">Higher values make the simulation run faster. Default is 100.</div>
                             </div>
                             
-                            {# This block depends on 'warehouses' being passed from the controller #}
+                            
                             {% if warehouses %}
                             <div class="mb-3">
                                 <label class="form-label">Available Warehouses</label>
@@ -124,7 +126,7 @@
                             </div>
                             {% else %}
                             <div class="alert alert-warning">
-                                 {# Add warehouse link points to the correct admin endpoint #}
+                                 
                                 <i class="fas fa-exclamation-triangle"></i> You don't have any warehouses yet. <a href="{{ url_for('admin.add_warehouse') }}">Add a warehouse</a> before creating a world.
                             </div>
                             {% endif %}
@@ -142,25 +144,25 @@
 {% endblock %}
 
 {% block extra_js %}
-{# This script requires clipboard.js library #}
+
 <script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.8/dist/clipboard.min.js"></script> 
-{# This script requires jQuery library #}
+
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-    // Ensure jQuery is loaded before executing
+    
     if (typeof jQuery !== 'undefined') {
         $(document).ready(function() {
-            // Initialize clipboard for copying World ID
+            
             new ClipboardJS('.copy-btn');
             
-            // Show tooltip when copying
+            
             $('.copy-btn').click(function() {
                 const originalHtml = $(this).html();
-                $(this).html('<i class="fas fa-check"></i> Copied!'); // Provide feedback
+                $(this).html('<i class="fas fa-check"></i> Copied!'); 
                 
                 setTimeout(() => {
                     $(this).html(originalHtml);
-                }, 1500); // Slightly longer timeout
+                }, 1500); 
             });
         });
     } else {

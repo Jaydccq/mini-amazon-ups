@@ -17,8 +17,8 @@
             </a>
         </div>
     </div>
-    
-    <div class="card mb-4">
+
+    <div class="card mb-4 shadow-sm">
         <div class="card-header bg-light">
             <h5 class="mb-0">World Connection Status</h5>
         </div>
@@ -36,8 +36,8 @@
             {% endif %}
         </div>
     </div>
-    
-    <div class="card">
+
+    <div class="card shadow-sm">
         <div class="card-header bg-light">
             <h5 class="mb-0">Warehouses</h5>
         </div>
@@ -49,7 +49,7 @@
                         <thead class="table-light">
                             <tr>
                                 <th>ID</th>
-                                <th>Location</th>
+                                <th>Sim Location (X, Y)</th>
                                 <th>Status</th>
                                 <th>Products</th>
                                 <th>Created</th>
@@ -68,29 +68,17 @@
                                         <span class="badge bg-danger">Inactive</span>
                                     {% endif %}
                                 </td>
-                                 {# Assumes warehouse object has product_count attribute #}
-                                <td>{{ warehouse.product_count|default(0) }}</td>
-                                <td>{{ warehouse.created_at.strftime('%Y-%m-%d') }}</td>
+                                 {# Assumes warehouse object has product_count attribute (add this in controller if needed) #}
+                                <td>{{ warehouse.product_count | default(0) }}</td>
+                                <td>{{ warehouse.created_at.strftime('%Y-%m-%d') if warehouse.created_at else 'N/A' }}</td>
                                 <td>
-                                    <div class="btn-group">
-                                         {# Assumes 'admin.view_warehouse' endpoint exists #}
-                                        <a href="{{ url_for('admin.view_warehouse', warehouse_id=warehouse.warehouse_id) }}" class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-search"></i> View
-                                        </a>
-                                         {# Assumes 'admin.edit_warehouse' endpoint exists #}
-                                        <a href="{{ url_for('admin.edit_warehouse', warehouse_id=warehouse.warehouse_id) }}" class="btn btn-sm btn-outline-secondary">
-                                            <i class="fas fa-edit"></i> Edit
-                                        </a>
-                                        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteWarehouseModal{{ warehouse.warehouse_id }}">
-                                            <i class="fas fa-trash"></i> Delete
-                                        </button>
-                                    </div>
-                                    
-                                    <div class="modal fade" id="deleteWarehouseModal{{ warehouse.warehouse_id }}" tabindex="-1" aria-hidden="true">
+
+
+                                    <div class="modal fade" id="deleteWarehouseModal{{ warehouse.warehouse_id }}" tabindex="-1" aria-labelledby="deleteWarehouseModalLabel{{ warehouse.warehouse_id }}" aria-hidden="true">
                                         <div class="modal-dialog">
                                             <div class="modal-content">
                                                 <div class="modal-header">
-                                                    <h5 class="modal-title">Confirm Deletion</h5>
+                                                    <h5 class="modal-title" id="deleteWarehouseModalLabel{{ warehouse.warehouse_id }}">Confirm Deletion</h5>
                                                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                                 </div>
                                                 <div class="modal-body">
@@ -104,7 +92,9 @@
                                                 <div class="modal-footer">
                                                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                                                      {# Assumes 'admin.delete_warehouse' endpoint exists #}
-                                                    <form action="{{ url_for('admin.delete_warehouse', warehouse_id=warehouse.warehouse_id) }}" method="POST">
+                                                    <form action="{{ url_for('admin.delete_warehouse', warehouse_id=warehouse.warehouse_id) }}" method="POST" class="d-inline">
+                                                        {# Add CSRF token if using Flask-WTF #}
+                                                        {# {{ form.hidden_tag() }} #}
                                                         <button type="submit" class="btn btn-danger">Delete Warehouse</button>
                                                     </form>
                                                 </div>
@@ -123,33 +113,78 @@
                     <h4>No warehouses found</h4>
                     <p>You haven't added any warehouses yet.</p>
                      {# url_for points to correct admin endpoint #}
-                    <a href="{{ url_for('admin.add_warehouse') }}" class="btn btn-primary mt-2">Add Warehouse</a>
+                    <a href="{{ url_for('admin.add_warehouse') }}" class="btn btn-primary mt-2">Add Your First Warehouse</a>
                 </div>
             {% endif %}
         </div>
     </div>
-    
+
+    {# ---- Google Maps Integration ---- #}
     {% if warehouses %}
-    <div class="card mt-4">
+    <div class="card mt-4 shadow-sm">
         <div class="card-header bg-light">
-            <h5 class="mb-0">Warehouse Map</h5>
+            <h5 class="mb-0">Warehouse Map (Real World Approximation)</h5>
         </div>
         <div class="card-body">
-            <div id="warehouseMap" style="height: 400px; background-color: #f8f9fa; position: relative; border: 1px solid #dee2e6; border-radius: 0.25rem;">
-                <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-size: 20px 20px; background-image: linear-gradient(to right, #e9ecef 1px, transparent 1px), linear-gradient(to bottom, #e9ecef 1px, transparent 1px);"></div>
-                
-                {% for warehouse in warehouses %}
-                 {# Basic validation for coordinates #}
-                {% set x_pos = [(warehouse.x|default(0)|float / 100 * 100)|int, 0]|max %}
-                {% set y_pos = [(warehouse.y|default(0)|float / 100 * 100)|int, 0]|max %}
-                <div style="position: absolute; width: 12px; height: 12px; background-color: {% if warehouse.active %}#28a745{% else %}#dc3525{% endif %}; border-radius: 50%; left: {{ [x_pos, 100]|min }}%; top: {{ [y_pos, 100]|min }}%; margin-left: -6px; margin-top: -6px;"></div>
-                <div style="position: absolute; white-space: nowrap; background-color: rgba(255, 255, 255, 0.8); padding: 2px 5px; border-radius: 3px; font-size: 0.8rem; left: {{ [x_pos, 100]|min }}%; top: {{ [y_pos, 100]|min }}%; transform: translate(-50%, -100%); margin-top: -5px;">
-                    Warehouse #{{ warehouse.warehouse_id }}
-                </div>
-                {% endfor %}
+            <p class="text-muted small">Warehouse locations mapped approximately within the continental US. Requires Google Maps API key and internet connection.</p>
+            <div id="googleMap" style="height: 500px; width: 100%; border-radius: 0.25rem; border: 1px solid #dee2e6;">
+                {# Map will be rendered here by JavaScript #}
             </div>
         </div>
     </div>
     {% endif %}
+    {# ---- End Google Maps Integration ---- #}
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{# Include Google Maps API Script - REPLACE YOUR_API_KEY #}
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBWp117L-LN37l9oQNzX02-izkvpU8MpbA&callback=initMap&libraries=marker&v=beta" async defer></script>
+<script>
+// This assumes 'warehouses_latlon' is passed from your Flask controller
+// containing the list generated by the Python function below.
+const warehousesData = {{ warehouses_latlon | tojson | safe }};
+
+// Initialize and add the map
+function initMap() {
+    // Center the map roughly on the US
+    const usaCenter = { lat: 39.8283, lng: -98.5795 };
+    const map = new google.maps.Map(document.getElementById("googleMap"), {
+        zoom: 4,
+        center: usaCenter,
+        mapId: 'MINI_AMAZON_WAREHOUSE_MAP' // Optional: Map ID for styling
+    });
+
+    const infoWindow = new google.maps.InfoWindow();
+
+    // Add markers for each warehouse
+    warehousesData.forEach(warehouse => {
+        const position = { lat: warehouse.lat, lng: warehouse.lon };
+        const marker = new google.maps.marker.AdvancedMarkerElement({
+            map: map,
+            position: position,
+            title: `Warehouse #${warehouse.id} (${warehouse.x}, ${warehouse.y})`
+        });
+
+        const contentString = `
+            <div>
+                <h5>Warehouse #${warehouse.id}</h5>
+                <p>Sim Location: (${warehouse.x}, ${warehouse.y})</p>
+                <p>Approx Lat/Lon: ${warehouse.lat.toFixed(4)}, ${warehouse.lon.toFixed(4)}</p>
+                <p>Status: ${warehouse.active ? 'Active' : 'Inactive'}</p>
+            </div>
+        `;
+
+        marker.addListener('click', () => {
+            infoWindow.close(); // Close previous info window
+            infoWindow.setContent(contentString);
+            infoWindow.open(map, marker);
+        });
+    });
+}
+
+// Initialize the map function if it's not already called by the API script's callback
+window.initMap = initMap;
+
+</script>
 {% endblock %}

@@ -6,13 +6,15 @@ from app.services.shipment_service import ShipmentService
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import os
+from sqlalchemy import func
+from app.model import db, Warehouse, WarehouseProduct
 from datetime import datetime
 from app.models.review import ReviewService
 from app.forms import LoginForm
 amazon_bp = Blueprint('amazon', __name__)
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
-
+from flask import abort
 warehouse_service = WarehouseService()
 shipment_service = ShipmentService()
 
@@ -478,11 +480,35 @@ def warehouses():
     if not current_user.is_seller:
         flash('Access denied', 'error')
         return redirect(url_for('amazon.index'))
+    all_warehouses = Warehouse.query.order_by(Warehouse.warehouse_id).all()
+    for wh in all_warehouses:
+        wh.product_count = wh.products.count()
+    try:
+        from app.utils.mapping import convert_sim_coords_to_latlon # Adjust import if needed
+        warehouses_latlon_data = convert_sim_coords_to_latlon(all_warehouses)
+    except ImportError:
+        warehouses_latlon_data = [] # Handle case where util is not found
+        flash("Mapping utility not found, Google Map may not display correctly.", "warning")
+    except Exception as map_e:
+         warehouses_latlon_data = []
+         flash(f"Error generating map data: {map_e}", "warning")
 
-    warehouses = Warehouse.query.all()
 
-    return render_template('admin/warehouses.html',
-                          warehouses=warehouses)
+    # Get world connection status
+    world_simulator = current_app.config.get('WORLD_SIMULATOR_SERVICE')
+    world_connected = world_simulator.connected if world_simulator else False
+    world_id = world_simulator.world_id if world_simulator and world_simulator.connected else None
+
+    return render_template(
+        'admin/warehouses.html',
+        warehouses=all_warehouses, # Now includes .product_count
+        warehouses_latlon=warehouses_latlon_data,
+        world_connected=world_connected,
+        world_id=world_id
+    )
+    
+
+
 
 @admin_bp.route('/warehouses/add', methods=['GET', 'POST'])
 @login_required
@@ -750,11 +776,65 @@ def edit_profile():
             flash(f'An error occurred while updating profile: {e}', 'danger')
             current_app.logger.error(f"Error updating profile for user {user.user_id}: {e}")
 
-    # For GET requests (or if form validation fails on POST)
-    # Populate the form fields with the user's current data
     elif request.method == 'GET':
         form.first_name.data = user.first_name
         form.last_name.data = user.last_name
         form.address.data = user.address
 
     return render_template('edit_profile.html', user=user, form=form)
+
+
+
+@admin_bp.route('/warehouses/view/<int:warehouse_id>')
+@login_required
+def view_warehouse(warehouse_id):
+    if not current_user.is_seller: 
+        flash('Access denied', 'error')
+        return redirect(url_for('amazon.index'))
+
+    warehouse = warehouse_service.get_warehouse(warehouse_id)
+    if not warehouse:
+        abort(404, description="Warehouse not found") # Handle not found case
+
+    inventory = warehouse_service.get_warehouse_inventory(warehouse_id)
+
+    return render_template(
+        'admin/view_warehouse.html', # You'll need to create this template
+        warehouse=warehouse,
+        inventory=inventory
+    )
+
+@admin_bp.route('/warehouses/edit/<int:warehouse_id>', methods=['GET', 'POST'])
+@login_required
+def edit_warehouse(warehouse_id):
+     if not current_user.is_seller:
+         flash('Access denied', 'error')
+         return redirect(url_for('amazon.index'))
+     warehouse = warehouse_service.get_warehouse(warehouse_id)
+     if not warehouse:
+          abort(404)
+
+     flash("Edit functionality not fully implemented yet.", "info") # Placeholder
+     return redirect(url_for('admin.warehouses')) # Redirect back for now
+
+
+@admin_bp.route('/warehouses/delete/<int:warehouse_id>', methods=['POST'])
+@login_required
+def delete_warehouse(warehouse_id):
+     if not current_user.is_seller:
+         flash('Access denied', 'error')
+         return redirect(url_for('amazon.index'))
+     # --- Add logic for deleting ---
+     warehouse = warehouse_service.get_warehouse(warehouse_id)
+     if warehouse:
+         # Add check for products before deleting if needed
+         try:
+             warehouse.active = False # Example: Make inactive
+             db.session.commit()
+             flash(f'Warehouse #{warehouse_id} marked as inactive.', 'success')
+         except Exception as e:
+             db.session.rollback()
+             flash(f'Error deleting warehouse: {str(e)}', 'danger')
+     else:
+         flash('Warehouse not found.', 'warning')
+     return redirect(url_for('admin.warehouses'))

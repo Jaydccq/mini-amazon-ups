@@ -1,302 +1,350 @@
-{% extends "base.html" %} 
-
-{% block title %}Seller Dashboard | Mini-Amazon{% endblock %}
-
-{% block extra_css %}
+{% extends "base.html" %} {% block title %}Seller Dashboard | Mini-Amazon{%
+endblock %} {% block extra_css %}
 <style>
-    .stat-card {
-        border-left: 4px solid var(--primary-color);
-        padding: 1.5rem;
-        background-color: #fff;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        margin-bottom: 1.5rem;
-        transition: all 0.3s ease;
-    }
-    .stat-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }
-    .stat-card h5 {
-        color: #6c757d;
-        font-size: 0.9rem;
-        text-transform: uppercase;
-        margin-bottom: 0.5rem;
-    }
-    .stat-card .stat-value {
-        font-size: 1.8rem;
-        font-weight: 600;
-        color: #343a40;
-    }
-    .stat-card .stat-icon {
-        font-size: 2.5rem;
-        color: var(--primary-color);
-        opacity: 0.6;
-    }
-    .chart-container {
-        background-color: #fff;
-        padding: 1.5rem;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        margin-bottom: 1.5rem;
-    }
+  .stat-card {
+    border-left: 4px solid var(--primary-color);
+    padding: 1.5rem;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    margin-bottom: 1.5rem;
+    transition: all 0.3s ease;
+  }
+  .stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+  .stat-card h5 {
+    color: #6c757d;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+  .stat-card .stat-value {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: #343a40;
+  }
+  .stat-card .stat-icon {
+    font-size: 2.5rem;
+    color: var(--primary-color);
+    opacity: 0.6;
+  }
+  .chart-container {
+    background-color: #fff;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    margin-bottom: 1.5rem;
+  }
 </style>
-{% endblock %}
-
-
-{% block content %}
+{% endblock %} {% block content %}
 <div class="container mt-4">
-    <h1 class="mb-4">Seller Dashboard</h1>
+  <h1 class="mb-4">Seller Dashboard</h1>
 
-    {# Quick Stats Row #}
-    <div class="row">
-        <div class="col-md-6 col-xl-3">
-            <div class="stat-card">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5>Total Inventory Value</h5>
-                        <span class="stat-value">${{ "%.2f"|format(total_value) }}</span>
-                    </div>
-                    <div class="stat-icon"><i class="fas fa-dollar-sign"></i></div>
-                </div>
-            </div>
+  {# Quick Stats Row #}
+  <div class="row">
+    <div class="col-md-6 col-xl-3">
+      <div class="stat-card">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h5>Total Inventory Value</h5>
+            <span class="stat-value"
+              >${{ "%.2f"|format(total_value)|default(0.0) }}</span
+            >
+          </div>
+          <div class="stat-icon"><i class="fas fa-dollar-sign"></i></div>
         </div>
-        <div class="col-md-6 col-xl-3">
-            <div class="stat-card" style="border-left-color: #17a2b8;"> {# Info color #}
-                 <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5>Items in Stock</h5>
-                        <span class="stat-value">{{ inventory_count }}</span>
-                    </div>
-                    <div class="stat-icon" style="color: #17a2b8;"><i class="fas fa-boxes"></i></div>
-                </div>
-            </div>
+      </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+      <div class="stat-card" style="border-left-color: #17a2b8">
+        {# Info color #}
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h5>Items in Stock</h5>
+            <span class="stat-value">{{ inventory_count }}</span>
+          </div>
+          <div class="stat-icon" style="color: #17a2b8">
+            <i class="fas fa-boxes"></i>
+          </div>
         </div>
-         <div class="col-md-6 col-xl-3">
-             <div class="stat-card" style="border-left-color: #ffc107;"> {# Warning color #}
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5>Low Stock Items (&lt;5)</h5>
-                        <span class="stat-value">{{ low_stock_count }}</span>
-                    </div>
-                    <div class="stat-icon" style="color: #ffc107;"><i class="fas fa-exclamation-triangle"></i></div>
-                </div>
-            </div>
+      </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+      <div class="stat-card" style="border-left-color: #ffc107">
+        {# Warning color #}
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h5>Low Stock Items (&lt;5)</h5>
+            <span class="stat-value">{{ low_stock_count }}</span>
+          </div>
+          <div class="stat-icon" style="color: #ffc107">
+            <i class="fas fa-exclamation-triangle"></i>
+          </div>
         </div>
-         <div class="col-md-6 col-xl-3">
-            <div class="stat-card" style="border-left-color: #28a745;"> {# Success color #}
-                 <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5>Sales (Last 30d)</h5>
-                        <span class="stat-value">${{ "%.2f"|format(total_sales_last_30d) }}</span>
-                    </div>
-                    <div class="stat-icon" style="color: #28a745;"><i class="fas fa-chart-line"></i></div>
-                </div>
-            </div>
+      </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+      <div class="stat-card" style="border-left-color: #28a745">
+        {# Success color #}
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h5>Sales (Last 30d)</h5>
+            <span class="stat-value"
+              >${{ "%.2f"|format(total_sales_last_30d) }}</span
+            >
+          </div>
+          <div class="stat-icon" style="color: #28a745">
+            <i class="fas fa-chart-line"></i>
+          </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  {# Recent Orders & Inventory Snippet Row #}
+  <div class="row">
+    <div class="col-lg-7 mb-4">
+      <div class="card shadow-sm">
+        <div class="card-header bg-light">
+          <h5 class="mb-0">
+            <i class="fas fa-shipping-fast me-2"></i>Recent Unfulfilled Order
+            Items
+          </h5>
+        </div>
+        <div class="card-body p-0">
+          {% if recent_order_items %}
+          <ul class="list-group list-group-flush">
+            {% for item in recent_order_items %}
+            <li
+              class="list-group-item d-flex justify-content-between align-items-center"
+            >
+              <div>
+                <a
+                  href="{{ url_for('amazon.product_detail', product_id=item.product_id) }}"
+                  class="fw-bold text-decoration-none"
+                  >{{ item.product.product_name }}</a
+                >
+                <small class="d-block text-muted"
+                  >Order #{{ item.order_id }} | Qty: {{ item.quantity }}</small
+                >
+              </div>
+              <span>
+                <small class="text-muted"
+                  >{{ item.order.order_date.strftime('%Y-%m-%d') }}</small
+                >
+                <form
+                  action="{{ url_for('seller.fulfill_item', order_item_id=item.order_item_id) }}"
+                  method="POST"
+                  class="d-inline-block ms-2"
+                >
+                  <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="{{ csrf_token() }}"
+                  />
+                  <button
+                    type="submit"
+                    class="btn btn-success btn-sm py-0 px-2"
+                  >
+                    Fulfill
+                  </button>
+                </form>
+              </span>
+            </li>
+            {% endfor %}
+          </ul>
+          <div class="card-footer bg-white text-center">
+            <a
+              href="{{ url_for('seller.list_orders', status='Unfulfilled') }}"
+              class="btn btn-outline-secondary btn-sm"
+              >View All Unfulfilled Orders</a
+            >
+          </div>
+          {% else %}
+          <div class="p-4 text-center text-muted">
+            <i class="fas fa-check-circle fa-2x mb-2 text-success"></i><br />
+            No unfulfilled order items found.
+          </div>
+          {% endif %}
+        </div>
+      </div>
     </div>
 
-
-
-    {# Recent Orders & Inventory Snippet Row #}
-    <div class="row">
-        <div class="col-lg-7 mb-4">
-            <div class="card shadow-sm">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0"><i class="fas fa-shipping-fast me-2"></i>Recent Unfulfilled Order Items</h5>
-                </div>
-                <div class="card-body p-0">
-                    {% if recent_order_items %}
-                        <ul class="list-group list-group-flush">
-                            {% for item in recent_order_items %}
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <div>
-                                     <a href="{{ url_for('amazon.product_detail', product_id=item.product_id) }}" class="fw-bold text-decoration-none">{{ item.product.product_name }}</a>
-                                     <small class="d-block text-muted">Order #{{ item.order_id }} | Qty: {{ item.quantity }}</small>
-                                </div>
-                                <span>
-                                     <small class="text-muted">{{ item.order.order_date.strftime('%Y-%m-%d') }}</small>
-                                    <form action="{{ url_for('seller.fulfill_item', order_item_id=item.order_item_id) }}" method="POST" class="d-inline-block ms-2">
-                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                        <button type="submit" class="btn btn-success btn-sm py-0 px-2">Fulfill</button>
-                                    </form>
-                                </span>
-                            </li>
-                            {% endfor %}
-                        </ul>
-                        <div class="card-footer bg-white text-center">
-                             <a href="{{ url_for('seller.list_orders', status='Unfulfilled') }}" class="btn btn-outline-secondary btn-sm">View All Unfulfilled Orders</a>
-                         </div>
-                    {% else %}
-                        <div class="p-4 text-center text-muted">
-                            <i class="fas fa-check-circle fa-2x mb-2 text-success"></i><br>
-                            No unfulfilled order items found.
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
+    <div class="col-lg-5 mb-4">
+      <div class="card shadow-sm">
+        <div class="card-header bg-light">
+          <h5 class="mb-0"><i class="fas fa-box me-2"></i>Inventory Snippet</h5>
         </div>
-
-         <div class="col-lg-5 mb-4">
-            <div class="card shadow-sm">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0"><i class="fas fa-box me-2"></i>Inventory Snippet</h5>
-                </div>
-                 <div class="card-body p-0">
-                    {% if inventory_items %}
-                        <ul class="list-group list-group-flush">
-                            {% for item in inventory_items %}
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <div>
-                                     <a href="{{ url_for('amazon.product_detail', product_id=item.product_id) }}" class="fw-bold text-decoration-none">{{ item.product.product_name }}</a>
-                                     <small class="d-block text-muted">Price: ${{ "%.2f"|format(item.unit_price) }}</small>
-                                </div>
-                                <span class="badge rounded-pill {% if item.quantity < 5 %}bg-warning text-dark{% elif item.quantity == 0 %}bg-danger{% else %}bg-primary{% endif %}">
-                                    Qty: {{ item.quantity }}
-                                </span>
-                            </li>
-                            {% endfor %}
-                        </ul>
-                         <div class="card-footer bg-white text-center">
-                             <a href="{{ url_for('seller.inventory_list') }}" class="btn btn-outline-secondary btn-sm">Manage Full Inventory</a>
-                         </div>
-                    {% else %}
-                        <div class="p-4 text-center text-muted">
-                            <i class="fas fa-box-open fa-2x mb-2"></i><br>
-                            Your inventory is empty.
-                            <a href="{{ url_for('seller.add_inventory') }}" class="d-block mt-2">Add products</a>
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
+        <div class="card-body p-0">
+          {% if inventory_items %}
+          <ul class="list-group list-group-flush">
+            {% for item in inventory_items %}
+            <li
+              class="list-group-item d-flex justify-content-between align-items-center"
+            >
+              <div>
+                <a
+                  href="{{ url_for('amazon.product_detail', product_id=item.product_id) }}"
+                  class="fw-bold text-decoration-none"
+                  >{{ item.product.product_name }}</a
+                >
+                <small class="d-block text-muted"
+                  >Price: ${{ "%.2f"|format(item.unit_price) }}</small
+                >
+              </div>
+              <span
+                class="badge rounded-pill {% if item.quantity < 5 %}bg-warning text-dark{% elif item.quantity == 0 %}bg-danger{% else %}bg-primary{% endif %}"
+              >
+                Qty: {{ item.quantity }}
+              </span>
+            </li>
+            {% endfor %}
+          </ul>
+          <div class="card-footer bg-white text-center">
+            <a
+              href="{{ url_for('seller.inventory_list') }}"
+              class="btn btn-outline-secondary btn-sm"
+              >Manage Full Inventory</a
+            >
+          </div>
+          {% else %}
+          <div class="p-4 text-center text-muted">
+            <i class="fas fa-box-open fa-2x mb-2"></i><br />
+            Your inventory is empty.
+            <a href="{{ url_for('seller.add_inventory') }}" class="d-block mt-2"
+              >Add products</a
+            >
+          </div>
+          {% endif %}
         </div>
+      </div>
     </div>
+  </div>
 </div>
-{% endblock %}
-
-{% block extra_js %}
-{# Include Chart.js library - use CDN for simplicity #}
+{% endblock %} {% block extra_js %} {# Include Chart.js library - use CDN for
+simplicity #}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
 <script>
-    // --- Sales Chart ---
-    const salesCtx = document.getElementById('salesChart')?.getContext('2d');
-    if (salesCtx) {
-        const salesChart = new Chart(salesCtx, {
-            type: 'line',
-            data: {
-                // Use labels passed from controller
-                labels: {{ sales_chart_labels|tojson|safe }},
-                datasets: [{
-                    label: 'Daily Sales ($)',
-                    // Use data passed from controller
-                    data: {{ sales_chart_data|tojson|safe }},
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                    tension: 0.1,
-                    fill: true
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false, // Allow chart to resize vertically
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function(value, index, values) {
-                                return '$' + value.toFixed(2); // Format ticks as currency
-                            }
-                        }
-                    }
-                },
-                plugins: {
-                     tooltip: {
-                         callbacks: {
-                             label: function(context) {
-                                 let label = context.dataset.label || '';
-                                 if (label) {
-                                     label += ': ';
-                                 }
-                                 if (context.parsed.y !== null) {
-                                     label += '$' + context.parsed.y.toFixed(2);
-                                 }
-                                 return label;
-                             }
-                         }
-                     }
-                 }
-            }
-        });
-    } else {
-        console.error("Canvas element for salesChart not found.");
-    }
+  // --- Sales Chart ---
+  const salesCtx = document.getElementById('salesChart')?.getContext('2d');
+  if (salesCtx) {
+      const salesChart = new Chart(salesCtx, {
+          type: 'line',
+          data: {
+              // Use labels passed from controller
+              labels: {{ sales_chart_labels|tojson|safe }},
+              datasets: [{
+                  label: 'Daily Sales ($)',
+                  // Use data passed from controller
+                  data: {{ sales_chart_data|tojson|safe }},
+                  borderColor: 'rgba(75, 192, 192, 1)',
+                  backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                  tension: 0.1,
+                  fill: true
+              }]
+          },
+          options: {
+              responsive: true,
+              maintainAspectRatio: false, // Allow chart to resize vertically
+              scales: {
+                  y: {
+                      beginAtZero: true,
+                      ticks: {
+                          callback: function(value, index, values) {
+                              return '$' + value.toFixed(2); // Format ticks as currency
+                          }
+                      }
+                  }
+              },
+              plugins: {
+                   tooltip: {
+                       callbacks: {
+                           label: function(context) {
+                               let label = context.dataset.label || '';
+                               if (label) {
+                                   label += ': ';
+                               }
+                               if (context.parsed.y !== null) {
+                                   label += '$' + context.parsed.y.toFixed(2);
+                               }
+                               return label;
+                           }
+                       }
+                   }
+               }
+          }
+      });
+  } else {
+      console.error("Canvas element for salesChart not found.");
+  }
 
 
-    // --- Top Products Chart ---
-    const topProductsCtx = document.getElementById('topProductsChart')?.getContext('2d');
-     if (topProductsCtx) {
-        const topProductsChart = new Chart(topProductsCtx, {
-            type: 'bar', // Changed to bar chart
-            data: {
-                // Use labels passed from controller
-                labels: {{ top_products_labels|tojson|safe }},
-                datasets: [{
-                    label: 'Quantity Sold',
-                    // Use data passed from controller
-                    data: {{ top_products_data|tojson|safe }},
-                    backgroundColor: [ // Use an array of colors
-                        'rgba(255, 99, 132, 0.6)',
-                        'rgba(54, 162, 235, 0.6)',
-                        'rgba(255, 206, 86, 0.6)',
-                        'rgba(75, 192, 192, 0.6)',
-                        'rgba(153, 102, 255, 0.6)',
-                    ],
-                     borderColor: [ // Optional border colors
-                        'rgba(255, 99, 132, 1)',
-                        'rgba(54, 162, 235, 1)',
-                        'rgba(255, 206, 86, 1)',
-                        'rgba(75, 192, 192, 1)',
-                        'rgba(153, 102, 255, 1)',
-                    ],
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                indexAxis: 'y', // Makes it a horizontal bar chart - better for product names
-                responsive: true,
-                maintainAspectRatio: false,
-                 scales: {
-                    x: { // Note: x-axis for horizontal bar
-                        beginAtZero: true,
-                        title: {
-                             display: true,
-                             text: 'Quantity Sold'
-                         }
-                    },
-                     y: { // Note: y-axis for horizontal bar
-                         ticks: {
-                             autoSkip: false // Ensure all product names are shown
-                         }
-                     }
-                },
-                 plugins: {
-                    legend: {
-                        display: false // Hide legend for simple bar chart
-                    },
-                    tooltip: {
-                         callbacks: {
-                             label: function(context) {
-                                 let label = ' Qty: ' + context.parsed.x;
-                                 return label;
-                             }
-                         }
-                    }
-                 }
-            }
-        });
-    } else {
-         console.error("Canvas element for topProductsChart not found.");
-    }
-
+  // --- Top Products Chart ---
+  const topProductsCtx = document.getElementById('topProductsChart')?.getContext('2d');
+   if (topProductsCtx) {
+      const topProductsChart = new Chart(topProductsCtx, {
+          type: 'bar', // Changed to bar chart
+          data: {
+              // Use labels passed from controller
+              labels: {{ top_products_labels|tojson|safe }},
+              datasets: [{
+                  label: 'Quantity Sold',
+                  // Use data passed from controller
+                  data: {{ top_products_data|tojson|safe }},
+                  backgroundColor: [ // Use an array of colors
+                      'rgba(255, 99, 132, 0.6)',
+                      'rgba(54, 162, 235, 0.6)',
+                      'rgba(255, 206, 86, 0.6)',
+                      'rgba(75, 192, 192, 0.6)',
+                      'rgba(153, 102, 255, 0.6)',
+                  ],
+                   borderColor: [ // Optional border colors
+                      'rgba(255, 99, 132, 1)',
+                      'rgba(54, 162, 235, 1)',
+                      'rgba(255, 206, 86, 1)',
+                      'rgba(75, 192, 192, 1)',
+                      'rgba(153, 102, 255, 1)',
+                  ],
+                  borderWidth: 1
+              }]
+          },
+          options: {
+              indexAxis: 'y', // Makes it a horizontal bar chart - better for product names
+              responsive: true,
+              maintainAspectRatio: false,
+               scales: {
+                  x: { // Note: x-axis for horizontal bar
+                      beginAtZero: true,
+                      title: {
+                           display: true,
+                           text: 'Quantity Sold'
+                       }
+                  },
+                   y: { // Note: y-axis for horizontal bar
+                       ticks: {
+                           autoSkip: false // Ensure all product names are shown
+                       }
+                   }
+              },
+               plugins: {
+                  legend: {
+                      display: false // Hide legend for simple bar chart
+                  },
+                  tooltip: {
+                       callbacks: {
+                           label: function(context) {
+                               let label = ' Qty: ' + context.parsed.x;
+                               return label;
+                           }
+                       }
+                  }
+               }
+          }
+      });
+  } else {
+       console.error("Canvas element for topProductsChart not found.");
+  }
 </script>
 {% endblock %}

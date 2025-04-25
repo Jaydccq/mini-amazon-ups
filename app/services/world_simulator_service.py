@@ -17,14 +17,6 @@ from app.proto import world_amazon_1_pb2 as amazon_pb2
 
 logger = logging.getLogger(__name__)
 
-default_init_warehouses = []
-for i in range(1, 51):
-    one_warehouse = Warehouse()
-    one_warehouse.warehouse_id = i
-    one_warehouse.x = random.randint(10, 100)
-    one_warehouse.y = random.randint(10, 100)
-    default_init_warehouses.append(one_warehouse)
-
 class WorldSimulatorService:
     def __init__(self, app=None, host='server', port=23456):
         self.app = app
@@ -67,7 +59,7 @@ class WorldSimulatorService:
             return self.seqnum
     
     # Connect to the world simulator
-    def connect(self, world_id=None, init_warehouses=default_init_warehouses):
+    def connect(self, world_id=None, init_warehouses=None):
         try:
             logger.info(f"Connecting to World Simulator at {self.host}:{self.port}...")
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -76,6 +68,19 @@ class WorldSimulatorService:
             # Create connection message
             connect_msg = amazon_pb2.AConnect()
             connect_msg.isAmazon = True
+            print("Connecting to World Simulator...")
+
+            default_init_warehouses = []
+            for i in range(1, 51):
+                one_warehouse = Warehouse()
+                one_warehouse.warehouse_id = i
+                one_warehouse.x = random.randint(10, 100)
+                one_warehouse.y = random.randint(10, 100)
+                default_init_warehouses.append(one_warehouse)
+
+            init_warehouses =  default_init_warehouses
+
+            # print(connect_msg)
             if world_id:
                 connect_msg.worldid = world_id
             
@@ -104,7 +109,10 @@ class WorldSimulatorService:
 
             # Initialize the database with the initial warehouses
             if init_warehouses:
+                # Clear existing warehouses
+                db.session.query(Warehouse).delete()
                 for wh in init_warehouses:
+                    wh.world_id = self.world_id
                     db.session.add(wh)
                 db.session.commit()
             

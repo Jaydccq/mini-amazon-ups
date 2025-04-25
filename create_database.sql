@@ -131,8 +131,8 @@ CREATE TABLE warehouses (
 -- Warehouse Products (inventory)
 CREATE TABLE warehouse_products (
     id SERIAL PRIMARY KEY,
-    warehouse_id INTEGER NOT NULL REFERENCES warehouses(warehouse_id),
-    product_id INTEGER NOT NULL REFERENCES products(product_id),
+    warehouse_id INTEGER,
+    product_id INTEGER,
     quantity INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -143,7 +143,7 @@ CREATE TABLE warehouse_products (
 CREATE TABLE shipments (
     shipment_id SERIAL PRIMARY KEY,
     order_id INTEGER NOT NULL REFERENCES orders(order_id),
-    warehouse_id INTEGER NOT NULL REFERENCES warehouses(warehouse_id),
+    warehouse_id INTEGER,
     truck_id BIGINT,
     ups_tracking_id VARCHAR(255),
     ups_account VARCHAR(255),

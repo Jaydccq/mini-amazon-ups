@@ -5,6 +5,26 @@
 -- Create tables
 
 -- Users/Accounts table
+
+drop table if exists accounts cascade;
+drop table if exists products cascade;
+drop table if exists products_categories cascade;
+drop table if exists carts cascade;
+drop table if exists cart_products cascade;
+drop table if exists orders cascade;
+drop table if exists orders_products cascade;
+drop table if exists Inventory cascade;
+drop table if exists warehouses cascade;
+drop table if exists warehouse_products cascade;
+drop table if exists shipments cascade;
+drop table if exists shipment_items cascade;
+drop table if exists world_messages cascade;
+drop table if exists ups_messages cascade;
+drop table if exists reviews cascade;
+-- Drop all tables if they exist
+
+
+
 CREATE TABLE accounts (
     user_id SERIAL PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,

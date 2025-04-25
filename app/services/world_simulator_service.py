@@ -7,6 +7,7 @@ import queue
 from datetime import datetime
 from google.protobuf.message import Message
 from flask import current_app
+import random
 
 from app.model import db, WorldMessage, Warehouse
 from google.protobuf.internal.encoder import _VarintBytes
@@ -15,6 +16,14 @@ from app.proto import world_amazon_1_pb2 as amazon_pb2
 
 
 logger = logging.getLogger(__name__)
+
+default_init_warehouses = []
+for i in range(1, 51):
+    one_warehouse = Warehouse()
+    one_warehouse.warehouse_id = i
+    one_warehouse.x = random.randint(10, 100)
+    one_warehouse.y = random.randint(10, 100)
+    default_init_warehouses.append(one_warehouse)
 
 class WorldSimulatorService:
     def __init__(self, app=None, host='server', port=23456):
@@ -58,7 +67,7 @@ class WorldSimulatorService:
             return self.seqnum
     
     # Connect to the world simulator
-    def connect(self, world_id=None, init_warehouses=None):
+    def connect(self, world_id=None, init_warehouses=default_init_warehouses):
         try:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.connect((self.host, self.port))
@@ -91,6 +100,12 @@ class WorldSimulatorService:
             if not self.connected:
                 logger.error(f"Failed to connect to World Simulator: {response.result}")
                 return None, response.result
+
+            # Initialize the database with the initial warehouses
+            if init_warehouses:
+                for wh in init_warehouses:
+                    db.session.add(wh)
+                db.session.commit()
             
             # receiver_thread
             self.receiver_thread = threading.Thread(target=self.receive_loop)
@@ -126,6 +141,10 @@ class WorldSimulatorService:
                 # Close socket
                 self.socket.close()
                 self.connected = False
+
+                # delete all warehouses
+                db.session.query(Warehouse).delete()
+                db.session.commit()
                 
                 logger.info("Disconnected from World Simulator")
         except Exception as e:

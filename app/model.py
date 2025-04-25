@@ -3,10 +3,9 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 
-from app.services.shipment_service import ShipmentService
 
 db = SQLAlchemy()
-shipment_service = ShipmentService()
+
 
 class User(UserMixin, db.Model):
     __tablename__ = 'accounts'
@@ -82,6 +81,8 @@ class Cart(db.Model):
     @classmethod
     def checkout_cart(cls, user_id,destination_x,destination_y,ups_account):
         """Process cart checkout and create an order"""
+        from app.services.shipment_service import ShipmentService
+        shipment_service = ShipmentService()
         try:
             # Get the user's cart
             cart = Cart.query.filter_by(user_id=user_id).first()
@@ -200,6 +201,8 @@ class OrderProduct(db.Model):
 
 # World Simulator and UPS integration models
 class Warehouse(db.Model):
+
+
     __tablename__ = 'warehouses'
     
     warehouse_id = db.Column(db.Integer, primary_key=True)

@@ -33,7 +33,7 @@ def set_worldid():
         if world_simulator_service_instance.world_id != world_id:
             logger.info(f"Connecting to new world: {world_id}")
             # Disconnect from the previous world if connected
-            world_simulator_service_instance.disconnect(world_id)
+            world_simulator_service_instance.disconnect()
             world_simulator_service_instance.connect(world_id)
         else:
             logger.info(f"Already connected to world: {world_id}")

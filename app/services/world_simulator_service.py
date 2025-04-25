@@ -172,7 +172,10 @@ class WorldSimulatorService:
             
             product = buy.things.add()
             product.id = product_id
-            product.description = description
+            truncated_description = description[:50]
+            product.description = truncated_description
+            if len(description) > 50:
+                logger.warning(f"Truncated description for product {product_id} from '{description}' to '{truncated_description}' before sending buy command.")
             product.count = quantity
             
             db_message = WorldMessage(
@@ -352,16 +355,35 @@ class WorldSimulatorService:
                 time.sleep(1)  # Avoid tight loop on error
     
     def receive_loop(self):
-
+        last_heartbeat = time.time()
+        
         while self.running:
             try:
+                # Periodic heartbeat log
+                current_time = time.time()
+                if current_time - last_heartbeat > 5:
+                    logger.debug("Receive loop is alive...")
+                    last_heartbeat = current_time
+                    
                 data = self.receive_message()
                 if not data:
                     logger.warning("Empty response received")
                     time.sleep(1) 
                     continue
 
+                logger.info(f"Received raw data of length: {len(data)}")
                 
+                # Try to parse and log the response for debugging
+                try:
+                    response = amazon_pb2.AResponses()
+                    response.ParseFromString(data)
+                    logger.info(f"Parsed AResponses: ACKs received: {list(response.acks)}, "
+                               f"Arrived: {len(response.arrived)}, Ready: {len(response.ready)}, "
+                               f"Loaded: {len(response.loaded)}, Errors: {len(response.error)}")
+                except Exception as parse_err:
+                    logger.error(f"Failed to parse received data: {parse_err}")
+                
+                # Normal processing continues
                 response = amazon_pb2.AResponses()
                 response.ParseFromString(data)
 
@@ -371,26 +393,25 @@ class WorldSimulatorService:
                 else:
                     logger.error("WorldSimulatorService was not initialized with a Flask app object. Cannot create app context in receive_loop.")
             
-
             except ConnectionAbortedError:
-                 logger.warning("Connection aborted, stopping receive loop.")
-                 self.running = False
+                logger.warning("Connection aborted, stopping receive loop.")
+                self.running = False
             except socket.timeout:
-                 logger.debug("Socket receive timed out, continuing loop.")
-                 continue 
+                logger.debug("Socket receive timed out, continuing loop.")
+                continue 
             except Exception as e:
                 logger.error(f"Error in receive loop: {e}", exc_info=True)
                 if not self.running:
                     break
-                time.sleep(1) 
+                time.sleep(1)
     
 
     def process_response(self, response):
-
         try:
             acks_to_send = []
 
             for ack_seqnum in response.acks:
+                logger.info(f"Processing ACK received from world for seqnum: {ack_seqnum}")
                 self.process_ack(ack_seqnum) 
 
             for package in response.arrived:
@@ -423,10 +444,20 @@ class WorldSimulatorService:
 
     def process_ack(self, seqnum):
         logger.debug(f"Received ack for seqnum {seqnum}")
+        
+        logger.info(f"Attempting to find WorldMessage for acked seqnum {seqnum}...")
         message = WorldMessage.query.filter_by(seqnum=seqnum).first()
         if message:
+            logger.info(f"Found WorldMessage ID {message.id}, current status {message.status}. Setting status to 'acked'.")
             message.status = 'acked'
-            db.session.commit()
+            try:
+                db.session.commit()
+                logger.info(f"Successfully committed status update for WorldMessage ID {message.id}, seqnum {seqnum}.")
+            except Exception as commit_err:
+                db.session.rollback()
+                logger.error(f"Failed to commit status update for seqnum {seqnum}: {commit_err}", exc_info=True)
+        else:
+            logger.warning(f"Could not find WorldMessage in DB for acked seqnum {seqnum}.")
         
         with self.lock:
             # Only set the event if it exists in the dictionary
@@ -434,6 +465,7 @@ class WorldSimulatorService:
                 if seqnum not in self.pending_responses or self.pending_responses[seqnum] is None:
                     self.pending_responses[seqnum] = "ACK"
                 self.response_events[seqnum].set()
+                logger.info(f"Set event for seqnum {seqnum}")
             else:
                 # Just log a message - this is expected for asynchronous commands
                 logger.debug(f"No event waiting for ack of seqnum {seqnum}")
@@ -506,6 +538,22 @@ class WorldSimulatorService:
             self.acks.add(error.seqnum)
     
     def send_protobuf(self, message):
+        # Add logging to track the message being sent
+        try:
+            seqnum = None
+            if message.buy:
+                seqnum = message.buy[0].seqnum
+            elif message.topack:
+                seqnum = message.topack[0].seqnum
+            elif message.load:
+                seqnum = message.load[0].seqnum
+            elif message.queries:
+                seqnum = message.queries[0].seqnum
+                
+            logger.info(f"Sending message with seqnum: {seqnum}, ACKs being sent: {list(message.acks)}")
+        except Exception as e:
+            logger.warning(f"Could not log message details: {e}")
+            
         serialized = message.SerializeToString()
         # Use Varint32 encoding for message length
         size_prefix = _VarintBytes(len(serialized))

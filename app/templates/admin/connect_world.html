@@ -105,6 +105,25 @@ endblock %} {% block content %}
                   enter 0, you will automatically connect to a new world.
                 </div>
               </div>
+
+              <div class="form-group mt-3">
+                <label for="connect_sim_speed" class="form-label"
+                  >Simulation Speed</label
+                >
+                <input
+                  type="number"
+                  class="form-control"
+                  id="connect_sim_speed"
+                  name="sim_speed"
+                  value="3000"
+                  min="100"
+                  max="100000"
+                />
+                <div class="form-text">
+                  Higher values make the simulation run faster. Default is 3000.
+                </div>
+              </div>
+
               <button
                 type="submit"
                 name="action"
@@ -133,9 +152,9 @@ endblock %} {% block content %}
                   class="form-control"
                   id="sim_speed"
                   name="sim_speed"
-                  value="100"
-                  min="1"
-                  max="1000"
+                  value="3000"
+                  min="100"
+                  max="100000"
                 />
                 <div class="form-text">
                   Higher values make the simulation run faster. Default is 100.

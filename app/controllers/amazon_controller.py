@@ -853,3 +853,68 @@ def world_messages():
         connected=connected,
         world_id=world_id
     )
+
+# Inside app/controllers/amazon_controller.py -> shipment_list function
+
+@amazon_bp.route('/shipments')
+@login_required
+def shipment_list():
+    page = request.args.get('page', 1, type=int)
+    status = request.args.get('status')
+    per_page = 10
+
+    # Base query
+    shipments_query = Shipment.query
+
+    # Apply filters if admin
+    if current_user.is_seller:
+        # Admin can see all shipments
+        pass
+    else:
+        # Regular users can only see their own shipments
+        shipments_query = shipments_query.join(Order).filter(Order.buyer_id == current_user.user_id)
+
+    # Apply status filter if provided
+    if status:
+        shipments_query = shipments_query.filter(Shipment.status == status)
+
+    # Count total shipments before pagination for accurate stats
+    total_shipments = shipments_query.count()
+
+    # Get counts by status (applied to the *filtered* query)
+    pending_shipments = shipments_query.filter(Shipment.status.in_(['packing', 'packed', 'loading'])).count()
+    in_transit_shipments = shipments_query.filter(Shipment.status == 'delivering').count()
+    delivered_shipments = shipments_query.filter(Shipment.status == 'delivered').count()
+
+    # Apply pagination to the final filtered query
+    shipments_pagination = shipments_query.order_by(Shipment.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+
+    # Pass the full pagination object and stats to the template
+    return render_template('shipments/list.html',
+                          pagination=shipments_pagination, # Pass the whole object
+                          shipments=shipments_pagination.items, # Keep items for the loop
+                          status=status, # Pass current status filter back
+                          total_shipments=total_shipments,
+                          pending_shipments=pending_shipments,
+                          in_transit_shipments=in_transit_shipments,
+                          delivered_shipments=delivered_shipments) # Removed page and total_pages, use pagination object instead
+
+
+from app.model import UPSMessage
+
+@admin_bp.route('/ups-messages')
+@login_required
+def ups_messages():
+    if not current_user.is_seller: # Adjust permission check as needed
+        flash('Access denied', 'error')
+        return redirect(url_for('amazon.index'))
+
+    messages = UPSMessage.query.order_by(UPSMessage.id.desc()).limit(100).all()
+
+    # ups_connected = ups_integration_service.is_connected() # Example
+
+    return render_template(
+        'admin/ups_messages.html', # Path to the new template
+        messages=messages
+        # pass other status info if needed, e.g., ups_connected=ups_connected
+    )

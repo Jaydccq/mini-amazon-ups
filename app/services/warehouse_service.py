@@ -2,7 +2,7 @@ import logging
 from sqlalchemy.exc import SQLAlchemyError
 from app.model import db, Warehouse, WarehouseProduct, Product
 from app.services.world_simulator_service import WorldSimulatorService
-
+from datetime import datetime,timezone
 logger = logging.getLogger(__name__)
 from flask import current_app
 class WarehouseService:
@@ -227,7 +227,6 @@ class WarehouseService:
             logger.error(f"Error getting warehouse inventory: {str(e)}")
             return []
         
-    from datetime import datetime
     def add_product_to_warehouse(self, warehouse_id, product_id, quantity):
         try:
             # Ensure warehouse and product exist (important!)
@@ -248,7 +247,7 @@ class WarehouseService:
             if warehouse_product:
                 # Update quantity if record exists
                 warehouse_product.quantity += quantity
-                warehouse_product.updated_at = datetime.utcnow() # Manually update timestamp
+                warehouse_product.updated_at = datetime.now(timezone.utc) # Manually update timestamp
                 # print(f"Updating WHP: WH={warehouse_id}, Prod={product_id}, New Qty={warehouse_product.quantity}")
             else:
                 # Create new inventory entry if it doesn't exist

@@ -191,6 +191,22 @@ CREATE TABLE ups_messages (
     CHECK (status IN ('sent', 'acked', 'failed'))
 );
 
+-- UPS Messages table (for communication with UPS)
+-- UPS Messages table (for communication with UPS)
+-- CREATE TABLE ups_messages (
+--     id SERIAL PRIMARY KEY,
+--     message_type VARCHAR(50) NOT NULL,
+--     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- <-- ADDED THIS LINE
+--     payload TEXT NOT NULL,                 -- Renamed message_content to payload for consistency
+--     status VARCHAR(20) NOT NULL DEFAULT 'sent', -- Added default
+--     seqnum BIGINT,                          -- Made seqnum nullable if not always present
+--     retries INTEGER DEFAULT 0,
+--     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+--     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+--     CHECK (status IN ('sent', 'acked', 'failed', 'received', 'success')) -- Added 'received', 'success'
+-- );
+
+
 -- Reviews table
 CREATE TABLE reviews (
     review_id SERIAL PRIMARY KEY,

@@ -1,0 +1,436 @@
+{% extends "base.html" %} {% block title %}All Shipments{% endblock %} {% block
+content %}
+<div class="container py-4">
+  <h2 class="mb-4">All Shipments</h2>
+
+  <div class="card shadow-sm mb-4">
+    <div class="card-header bg-white">
+      <div class="row align-items-center">
+        <div class="col-md-6">
+          <h5 class="mb-0">Shipments Overview</h5>
+        </div>
+        <div class="col-md-6">
+          <div class="d-flex justify-content-md-end mt-3 mt-md-0">
+            <div class="btn-group">
+              <button
+                type="button"
+                class="btn btn-outline-primary dropdown-toggle"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+              >
+                Filter by Status: {{ status or 'All' }} {# Show current filter
+                #}
+              </button>
+              <ul class="dropdown-menu">
+                {# Use url_for to generate filter links, preserving other args
+                if needed #}
+                <li>
+                  <a
+                    class="dropdown-item {% if not status %}active{% endif %}"
+                    href="{{ url_for('amazon.shipment_list') }}"
+                    >All Statuses</a
+                  >
+                </li>
+                <li>
+                  <a
+                    class="dropdown-item {% if status == 'packing' %}active{% endif %}"
+                    href="{{ url_for('amazon.shipment_list', status='packing') }}"
+                    >Packing</a
+                  >
+                </li>
+                <li>
+                  <a
+                    class="dropdown-item {% if status == 'packed' %}active{% endif %}"
+                    href="{{ url_for('amazon.shipment_list', status='packed') }}"
+                    >Packed</a
+                  >
+                </li>
+                <li>
+                  <a
+                    class="dropdown-item {% if status == 'loading' %}active{% endif %}"
+                    href="{{ url_for('amazon.shipment_list', status='loading') }}"
+                    >Loading</a
+                  >
+                </li>
+                <li>
+                  <a
+                    class="dropdown-item {% if status == 'loaded' %}active{% endif %}"
+                    href="{{ url_for('amazon.shipment_list', status='loaded') }}"
+                    >Loaded</a
+                  >
+                </li>
+                <li>
+                  <a
+                    class="dropdown-item {% if status == 'delivering' %}active{% endif %}"
+                    href="{{ url_for('amazon.shipment_list', status='delivering') }}"
+                    >Delivering</a
+                  >
+                </li>
+                <li>
+                  <a
+                    class="dropdown-item {% if status == 'delivered' %}active{% endif %}"
+                    href="{{ url_for('amazon.shipment_list', status='delivered') }}"
+                    >Delivered</a
+                  >
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body p-0">
+      {% if shipments %} {# Check if there are items on the current page #}
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>ID</th>
+              <th>Order</th>
+              <th>Status</th>
+              <th>Warehouse</th>
+              <th>Destination</th>
+              <th>UPS Tracking</th>
+              <th>Created</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for shipment in shipments %}
+            <tr>
+              <td>
+                <a
+                  href="{{ url_for('amazon.shipment_detail', shipment_id=shipment.shipment_id) }}"
+                  >#{{ shipment.shipment_id }}</a
+                >
+              </td>
+              <td>
+                <a
+                  href="{{ url_for('amazon.order_detail', order_id=shipment.order_id) }}"
+                  >#{{ shipment.order_id }}</a
+                >
+              </td>
+              <td>
+                {% if shipment.status == 'delivered' %}
+                <span class="badge bg-success"
+                  >{{ shipment.status|capitalize }}</span
+                >
+                {% elif shipment.status == 'delivering' %}
+                <span class="badge bg-info"
+                  >{{ shipment.status|capitalize }}</span
+                >
+                {% elif shipment.status == 'packing' or shipment.status ==
+                'packed' or shipment.status == 'loading' %} {# Grouped pending
+                statuses #}
+                <span
+                  class="badge bg-warning text-dark"
+                  {#
+                  Use
+                  text-dark
+                  for
+                  better
+                  readability
+                  on
+                  yellow
+                  #}
+                  >{{ shipment.status|capitalize }}</span
+                >
+                {% elif shipment.status == 'loaded' %}
+                <span class="badge bg-primary" {# Changed loaded to primary #}
+                  >{{ shipment.status|capitalize }}</span
+                >
+                {% else %}
+                <span class="badge bg-secondary"
+                  >{{ shipment.status|capitalize }}</span
+                >
+                {% endif %}
+              </td>
+              <td>{{ shipment.warehouse_id }}</td>
+              <td>
+                ({{ shipment.destination_x }}, {{ shipment.destination_y }})
+              </td>
+              <td>
+                {% if shipment.ups_tracking_id %}
+                <a
+                  href="https://www.ups.com/track?tracknum={{ shipment.ups_tracking_id }}"
+                  target="_blank"
+                  title="{{ shipment.ups_tracking_id }}"
+                  {#
+                  Show
+                  full
+                  id
+                  on
+                  hover
+                  #}
+                >
+                  {{ shipment.ups_tracking_id[:8] }}...
+                </a>
+                {% else %}
+                <span class="text-muted">Not available</span>
+                {% endif %}
+              </td>
+              <td>{{ shipment.created_at.strftime('%Y-%m-%d') }}</td>
+              <td>
+                <div class="btn-group">
+                  <a
+                    href="{{ url_for('amazon.shipment_detail', shipment_id=shipment.shipment_id) }}"
+                    class="btn btn-sm btn-outline-primary"
+                    title="View Details"
+                  >
+                    <i class="fas fa-eye"></i>
+                  </a>
+                  {% if shipment.status != 'delivered' and shipment.status !=
+                  'delivering' %}
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                    data-bs-toggle="modal"
+                    data-bs-target="#changeAddressModal{{ shipment.shipment_id }}"
+                    title="Change Address"
+                  >
+                    <i class="fas fa-map-marker-alt"></i>
+                  </button>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %} {# If no shipments match filter/page #}
+      <div class="alert alert-info text-center m-4">
+        No shipments found matching your criteria.
+      </div>
+      {% endif %}
+    </div>
+
+    {# --- REVISED PAGINATION --- #} {% if pagination and pagination.pages > 1
+    %} {# Only show pagination if more than 1 page #}
+    <div class="card-footer bg-white">
+      <nav aria-label="Shipments pagination">
+        <ul class="pagination justify-content-center mb-0">
+          {# Previous Page Link #}
+          <li
+            class="page-item {% if not pagination.has_prev %}disabled{% endif %}"
+          >
+            <a
+              class="page-link"
+              href="{{ url_for('amazon.shipment_list', page=pagination.prev_num, status=status) if pagination.has_prev else '#' }}"
+              aria-label="Previous"
+            >
+              <span aria-hidden="true">&laquo;</span>
+            </a>
+          </li>
+
+          {# Page Number Links using iter_pages #} {% for p in
+          pagination.iter_pages(left_edge=1, right_edge=1, left_current=2,
+          right_current=2) %} {% if p %} {% if p == pagination.page %}
+          <li class="page-item active" aria-current="page">
+            <span class="page-link">{{ p }}</span>
+          </li>
+          {% else %}
+          <li class="page-item">
+            <a
+              class="page-link"
+              href="{{ url_for('amazon.shipment_list', page=p, status=status) }}"
+              >{{ p }}</a
+            >
+          </li>
+          {% endif %} {% else %}
+          <li class="page-item disabled">
+            <span class="page-link">&hellip;</span>
+          </li>
+          {# Ellipsis for skipped pages #} {% endif %} {% endfor %} {# Next Page
+          Link #}
+          <li
+            class="page-item {% if not pagination.has_next %}disabled{% endif %}"
+          >
+            <a
+              class="page-link"
+              href="{{ url_for('amazon.shipment_list', page=pagination.next_num, status=status) if pagination.has_next else '#' }}"
+              aria-label="Next"
+            >
+              <span aria-hidden="true">&raquo;</span>
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+    {% endif %} {# --- END REVISED PAGINATION --- #}
+  </div>
+
+  <div class="row">
+    <div class="col-lg-3 col-md-6 mb-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body text-center">
+          <div class="display-4 text-primary mb-3">
+            <i class="fas fa-box"></i>
+          </div>
+          <h5 class="card-title">Total Shipments</h5>
+          <h3 class="card-text fw-bold">{{ total_shipments }}</h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-3 col-md-6 mb-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body text-center">
+          <div class="display-4 text-warning mb-3">
+            <i class="fas fa-clock"></i>
+          </div>
+          <h5 class="card-title">Pending</h5>
+          <h3 class="card-text fw-bold">{{ pending_shipments }}</h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-3 col-md-6 mb-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body text-center">
+          <div class="display-4 text-info mb-3">
+            <i class="fas fa-truck"></i>
+          </div>
+          <h5 class="card-title">In Transit</h5>
+          <h3 class="card-text fw-bold">{{ in_transit_shipments }}</h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-3 col-md-6 mb-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body text-center">
+          <div class="display-4 text-success mb-3">
+            <i class="fas fa-check-circle"></i>
+          </div>
+          <h5 class="card-title">Delivered</h5>
+          <h3 class="card-text fw-bold">{{ delivered_shipments }}</h3>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% for shipment in shipments %} {% if shipment.status != 'delivered' and
+shipment.status != 'delivering' %}
+<div
+  class="modal fade"
+  id="changeAddressModal{{ shipment.shipment_id }}"
+  tabindex="-1"
+  aria-labelledby="changeAddressModal{{ shipment.shipment_id }}Label"
+  aria-hidden="true"
+>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5
+          class="modal-title"
+          id="changeAddressModal{{ shipment.shipment_id }}Label"
+        >
+          Change Delivery Address for Shipment #{{ shipment.shipment_id }}
+        </h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      {# IMPORTANT: Ensure you have CSRF protection enabled in Flask-WTF if
+      using this #}
+      <form
+        action="{{ url_for('amazon.update_address', order_id=shipment.order_id, shipment_id=shipment.shipment_id) }}"
+        method="POST"
+      >
+        {#
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" /> #}
+        {# Uncomment if using CSRF #}
+        <div class="modal-body">
+          <div class="mb-3">
+            <label
+              for="current-coords-{{ shipment.shipment_id }}"
+              class="form-label"
+              {#
+              Unique
+              id
+              for
+              label
+              #}
+              >Current Coordinates</label
+            >
+            <input
+              type="text"
+              class="form-control"
+              id="current-coords-{{ shipment.shipment_id }}"
+              {#
+              Unique
+              id
+              for
+              input
+              #}
+              value="({{ shipment.destination_x }}, {{ shipment.destination_y }})"
+              disabled
+            />
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label
+                for="destination_x_{{ shipment.shipment_id }}"
+                class="form-label"
+                {#
+                Unique
+                id
+                #}
+                >New X Coordinate</label
+              >
+              <input
+                type="number"
+                class="form-control"
+                id="destination_x_{{ shipment.shipment_id }}"
+                {#
+                Unique
+                id
+                #}
+                name="destination_x"
+                required
+              />
+            </div>
+            <div class="col-md-6 mb-3">
+              <label
+                for="destination_y_{{ shipment.shipment_id }}"
+                class="form-label"
+                {#
+                Unique
+                id
+                #}
+                >New Y Coordinate</label
+              >
+              <input
+                type="number"
+                class="form-control"
+                id="destination_y_{{ shipment.shipment_id }}"
+                {#
+                Unique
+                id
+                #}
+                name="destination_y"
+                required
+              />
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            data-bs-dismiss="modal"
+          >
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary">Update Address</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %} {% endfor %} {% endblock %}

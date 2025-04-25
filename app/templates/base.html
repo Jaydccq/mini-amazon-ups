@@ -254,6 +254,23 @@
               >
             </li>
             {% if current_user.is_authenticated %}
+            <li>
+              <a
+                class="dropdown-item"
+                href="{{ url_for('admin.ups_messages') }}"
+                ><i class="fas fa-shipping-fast me-2"></i> UPS Messages</a
+              >
+            </li>
+            {% endif %} {% if current_user.is_authenticated %}
+            <li class="nav-item">
+              <a
+                class="nav-link {% if request.endpoint.startswith('amazon.shipment') %}active{% endif %}"
+                href="{{ url_for('amazon.shipment_list') }}"
+              >
+                <i class="fas fa-truck me-1"></i> Shipments
+              </a>
+            </li>
+            {% endif %} {% if current_user.is_authenticated %}
             <li class="nav-item">
               <a class="nav-link" href="{{ url_for('amazon.order_list') }}"
                 >Orders</a
@@ -516,8 +533,13 @@
               <li>
                 <a href="{{ url_for('amazon.order_list') }}">My Orders</a>
               </li>
+              <li>
+                <a href="{{ url_for('amazon.shipment_list') }}"
+                  >All Shipments</a
+                >
+              </li>
               <li><a href="{{ url_for('amazon.cart') }}">My Cart</a></li>
-              <li><a href="#">Profile</a></li>
+              <li><a href="{{ url_for('amazon.profile') }}">Profile</a></li>
               <li><a href="{{ url_for('amazon.logout') }}">Logout</a></li>
               {% else %}
               <li><a href="{{ url_for('amazon.login') }}">Login</a></li>

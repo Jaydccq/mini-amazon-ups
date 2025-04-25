@@ -1,320 +1,676 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
     <title>{% block title %}Mini-Amazon{% endblock %}</title>
-    
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
     <style>
-        :root {
-            --primary-color: #4F46E5;
-            --secondary-color: #10B981;
-            --accent-color: #F59E0B;
-            --text-color: #1F2937;
-            --light-text-color: #6B7280;
-            --bg-color: #F9FAFB;
-            --card-bg: #FFFFFF;
-            --border-color: #E5E7EB;
+      :root {
+        --primary-color: #4f46e5;
+        --secondary-color: #10b981;
+        --accent-color: #f59e0b;
+        --text-color: #1f2937;
+        --light-text-color: #6b7280;
+        --bg-color: #f9fafb;
+        --card-bg: #ffffff;
+        --border-color: #e5e7eb;
+      }
+
+      body {
+        font-family: "Poppins", sans-serif;
+        color: var(--text-color);
+        background-color: var(--bg-color);
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+        padding-top: 56px; /* Adjust based on navbar height */
+      }
+
+      main {
+        flex: 1;
+      }
+
+      /* Navbar Styles */
+      .navbar {
+        background-color: var(--card-bg);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+      }
+
+      .navbar-brand {
+        font-weight: 700;
+        color: var(--primary-color) !important;
+      }
+
+      .navbar .nav-link {
+        color: var(--text-color);
+        font-weight: 500;
+        transition: all 0.3s ease;
+      }
+
+      .navbar .nav-link:hover,
+      .navbar .nav-link.active {
+        color: var(--primary-color) !important;
+      }
+
+      /* Buttons */
+      .btn {
+        font-weight: 500;
+        padding: 0.5rem 1.25rem;
+        border-radius: 0.5rem;
+        transition: all 0.3s ease;
+      }
+
+      .btn-primary {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+      }
+
+      .btn-primary:hover {
+        background-color: #4338ca;
+        border-color: #4338ca;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px rgba(79, 70, 229, 0.2);
+      }
+
+      .btn-outline-primary {
+        color: var(--primary-color);
+        border-color: var(--primary-color);
+      }
+
+      .btn-outline-primary:hover {
+        background-color: var(--primary-color);
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px rgba(79, 70, 229, 0.2);
+      }
+
+      /* Cards */
+      .card {
+        border: 1px solid var(--border-color);
+        border-radius: 0.75rem;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+      }
+
+      .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+      }
+
+      /* Footer */
+      .footer {
+        background-color: #1f2937;
+        color: white;
+        padding: 2rem 0;
+        margin-top: auto;
+      }
+
+      .footer a {
+        color: #e5e7eb;
+        transition: all 0.3s ease;
+      }
+
+      .footer a:hover {
+        color: white;
+        text-decoration: none;
+      }
+
+      /* Animations */
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
         }
-        
-        body {
-            font-family: 'Poppins', sans-serif;
-            color: var(--text-color);
-            background-color: var(--bg-color);
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-            padding-top: 56px; /* Adjust based on navbar height */
+        to {
+          opacity: 1;
         }
-        
-        main {
-            flex: 1;
-        }
-        
-        /* Navbar Styles */
-        .navbar {
-            background-color: var(--card-bg);
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-        }
-        
-        .navbar-brand {
-            font-weight: 700;
-            color: var(--primary-color) !important;
-        }
-        
-        .navbar .nav-link {
-            color: var(--text-color);
-            font-weight: 500;
-            transition: all 0.3s ease;
-        }
-        
-        .navbar .nav-link:hover,
-        .navbar .nav-link.active {
-            color: var(--primary-color) !important;
-        }
-        
-        /* Buttons */
-        .btn {
-            font-weight: 500;
-            padding: 0.5rem 1.25rem;
-            border-radius: 0.5rem;
-            transition: all 0.3s ease;
-        }
-        
-        .btn-primary {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
-        }
-        
-        .btn-primary:hover {
-            background-color: #4338CA;
-            border-color: #4338CA;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 6px rgba(79, 70, 229, 0.2);
-        }
-        
-        .btn-outline-primary {
-            color: var(--primary-color);
-            border-color: var(--primary-color);
-        }
-        
-        .btn-outline-primary:hover {
-            background-color: var(--primary-color);
-            color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 6px rgba(79, 70, 229, 0.2);
-        }
-        
-        /* Cards */
-        .card {
-            border: 1px solid var(--border-color);
-            border-radius: 0.75rem;
-            overflow: hidden;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
-        }
-        
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
-        }
-        
-        /* Footer */
-        .footer {
-            background-color: #1F2937;
-            color: white;
-            padding: 2rem 0;
-            margin-top: auto;
-        }
-        
-        .footer a {
-            color: #E5E7EB;
-            transition: all 0.3s ease;
-        }
-        
-        .footer a:hover {
-            color: white;
-            text-decoration: none;
-        }
-        
-        /* Animations */
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-            }
-            to {
-                opacity: 1;
-            }
-        }
-        
-        .fade-in {
-            animation: fadeIn 0.5s ease-in;
-        }
-        
-        /* Additional utility classes */
-        .text-primary {
-            color: var(--primary-color) !important;
-        }
-        
-        .bg-primary {
-            background-color: var(--primary-color) !important;
-        }
-        
-        .rounded-xl {
-            border-radius: 1rem !important;
-        }
-        
-        .shadow-sm {
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
-        }
-        
-        .shadow-md {
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
-        }
+      }
+
+      .fade-in {
+        animation: fadeIn 0.5s ease-in;
+      }
+
+      /* Additional utility classes */
+      .text-primary {
+        color: var(--primary-color) !important;
+      }
+
+      .bg-primary {
+        background-color: var(--primary-color) !important;
+      }
+
+      .rounded-xl {
+        border-radius: 1rem !important;
+      }
+
+      .shadow-sm {
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+      }
+
+      .shadow-md {
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+      }
+
+      /* Timeline Styles for Shipment Details */
+      .timeline {
+        position: relative;
+        padding-left: 1.5rem;
+        margin: 0 0 0 1rem;
+      }
+
+      .timeline:before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 2px;
+        height: 100%;
+        background-color: #e5e7eb;
+      }
+
+      .timeline-item {
+        position: relative;
+        padding-bottom: 1.5rem;
+      }
+
+      .timeline-item:last-child {
+        padding-bottom: 0;
+      }
+
+      .timeline-marker {
+        position: absolute;
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        border: 2px solid #e5e7eb;
+        background-color: white;
+        left: -1.57rem;
+        top: 0.2rem;
+      }
+
+      .timeline-item.completed .timeline-marker {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+      }
+
+      .timeline-content {
+        padding-bottom: 0.5rem;
+      }
+
+      /* Tracking number style */
+      .tracking-number {
+        font-family: monospace;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--primary-color);
+        padding: 0.75rem;
+        background-color: rgba(79, 70, 229, 0.1);
+        border-radius: 0.5rem;
+        letter-spacing: 1px;
+      }
     </style>
 
     {% block extra_css %}{% endblock %}
-</head>
-<body>
+  </head>
+  <body>
     <nav class="navbar navbar-expand-lg navbar-light fixed-top">
-        <div class="container-fluid px-4">
-            <a class="navbar-brand d-flex align-items-center" href="{{ url_for('amazon.index') }}">
-                <i class="fas fa-box-open me-2"></i> Mini-Amazon
-            </a>
-            
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" 
-                    aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'amazon.index' %}active{% endif %}" href="{{ url_for('amazon.index') }}">
-                            <i class="fas fa-home me-1"></i> Home
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint.startswith('product.') %}active{% endif %}" href="{{ url_for('amazon.product_list') }}">
-                            <i class="fas fa-th me-1"></i> Products
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint.startswith('order.') %}active{% endif %}" href="{{ url_for('amazon.order_list') }}">
-                            <i class="fas fa-receipt me-1"></i> Orders
-                        </a>
-                    </li>
-                </ul>
-                
-                <form class="d-flex me-3" role="search">
-                    <div class="input-group">
-                        <input class="form-control" type="search" placeholder="Search..." aria-label="Search">
-                        <button class="btn btn-primary" type="submit">
-                            <i class="fas fa-search"></i>
-                        </button>
-                    </div>
-                </form>
+      <div class="container-fluid px-4">
+        <a
+          class="navbar-brand d-flex align-items-center"
+          href="{{ url_for('amazon.index') }}"
+        >
+          <i class="fas fa-box-open me-2"></i> Mini-Amazon
+        </a>
 
-                <ul class="navbar-nav">
-                    <li class="nav-item me-2">
-                        <a class="nav-link position-relative" href="{{ url_for('amazon.cart') }}">
-                            <i class="fas fa-shopping-cart"></i>
-                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary">
-                                0
-                                <span class="visually-hidden">items in cart</span>
-                            </span>
-                        </a>
-                    </li>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" 
-                           data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-user-circle me-1"></i>
-                            <span>Account</span>
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-lg" aria-labelledby="userDropdown">
-                            {% if current_user.is_authenticated %}
-                            <li><a class="dropdown-item" href="{{ url_for('amazon.order_list') }}">
-                                <i class="fas fa-box me-2"></i> My Orders
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('amazon.profile') }}">
-                                <i class="fas fa-user me-2"></i> Profile
-                            </a></li>
-                            <li><a class="dropdown-item" href="#">
-                                <i class="fas fa-cog me-2"></i> Settings
-                            </a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('amazon.logout') }}">
-                                <i class="fas fa-sign-out-alt me-2"></i> Logout
-                            </a></li>
-                            {% else %}
-                            <li><a class="dropdown-item" href="{{ url_for('amazon.login') }}">
-                                <i class="fas fa-sign-in-alt me-2"></i> Login
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('amazon.register') }}">
-                                <i class="fas fa-user-plus me-2"></i> Register
-                            </a></li>
-                            {% endif %}
-                        </ul>
-                    </li>
-                </ul>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navbarNav"
+          aria-controls="navbarNav"
+          aria-expanded="false"
+          aria-label="Toggle navigation"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            <li class="nav-item">
+              <a
+                class="nav-link {% if request.endpoint == 'amazon.index' %}active{% endif %}"
+                href="{{ url_for('amazon.index') }}"
+              >
+                <i class="fas fa-home me-1"></i> Home
+              </a>
+            </li>
+            <li class="nav-item">
+              <a
+                class="nav-link {% if request.endpoint.startswith('product.') %}active{% endif %}"
+                href="{{ url_for('amazon.product_list') }}"
+              >
+                <i class="fas fa-th me-1"></i> Products
+              </a>
+            </li>
+            {% if current_user.is_authenticated %}
+            <!-- Orders & Shipments Dropdown -->
+            <li class="nav-item dropdown">
+              <a
+                class="nav-link dropdown-toggle"
+                href="#"
+                id="ordersDropdown"
+                role="button"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+              >
+                <i class="fas fa-box me-1"></i> My Orders
+              </a>
+              <ul
+                class="dropdown-menu rounded-lg shadow-sm border-0"
+                aria-labelledby="ordersDropdown"
+              >
+                <li>
+                  <a
+                    class="dropdown-item"
+                    href="{{ url_for('amazon.order_list') }}"
+                  >
+                    <i class="fas fa-list me-2"></i> All Orders
+                  </a>
+                </li>
+                <li>
+                  <a
+                    class="dropdown-item"
+                    href="{{ url_for('amazon.order_list', status='Unfulfilled') }}"
+                  >
+                    <i class="fas fa-clock me-2"></i> Pending Orders
+                  </a>
+                </li>
+                <li>
+                  <a
+                    class="dropdown-item"
+                    href="{{ url_for('amazon.order_list', status='Fulfilled') }}"
+                  >
+                    <i class="fas fa-check-circle me-2"></i> Completed Orders
+                  </a>
+                </li>
+                <li><hr class="dropdown-divider" /></li>
+                <li>
+                  <a
+                    class="dropdown-item"
+                    href="{{ url_for('amazon.shipment_list') }}"
+                  >
+                    <i class="fas fa-truck me-2"></i> All Shipments
+                  </a>
+                </li>
+              </ul>
+            </li>
+            {% endif %}
+          </ul>
+
+          <form class="d-flex me-3" role="search">
+            <div class="input-group">
+              <input
+                class="form-control"
+                type="search"
+                placeholder="Search..."
+                aria-label="Search"
+              />
+              <button class="btn btn-primary" type="submit">
+                <i class="fas fa-search"></i>
+              </button>
             </div>
+          </form>
+
+          <ul class="navbar-nav">
+            <li class="nav-item me-2">
+              <a
+                class="nav-link position-relative"
+                href="{{ url_for('amazon.cart') }}"
+              >
+                <i class="fas fa-shopping-cart"></i>
+                <span
+                  class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary"
+                >
+                  0
+                  <span class="visually-hidden">items in cart</span>
+                </span>
+              </a>
+            </li>
+            <li class="nav-item dropdown">
+              <a
+                class="nav-link dropdown-toggle d-flex align-items-center"
+                href="#"
+                id="userDropdown"
+                role="button"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+              >
+                <i class="fas fa-user-circle me-1"></i>
+                <span>Account</span>
+              </a>
+              <ul
+                class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-lg"
+                aria-labelledby="userDropdown"
+              >
+                {% if current_user.is_authenticated %}
+                <li>
+                  <a
+                    class="dropdown-item"
+                    href="{{ url_for('amazon.order_list') }}"
+                  >
+                    <i class="fas fa-box me-2"></i> My Orders
+                  </a>
+                </li>
+                <li>
+                  <a
+                    class="dropdown-item"
+                    href="{{ url_for('amazon.profile') }}"
+                  >
+                    <i class="fas fa-user me-2"></i> Profile
+                  </a>
+                </li>
+                <li>
+                  <a class="dropdown-item" href="#">
+                    <i class="fas fa-cog me-2"></i> Settings
+                  </a>
+                </li>
+                <li><hr class="dropdown-divider" /></li>
+                <li>
+                  <a
+                    class="dropdown-item"
+                    href="{{ url_for('amazon.logout') }}"
+                  >
+                    <i class="fas fa-sign-out-alt me-2"></i> Logout
+                  </a>
+                </li>
+                {% else %}
+                <li>
+                  <a class="dropdown-item" href="{{ url_for('amazon.login') }}">
+                    <i class="fas fa-sign-in-alt me-2"></i> Login
+                  </a>
+                </li>
+                <li>
+                  <a
+                    class="dropdown-item"
+                    href="{{ url_for('amazon.register') }}"
+                  >
+                    <i class="fas fa-user-plus me-2"></i> Register
+                  </a>
+                </li>
+                {% endif %}
+              </ul>
+            </li>
+          </ul>
         </div>
+      </div>
     </nav>
 
     <div class="container mt-4">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category or 'info' }} alert-dismissible fade show rounded-lg shadow-sm" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+      {% with messages = get_flashed_messages(with_categories=true) %} {% if
+      messages %} {% for category, message in messages %}
+      <div
+        class="alert alert-{{ category or 'info' }} alert-dismissible fade show rounded-lg shadow-sm"
+        role="alert"
+      >
+        {{ message }}
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="alert"
+          aria-label="Close"
+        ></button>
+      </div>
+      {% endfor %} {% endif %} {% endwith %}
     </div>
-    
+
     <main class="container py-4 fade-in">
-        {% block content %}{% endblock %}
+      {% block content %}{% endblock %}
     </main>
 
     <footer class="footer py-4">
-        <div class="container">
-            <div class="row">
-                <div class="col-lg-4 col-md-6 mb-4 mb-md-0">
-                    <h5 class="text-uppercase mb-4"><i class="fas fa-box-open me-2"></i> Mini-Amazon-Web</h5>
-                    <div class="d-flex mt-4">
-                        <a href="#" class="btn btn-outline-light btn-sm me-2"><i class="fab fa-facebook-f"></i></a>
-                        <a href="#" class="btn btn-outline-light btn-sm me-2"><i class="fab fa-twitter"></i></a>
-                        <a href="#" class="btn btn-outline-light btn-sm me-2"><i class="fab fa-instagram"></i></a>
-                        <a href="#" class="btn btn-outline-light btn-sm"><i class="fab fa-linkedin-in"></i></a>
-                    </div>
-                </div>
-                
-                <div class="col-lg-2 col-md-6 mb-4 mb-md-0">
-                    <h5 class="text-uppercase mb-4">Shop</h5>
-                    <ul class="list-unstyled">
-                        <li class="mb-2"><a href="{{ url_for('amazon.index') }}" class="text-decoration-none">Home</a></li>
-                        <li class="mb-2"><a href="{{ url_for('amazon.product_list') }}" class="text-decoration-none">Products</a></li>
-                        <li class="mb-2"><a href="#" class="text-decoration-none">Categories</a></li>
-                        <li class="mb-2"><a href="#" class="text-decoration-none">New Arrivals</a></li>
-                    </ul>
-                </div>
-                
-                <div class="col-lg-2 col-md-6 mb-4 mb-md-0">
-                    <h5 class="text-uppercase mb-4">My Account</h5>
-                    <ul class="list-unstyled">
-                        <li class="mb-2"><a href="{{ url_for('amazon.order_list') }}" class="text-decoration-none">My Orders</a></li>
-                        <li class="mb-2"><a href="{{ url_for('amazon.cart') }}" class="text-decoration-none">My Cart</a></li>
-                        <li class="mb-2"><a href="#" class="text-decoration-none">Wishlist</a></li>
-                        <li class="mb-2"><a href="#" class="text-decoration-none">Account Settings</a></li>
-                    </ul>
-                </div>
-                
-                <div class="col-lg-4 col-md-6">
-                    <h5 class="text-uppercase mb-4">Contact Us</h5>
-                    <p><i class="fas fa-map-marker-alt me-2"></i> 2127 Campus Drive Durham, NC 27708</p>
-                    <p><i class="fas fa-phone me-2"></i> (123) 456-7890</p>
-                    <p><i class="fas fa-envelope me-2"></i> szk@szk.com</p>
-                </div>
+      <div class="container">
+        <div class="row">
+          <div class="col-lg-4 col-md-6 mb-4 mb-md-0">
+            <h5 class="text-uppercase mb-4">
+              <i class="fas fa-box-open me-2"></i> Mini-Amazon-Web
+            </h5>
+            <div class="d-flex mt-4">
+              <a href="#" class="btn btn-outline-light btn-sm me-2"
+                ><i class="fab fa-facebook-f"></i
+              ></a>
+              <a href="#" class="btn btn-outline-light btn-sm me-2"
+                ><i class="fab fa-twitter"></i
+              ></a>
+              <a href="#" class="btn btn-outline-light btn-sm me-2"
+                ><i class="fab fa-instagram"></i
+              ></a>
+              <a href="#" class="btn btn-outline-light btn-sm"
+                ><i class="fab fa-linkedin-in"></i
+              ></a>
             </div>
-            
-            <hr class="my-4 bg-light opacity-25">
-            
-            <div class="row align-items-center">
+          </div>
 
+          <div class="col-lg-2 col-md-6 mb-4 mb-md-0">
+            <h5 class="text-uppercase mb-4">Shop</h5>
+            <ul class="list-unstyled">
+              <li class="mb-2">
+                <a
+                  href="{{ url_for('amazon.index') }}"
+                  class="text-decoration-none"
+                  >Home</a
+                >
+              </li>
+              <li class="mb-2">
+                <a
+                  href="{{ url_for('amazon.product_list') }}"
+                  class="text-decoration-none"
+                  >Products</a
+                >
+              </li>
+              <li class="mb-2">
+                <a href="#" class="text-decoration-none">Categories</a>
+              </li>
+              <li class="mb-2">
+                <a href="#" class="text-decoration-none">New Arrivals</a>
+              </li>
+            </ul>
+          </div>
 
-            </div>
+          <div class="col-lg-2 col-md-6 mb-4 mb-md-0">
+            <h5 class="text-uppercase mb-4">My Account</h5>
+            <ul class="list-unstyled">
+              <li class="mb-2">
+                <a
+                  href="{{ url_for('amazon.order_list') }}"
+                  class="text-decoration-none"
+                  >My Orders</a
+                >
+              </li>
+              <li class="mb-2">
+                <a
+                  href="{{ url_for('amazon.cart') }}"
+                  class="text-decoration-none"
+                  >My Cart</a
+                >
+              </li>
+              <li class="mb-2">
+                <a href="#" class="text-decoration-none">Wishlist</a>
+              </li>
+              <li class="mb-2">
+                <a href="#" class="text-decoration-none">Account Settings</a>
+              </li>
+            </ul>
+          </div>
+
+          <div class="col-lg-4 col-md-6">
+            <h5 class="text-uppercase mb-4">Contact Us</h5>
+            <p>
+              <i class="fas fa-map-marker-alt me-2"></i> 2127 Campus Drive
+              Durham, NC 27708
+            </p>
+            <p><i class="fas fa-phone me-2"></i> (123) 456-7890</p>
+            <p><i class="fas fa-envelope me-2"></i> szk@szk.com</p>
+          </div>
         </div>
+
+        <hr class="my-4 bg-light opacity-25" />
+
+        <div class="row align-items-center">
+          <div class="col-md-6 text-center text-md-start">
+            <p class="mb-0">&copy; 2025 Mini-Amazon. All rights reserved.</p>
+          </div>
+          <div class="col-md-6 text-center text-md-end">
+            <ul class="list-inline mb-0">
+              <li class="list-inline-item">
+                <a href="#" class="text-decoration-none">Privacy</a>
+              </li>
+              <li class="list-inline-item">
+                <a href="#" class="text-decoration-none">Terms</a>
+              </li>
+              <li class="list-inline-item">
+                <a href="#" class="text-decoration-none">FAQ</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
     </footer>
 
+    <!-- Track Shipment Modal -->
+    <div
+      class="modal fade"
+      id="trackShipmentModal"
+      tabindex="-1"
+      aria-labelledby="trackShipmentModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="trackShipmentModalLabel">
+              Track Shipment
+            </h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <form
+              id="trackShipmentForm"
+              action="{{ url_for('amazon.shipment_detail', shipment_id=0) }}"
+              method="GET"
+            >
+              <div class="mb-3">
+                <label for="shipmentId" class="form-label">Shipment ID</label>
+                <input
+                  type="number"
+                  class="form-control"
+                  id="shipmentId"
+                  name="shipment_id"
+                  required
+                />
+              </div>
+              <div class="text-center mb-3">or</div>
+              <div class="mb-3">
+                <label for="trackingNumber" class="form-label"
+                  >UPS Tracking Number</label
+                >
+                <input
+                  type="text"
+                  class="form-control"
+                  id="trackingNumber"
+                  name="tracking_id"
+                />
+              </div>
+              <div class="d-grid">
+                <button type="submit" class="btn btn-primary">Track</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        // Track Shipment Modal Setup
+        const trackShipmentLink = document.getElementById("trackShipmentLink");
+        const trackShipmentForm = document.getElementById("trackShipmentForm");
+        const shipmentIdInput = document.getElementById("shipmentId");
+        const trackingNumberInput = document.getElementById("trackingNumber");
+
+        if (trackShipmentLink) {
+          trackShipmentLink.addEventListener("click", function (e) {
+            e.preventDefault();
+            const trackShipmentModal = new bootstrap.Modal(
+              document.getElementById("trackShipmentModal")
+            );
+            trackShipmentModal.show();
+          });
+        }
+
+        if (trackShipmentForm) {
+          trackShipmentForm.addEventListener("submit", function (e) {
+            e.preventDefault();
+
+            if (shipmentIdInput.value) {
+              window.location.href =
+                '{{ url_for("amazon.shipment_detail", shipment_id=0) }}'.replace(
+                  "0",
+                  shipmentIdInput.value
+                );
+            } else if (trackingNumberInput.value) {
+              // If tracking number provided, fetch shipment_id first
+              fetch(
+                '{{ url_for("api.api_tracking", tracking_id="") }}' +
+                  trackingNumberInput.value
+              )
+                .then((response) => response.json())
+                .then((data) => {
+                  if (data.error) {
+                    alert("Tracking number not found: " + data.error);
+                  } else {
+                    window.location.href =
+                      '{{ url_for("amazon.shipment_detail", shipment_id=0) }}'.replace(
+                        "0",
+                        data.shipment_id
+                      );
+                  }
+                })
+                .catch((error) => {
+                  console.error("Error:", error);
+                  alert(
+                    "An error occurred while tracking your shipment. Please try again."
+                  );
+                });
+            } else {
+              alert("Please enter either a Shipment ID or a Tracking Number");
+            }
+          });
+        }
+      });
+    </script>
+
     {% block extra_js %}{% endblock %}
-</body>
+  </body>
 </html>

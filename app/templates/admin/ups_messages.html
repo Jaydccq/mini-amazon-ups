@@ -1,0 +1,68 @@
+{% extends "layout.html" %} {% block title %}UPS System Messages | Mini-Amazon{%
+endblock %} {% block content %}
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>UPS System Messages</h1>
+    {# Add status badge if applicable #}
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>ID</th>
+              <th>Timestamp</th>
+              <th>Type / Direction</th>
+              <th>Payload Snippet</th>
+              <th>Status</th>
+              {# Add other relevant columns #}
+            </tr>
+          </thead>
+          <tbody>
+            {% for msg in messages %}
+            <tr>
+              <td>{{ msg.id }}</td>
+              <td>
+                <small
+                  >{{ msg.timestamp.strftime('%Y-%m-%d %H:%M:%S') if
+                  msg.timestamp else 'N/A' }}</small
+                >
+              </td>
+              <td>
+                {# Add badges or formatting for type/direction #}
+                <span class="badge bg-info text-dark"
+                  >{{ msg.message_type }}</span
+                >
+              </td>
+              <td><small>{{ msg.payload | truncate(150) }}</small></td>
+              <td>
+                {# Add badges for status #}
+                <span
+                  class="badge {% if msg.status == 'sent' %}bg-secondary {% elif msg.status == 'received' %}bg-light text-dark border {% elif msg.status == 'acked' or msg.status == 'success' %}bg-success {% elif msg.status == 'failed' %}bg-danger {% else %}bg-secondary {% endif %}"
+                >
+                  {{ msg.status }}
+                </span>
+              </td>
+              {# Add other columns #}
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="5" class="text-center py-3 text-muted">
+                No UPS messages recorded yet.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% if messages %}
+    <div class="card-footer text-muted small">
+      Displaying the last 100 messages related to UPS communication.
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -294,3 +294,20 @@ class Inventory:
         except Exception as e:
             print(f"Error updating inventory quantity for seller {seller_id}, product {product_id}: {e}")
             return False
+
+    @staticmethod
+    def get_warehouse_id_by_productId_sellerId(product_id, seller_id):
+        try:
+            rows = db.session.execute(
+                text('''
+                    SELECT inventory_id
+                    FROM Inventory
+                    WHERE product_id = :product_id AND owner_id = :owner_id
+                '''),
+                {"product_id": product_id, "seller_id": seller_id}
+            ).first()
+
+            return rows[0][0] if rows else None
+        except Exception as e:
+            print(f"Error getting warehouse ID for product {product_id} and seller {seller_id}: {e}")
+            return None

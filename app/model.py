@@ -3,7 +3,10 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 
+from app.services.shipment_service import ShipmentService
+
 db = SQLAlchemy()
+shipment_service = ShipmentService()
 
 class User(UserMixin, db.Model):
     __tablename__ = 'accounts'
@@ -21,6 +24,8 @@ class User(UserMixin, db.Model):
     
     orders = db.relationship('Order', back_populates='user', foreign_keys='Order.buyer_id')
     cart = db.relationship('Cart', uselist=False, back_populates='user')
+
+
     
     def set_password(self, password):
         self.password = generate_password_hash(password)
@@ -75,29 +80,30 @@ class Cart(db.Model):
     items = db.relationship('CartProduct', back_populates='cart', cascade='all, delete-orphan')
     
     @classmethod
-    def checkout_cart(cls, user_id):
+    def checkout_cart(cls, user_id,destination_x,destination_y,ups_account):
         """Process cart checkout and create an order"""
         try:
             # Get the user's cart
             cart = Cart.query.filter_by(user_id=user_id).first()
             if not cart or not cart.items:
-                return False, "Cart is empty"
-            
-            # Calculate total
-            total_amount = sum(item.quantity * item.price_at_addition for item in cart.items)
-            
-            # Create new order
-            order = Order(
-                buyer_id=user_id,
-                total_amount=total_amount,
-                num_products=sum(item.quantity for item in cart.items),
-                order_status='Unfulfilled'
-            )
-            db.session.add(order)
-            db.session.flush()  # Get the order ID
-            
-            # Create order items
+                return False, -1
+
+            checkout_count = 0
+            # Create orders
             for cart_item in cart.items:
+                # Create new order
+                order = Order(
+                    buyer_id=user_id,
+                    total_amount=cart_item.quantity * cart_item.price_at_addition,
+                    num_products=cart_item.quantity,
+                    order_status='Unfulfilled'
+                )
+                db.session.add(order)
+                db.session.flush()  # Get the order ID
+
+                warehouse_id = Inventory.get_warehouse_id_by_productId_sellerId(cart_item.product_id,
+                                                                                cart_item.seller_id)
+
                 order_item = OrderProduct(
                     order_id=order.order_id,
                     product_id=cart_item.product_id,
@@ -107,16 +113,28 @@ class Cart(db.Model):
                     status='Unfulfilled'
                 )
                 db.session.add(order_item)
-            
-            # Clear cart
-            for item in cart.items:
-                db.session.delete(item)
-            
-            db.session.commit()
-            return True, order.order_id
+
+                db.session.delete(cart_item)
+
+                shipment_success, shipment_id_or_error = shipment_service.create_shipment(
+                    order_id=order.order_id,
+                    warehouse_id=warehouse_id,
+                    destination_x=destination_x,
+                    destination_y=destination_y,
+                    ups_account=ups_account
+                )
+
+                if not shipment_success:
+                    db.session.rollback()
+                    return False, checkout_count
+
+                db.session.commit()
+                checkout_count+=1
+
+            return True, checkout_count
         except Exception as e:
             db.session.rollback()
-            return False, str(e)
+            return False, -1
 
 class CartProduct(db.Model):
     __tablename__ = 'cart_products'

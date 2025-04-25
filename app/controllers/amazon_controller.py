@@ -387,41 +387,23 @@ def checkout():
         destination_x = request.form.get('destination_x', type=int)
         destination_y = request.form.get('destination_y', type=int)
         ups_account = request.form.get('ups_account')
-        warehouse_id = request.form.get('warehouse_id', type=int)
+        # warehouse_id = request.form.get('warehouse_id', type=int)
 
         if destination_x is None or destination_y is None:
             flash('Please provide delivery coordinates', 'error')
             return redirect(url_for('amazon.checkout'))
 
-        if not warehouse_id:
-            warehouse = warehouse_service.get_nearest_warehouse(destination_x, destination_y)
-            if warehouse:
-                warehouse_id = warehouse.warehouse_id
-            else:
-                flash('No warehouse available for delivery', 'error')
-                return redirect(url_for('amazon.checkout'))
-
-        success, result = Cart.checkout_cart(current_user.user_id)
+        success, checkout_count = Cart.checkout_cart(current_user.user_id,
+                                                                     destination_x, destination_y, ups_account)
 
         if success:
-            order_id = result
-            shipment_success, shipment_id_or_error = shipment_service.create_shipment(
-                order_id=order_id,
-                warehouse_id=warehouse_id,
-                destination_x=destination_x,
-                destination_y=destination_y,
-                ups_account=ups_account
-            )
+            flash(f'Order placed successfully! Total: {checkout_count} items', 'success')
+            return redirect(url_for('amazon.index'))
 
-            if shipment_success:
-                flash(f'Order placed successfully! Shipment ID: {shipment_id_or_error}', 'success')
-                return redirect(url_for('amazon.order_detail', order_id=order_id))
-            else:
-                flash(f'Order placed, but shipment creation failed: {shipment_id_or_error}', 'warning')
-                return redirect(url_for('amazon.order_detail', order_id=order_id))
         else:
-            flash(f'Checkout failed: {result}', 'error')
+            flash(f'Checkout failed: only {checkout_count} checked out successful!', 'error')
             return redirect(url_for('amazon.cart'))
+
 
     warehouses = Warehouse.query.filter_by(active=True).all()
 
@@ -712,22 +694,7 @@ def product_reviews(product_id):
                           rating_distribution=rating_distribution)
 
 
-# @amazon_bp.route('/seller/<int:seller_id>/reviews')
-# def seller_reviews(seller_id):
-#     seller = User.query.get_or_404(seller_id)
-#     # Assuming get_seller_reviews exists and returns review objects
-#     reviews = ReviewService.get_seller_reviews(seller_id)
-#     # Assuming get_avg_rating_seller exists
-#     avg_rating, review_count = ReviewService.get_avg_rating_seller(seller_id)
-#     # Assuming get_rating_distribution_seller exists
-#     rating_distribution = ReviewService.get_rating_distribution_seller(seller_id)
-#
-#     return render_template('seller/reviews.html',
-#                            seller=seller,
-#                            reviews=reviews,
-#                            avg_rating=avg_rating,
-#                            review_count=review_count,
-#                            rating_distribution=rating_distribution)
+
 @amazon_bp.route('/seller/<int:seller_id>/reviews')
 def seller_reviews(seller_id):
     seller = User.query.get_or_404(seller_id)

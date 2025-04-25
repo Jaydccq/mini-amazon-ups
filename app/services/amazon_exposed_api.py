@@ -6,12 +6,57 @@ from datetime import datetime
 import logging
 import ups_integration_service
 from app.services.shipment_service import ShipmentService
+from world_simulator_service import WorldSimulatorService
 
 logger = logging.getLogger(__name__)
 
 # Create a Blueprint for UPS webhook endpoints
 ups_webhooks = Blueprint('ups_webhooks', __name__, url_prefix='/api/ups/webhooks')
 shipment_service_instance = ShipmentService();
+world_simulator_service_instance = WorldSimulatorService()
+
+@ups_webhooks.route('/set_worldid', methods=['POST'])
+def set_worldid():
+    """
+    UPS notifies Amazon that a shipment has been created
+    """
+    try:
+        message = request.get_json()
+
+        # {world_id: 1234567890}
+
+        # Extract data
+        world_id = message.get('world_id')
+
+        # Connect to world
+
+        if world_simulator_service_instance.world_id != world_id:
+            logger.info(f"Connecting to new world: {world_id}")
+            # Disconnect from the previous world if connected
+            world_simulator_service_instance.disconnect(world_id)
+            world_simulator_service_instance.connect(world_id)
+        else:
+            logger.info(f"Already connected to world: {world_id}")
+
+        # Return success response
+        return jsonify({
+            'message_type': 'Acknowledgement',
+            'timestamp': datetime.utcnow().isoformat(),
+            'payload': {
+                'status': 'success'
+            }
+        })
+
+    except Exception as e:
+        logger.error(f"Error processing UPS webhook: {str(e)}")
+        return jsonify({
+            'message_type': 'Error',
+            'timestamp': datetime.utcnow().isoformat(),
+            'payload': {
+                'error_code': 3000,
+                'error_message': str(e)
+            }
+        }), 500
 
 @ups_webhooks.route('/truck-dispatched', methods=['POST'])
 def truck_dispatched():
@@ -27,10 +72,11 @@ def truck_dispatched():
                 'message_type': 'Error',
                 'timestamp': datetime.utcnow().isoformat(),
                 'payload': {
-                    'error_code': 400,
-                    'error_message': 'Invalid message structure'
+                    'status': 'fail',
+                    'code': 1000,
+                    'message': 'Invalid message structure'
                 }
-            }), 400
+            }), 500
 
         # Extract data
         payload = message.get('payload', {})
@@ -41,14 +87,14 @@ def truck_dispatched():
         shipment = Shipment.query.filter_by(shipment_id=shipment_id).first()
         if not shipment:
             return jsonify({
-                'message_type': 'Error',
+                'message_type': 'fail',
                 'timestamp': datetime.utcnow().isoformat(),
                 'payload': {
                     'original_sequence_number': message.get('sequence_number'),
-                    'error_code': 404,
+                    'error_code': 2000,
                     'error_message': f'Shipment {shipment_id} not found'
                 }
-            }), 404
+            }), 500
 
         # Update shipment with truck information
         shipment.truck_id = truck_id
@@ -63,20 +109,21 @@ def truck_dispatched():
             'message_type': 'Acknowledgement',
             'timestamp': datetime.utcnow().isoformat(),
             'payload': {
-                'original_sequence_number': message.get('sequence_number'),
-                'status': 'success'
+                'status': 'success',
+                'code': 200,
+                'message': ''
             }
         })
 
     except Exception as e:
         logger.error(f"Error processing truck dispatch notification: {str(e)}")
         return jsonify({
-            'message_type': 'Error',
+            'message_type': 'fail',
             'timestamp': datetime.utcnow().isoformat(),
             'payload': {
-                'original_sequence_number': message.get('sequence_number', 0),
-                'error_code': 500,
-                'error_message': str(e)
+                'status': 'error',
+                'code': 3000,
+                'message': str(e)
             }
         }), 500
 
@@ -95,10 +142,11 @@ def truck_arrived():
                 'message_type': 'Error',
                 'timestamp': datetime.utcnow().isoformat(),
                 'payload': {
-                    'error_code': 400,
-                    'error_message': 'Invalid message structure'
+                    'status': 'fail',
+                    'code': 1000,
+                    'message': 'Invalid message structure'
                 }
-            }), 400
+            }), 1000
 
         # Extract data
         payload = message.get('payload', {})
@@ -113,10 +161,11 @@ def truck_arrived():
                 'message_type': 'Error',
                 'timestamp': datetime.utcnow().isoformat(),
                 'payload': {
-                    'error_code': 404,
-                    'error_message': f'Warehouse {warehouse_id} not found'
+                    'status': 'fail',
+                    'code': 2001,
+                    'message': f'Warehouse {warehouse_id} not found'
                 }
-            }), 404
+            }), 500
 
         # Update shipment status
         shipment = Shipment.query.filter_by(shipment_id=shipment_id).first()
@@ -125,10 +174,11 @@ def truck_arrived():
                 'message_type': 'Error',
                 'timestamp': datetime.utcnow().isoformat(),
                 'payload': {
-                    'error_code': 404,
-                    'error_message': f'Shipment {shipment_id} not found'
+                    'status': 'fail',
+                    'code': 2000,
+                    'message': f'Shipment {shipment_id} not found'
                 }
-            }), 404
+            }), 500
 
         shipment.status = 'ready_for_loading'
         shipment.updated_at = datetime.utcnow()
@@ -147,10 +197,12 @@ def truck_arrived():
         )
 
         return jsonify({
-            'message_type': 'Acknowledgement',
+            'message_type': 'TruckArrived',
             'timestamp': datetime.utcnow().isoformat(),
             'payload': {
-                'status': 'success'
+                'status': 'success',
+                'code': 200,
+                'message': ''
             }
         })
 
@@ -181,10 +233,11 @@ def shipment_delivered():
                 'message_type': 'Error',
                 'timestamp': datetime.utcnow().isoformat(),
                 'payload': {
-                    'error_code': 400,
-                    'error_message': 'Invalid message structure'
+                    'status': 'fail',
+                    'code': 1000,
+                    'message': 'Invalid message structure'
                 }
-            }), 400
+            }), 500
 
         # Extract data
         payload = message.get('payload', {})
@@ -198,11 +251,11 @@ def shipment_delivered():
                 'message_type': 'Error',
                 'timestamp': datetime.utcnow().isoformat(),
                 'payload': {
-                    'original_sequence_number': sequence_number,
-                    'error_code': 404,
-                    'error_message': f'Shipment {shipment_id} not found'
+                    'status': 'fail',
+                    'code': 2000,
+                    'message': f'Shipment {shipment_id} not found'
                 }
-            }), 404
+            }), 500
 
         shipment.status = 'delivered'
         shipment.delivery_time = datetime.utcnow()
@@ -226,8 +279,9 @@ def shipment_delivered():
             'message_type': 'Acknowledgement',
             'timestamp': datetime.utcnow().isoformat(),
             'payload': {
-                'original_sequence_number': sequence_number,
-                'status': 'success'
+                'status': 'success',
+                'code':200,
+                'message': ''
             }
         })
 
@@ -238,9 +292,9 @@ def shipment_delivered():
             'message_type': 'Error',
             'timestamp': datetime.utcnow().isoformat(),
             'payload': {
-                'original_sequence_number': message.get('sequence_number', 0),
-                'error_code': 500,
-                'error_message': str(e)
+                'status': 'fail',
+                'code': 3000,
+                'message': str(e)
             }
         }), 500
 
@@ -259,10 +313,11 @@ def shipment_detail_request():
                 'message_type': 'Error',
                 'timestamp': datetime.utcnow().isoformat(),
                 'payload': {
-                    'error_code': 400,
-                    'error_message': 'Invalid message structure'
+                    'status': 'fail',
+                    'code': 1000,
+                    'message': ''
                 }
-            }), 400
+            }), 500
 
         # Extract data
         payload = message.get('payload', {})
@@ -276,10 +331,11 @@ def shipment_detail_request():
                 'message_type': 'Error',
                 'timestamp': datetime.utcnow().isoformat(),
                 'payload': {
-                    'error_code': 404,
-                    'error_message': f'Shipment {shipment_id} not found'
+                    'status': 'fail',
+                    'code': 2000,
+                    'message': ''
                 }
-            }), 404
+            }), 500
 
         # Get shipment items
         items = []

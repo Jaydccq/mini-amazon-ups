@@ -9,6 +9,12 @@ from app.model import db, UPSMessage, Shipment, Order
 
 logger = logging.getLogger(__name__)
 
+uri_map = {
+    'ShipmentCreated': '/shipment/',
+    'ShipmentLoaded': '/shipment_loaded/',
+    'ShipmentStatusRequest': '/shipment_status/',
+    # 'ShipmentStatusResponse': '/shipment_detail_response/',
+}
 
 class UPSIntegrationService:
     def __init__(self, ups_url='http://ups-service:8080/api'):
@@ -17,12 +23,16 @@ class UPSIntegrationService:
 
     def notify_package_created(self, user_id, email, shipment_id, warehouse_id, destination_x, destination_y, ups_account=None):
         message = {
-            'user_id': user_id,
-            'email': email,
-            'shipment_id': shipment_id,
-            'warehouse_id': warehouse_id,
-            "destination_x": destination_x,
-            "destination_y": destination_y,
+            "message_type": "ShipmentCreated",
+            "timestamp": datetime.utcnow(),
+            "payload": {
+                'user_id': user_id,
+                'email': email,
+                'shipment_id': shipment_id,
+                'warehouse_id': warehouse_id,
+                "destination_x": destination_x,
+                "destination_y": destination_y
+            }
         }
 
         if ups_account:
@@ -42,14 +52,24 @@ class UPSIntegrationService:
 
         # Update message status in database
         db_message.status = 'success' if success else 'failed'
-        db.session.commit()
 
-        return response
+        if(response.get('payload').get('status') == 'success'):
+            db_message.status = 'success'
+            db.session.commit()
+            return True, 'Order created successfully'
+        else:
+            db_message.status = 'failed'
+            db.session.commit()
+            return False, 'Order creation failed: '+response.get('payload').get('message')
 
     # Notify UPS that a package has been loaded
     def notify_package_loaded(self, shipment_id):
         message = {
-            'shipment_id': shipment_id
+            "message_type": "ShipmentLoaded",
+              "timestamp": datetime.utcnow(),
+              "payload": {
+                "shipment_id": shipment_id
+              }
         }
 
         # Save message to database
@@ -66,6 +86,7 @@ class UPSIntegrationService:
 
         # Update message status in database
         db_message.status = 'success' if success else 'failed'
+
         db.session.commit()
 
         return response
@@ -76,7 +97,11 @@ class UPSIntegrationService:
 
             # Query the shipment status from UPS
             message = {
-                'shipment_id': shipment_id
+                "message_type": "ShipmentStatusRequest",
+                  "timestamp": datetime.utcnow(),
+                  "payload": {
+                    "shipment_id": shipment_id
+                }
             }
 
             success, response = self.send_message('ShipmentStatusRequest', message)

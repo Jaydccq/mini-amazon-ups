@@ -374,6 +374,7 @@ class Inventory(db.Model):
     # owner_id might be redundant if product.owner_id is always the same,
     # but keeping it if your SQL defines it. Check if needed.
     owner_id = db.Column(db.Integer, db.ForeignKey('accounts.user_id'), nullable=True)
+    warehouse_id = db.Column(db.Integer, db.ForeignKey('warehouses.warehouse_id'), nullable=True)
 
     # Relationships
     seller = db.relationship('User', foreign_keys=[seller_id])

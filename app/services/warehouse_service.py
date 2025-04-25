@@ -48,42 +48,68 @@ class WarehouseService:
     
     # add a product to a warehouse
     def add_product_to_warehouse(self, warehouse_id, product_id, quantity):
+        """Adds or updates product quantity in a specific warehouse with improved error handling."""
         try:
-            warehouse = Warehouse.query.filter_by(warehouse_id=warehouse_id).first()
+            # Ensure warehouse and product exist
+            warehouse = db.session.get(Warehouse, warehouse_id) # Use get for primary key lookup
             if not warehouse:
-                return False, "Warehouse not found"
-            
-            product = Product.query.filter_by(product_id=product_id).first()
+                logger.warning(f"add_product_to_warehouse: Warehouse ID {warehouse_id} not found.")
+                return False, f"Warehouse ID {warehouse_id} not found."
+            if not warehouse.active: # Optional: Check if warehouse is active
+                 logger.warning(f"add_product_to_warehouse: Warehouse ID {warehouse_id} is inactive.")
+                 return False, f"Warehouse ID {warehouse_id} is inactive."
+
+            product = db.session.get(Product, product_id) # Use get for primary key lookup
             if not product:
-                return False, "Product not found"
-            
+                logger.warning(f"add_product_to_warehouse: Product ID {product_id} not found.")
+                return False, f"Product ID {product_id} not found."
+
+            if not isinstance(quantity, int) or quantity <= 0:
+                logger.warning(f"add_product_to_warehouse: Invalid quantity '{quantity}' provided for ProdID {product_id}, WHID {warehouse_id}.")
+                return False, "Quantity must be a positive integer."
+
+
+            # Find existing warehouse-product link
             warehouse_product = WarehouseProduct.query.filter_by(
                 warehouse_id=warehouse_id,
                 product_id=product_id
             ).first()
-            
+
             if warehouse_product:
-                # Update quantity
+                # Update quantity if record exists
                 warehouse_product.quantity += quantity
+                warehouse_product.updated_at = datetime.now(timezone.utc) # Manually update timestamp
+                logger.info(f"Updating WarehouseProduct: WH={warehouse_id}, Prod={product_id}, Adding Qty={quantity}, New Qty={warehouse_product.quantity}")
             else:
-                # Create new inventory entry
+                # Create new inventory entry if it doesn't exist
                 warehouse_product = WarehouseProduct(
                     warehouse_id=warehouse_id,
                     product_id=product_id,
                     quantity=quantity
                 )
+                logger.info(f"Creating WarehouseProduct: WH={warehouse_id}, Prod={product_id}, Qty={quantity}")
                 db.session.add(warehouse_product)
-            
-            db.session.commit()
-            return True, quantity
-        except SQLAlchemyError as e:
-            db.session.rollback()
-            logger.error(f"Database error adding product to warehouse: {str(e)}")
-            return False, str(e)
-        except Exception as e:
-            db.session.rollback()
-            logger.error(f"Error adding product to warehouse: {str(e)}")
-            return False, str(e)
+
+            # Attempt to commit the change
+            try:
+                db.session.commit()
+                logger.info(f"Successfully committed stock update for ProdID {product_id} in WHID {warehouse_id}.")
+                # Return the NEW total quantity for this warehouse/product combination
+                return True, warehouse_product.quantity
+            except SQLAlchemyError as commit_err:
+                 db.session.rollback()
+                 logger.error(f"Database commit error adding/updating stock for ProdID {product_id} in WHID {warehouse_id}: {commit_err}", exc_info=True) # Log full error
+                 return False, f"Database commit error: {str(commit_err)}"
+            except Exception as commit_e: # Catch other potential commit errors
+                 db.session.rollback()
+                 logger.error(f"Unexpected commit error for ProdID {product_id} in WHID {warehouse_id}: {commit_e}", exc_info=True)
+                 return False, f"Unexpected database error: {str(commit_e)}"
+
+        except Exception as e: # Catch errors during validation or query
+            db.session.rollback() # Rollback any potential partial changes
+            logger.error(f"General error in add_product_to_warehouse for ProdID {product_id}, WHID {warehouse_id}: {e}", exc_info=True)
+            return False, f"An unexpected error occurred: {str(e)}"
+
     
     # remove a product from a warehouse
     def remove_product_from_warehouse(self, warehouse_id, product_id, quantity):

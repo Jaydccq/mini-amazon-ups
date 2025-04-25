@@ -96,6 +96,7 @@ def create_app(test_config=None):
                 host=app.config.get('WORLD_HOST'),
                 port=app.config.get('WORLD_PORT')
             )
+            app.config['DEFAULT_SIM_SPEED'] = 3001
             app.config['WORLD_SIMULATOR_SERVICE'] = world_simulator_service
             app.logger.info(f"WorldSimulatorService initialized and stored (Host: {app.config.get('WORLD_HOST')}, Port: {app.config.get('WORLD_PORT')})")
         except Exception as e:

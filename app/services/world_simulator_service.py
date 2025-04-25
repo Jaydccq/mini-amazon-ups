@@ -60,7 +60,9 @@ class WorldSimulatorService:
     
     # Connect to the world simulator
     def connect(self, world_id=None, init_warehouses=None):
+        
         try:
+            self.cleanup_old_world_messages()
             logger.info(f"Connecting to World Simulator at {self.host}:{self.port}...")
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.connect((self.host, self.port))
@@ -79,7 +81,9 @@ class WorldSimulatorService:
                 default_init_warehouses.append(one_warehouse)
 
             init_warehouses =  default_init_warehouses
-
+            default_speed_command = amazon_pb2.ACommands()
+            default_speed_command.simspeed = 1000
+            self.queue_command(default_speed_command)
             # print(connect_msg)
             if world_id:
                 connect_msg.worldid = world_id
@@ -634,4 +638,22 @@ class WorldSimulatorService:
         except Exception as e:
             logger.error(f"Error creating or queueing set_sim_speed command: {e}", exc_info=True)
             return False
-
+    def cleanup_old_world_messages(self):
+        """
+        Clean up old world messages from the database when initializing or connecting.
+        This helps prevent accumulation of stale messages across different world connections.
+        """
+        try:
+            # Option 1: Delete all existing WorldMessage records
+            deleted_count = db.session.query(WorldMessage).delete()
+            
+            # Option 2: Delete messages older than a certain threshold (optional alternative)
+            # from datetime import datetime, timedelta
+            # threshold = datetime.utcnow() - timedelta(hours=24)
+            # deleted_count = db.session.query(WorldMessage).filter(WorldMessage.created_at < threshold).delete()
+            
+            db.session.commit()
+            logger.info(f"Cleaned up {deleted_count} old world messages")
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error cleaning up world messages: {e}")

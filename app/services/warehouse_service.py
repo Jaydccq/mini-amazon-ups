@@ -9,6 +9,7 @@ class WarehouseService:
     def __init__(self):
         # self.world_simulator = current_app.config.get('WORLD_SIMULATOR_SERVICE')
         self.world_simulator = current_app.config.get('WORLD_SIMULATOR_SERVICE') 
+        
     
     def initialize_warehouse(self, x, y, world_id=None):
         try:

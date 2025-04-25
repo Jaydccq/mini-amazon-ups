@@ -555,6 +555,10 @@ def connect_world():
         init_warehouses = []
 
         if action == 'create':
+            sim_speed = request.form.get('sim_speed', 2999, type=int)
+
+
+
             if not warehouse_ids:
                 flash('Please select at least one warehouse to initialize.', 'warning')
                 return redirect(url_for('admin.connect_world'))

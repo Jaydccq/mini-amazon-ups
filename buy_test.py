@@ -28,8 +28,8 @@ WORLD_HOST = os.environ.get('WORLD_HOST', 'server')
 WORLD_PORT = int(os.environ.get('WORLD_PORT', '23456'))
 CONNECT_WORLD_ID = None # Create a new world
 BUY_WAREHOUSE_ID = 1 # Warehouse ID to buy for / initialize
-BUY_QUANTITY_PER_PRODUCT = 2 # Quantity to buy for EACH product
-MAX_PRODUCTS_TO_BUY = 10 # Limit how many products to buy to avoid flooding (adjust as needed)
+BUY_QUANTITY_PER_PRODUCT = 5 # Quantity to buy for EACH product
+MAX_PRODUCTS_TO_BUY = 136 # Limit how many products to buy to avoid flooding (adjust as needed)
 DELAY_BETWEEN_BUYS = 0.5 # Seconds delay between each buy request
 WAIT_TIME_AFTER_ALL_BUYS = 20 # Seconds to wait after sending all buy commands
 

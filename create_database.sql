@@ -179,17 +179,32 @@ CREATE TABLE world_messages (
 );
 
 -- UPS Messages table (for communication with UPS)
+-- CREATE TABLE ups_messages (
+--     id SERIAL PRIMARY KEY,
+--     seqnum BIGINT NOT NULL,
+--     message_type VARCHAR(50) NOT NULL,
+--     message_content TEXT NOT NULL,
+--     status VARCHAR(20) NOT NULL,
+--     retries INTEGER DEFAULT 0,
+--     payload TEXT NOT NULL,
+--     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+--     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+--     CHECK (status IN ('sent', 'acked', 'failed'))
+-- );
+
 CREATE TABLE ups_messages (
     id SERIAL PRIMARY KEY,
-    seqnum BIGINT NOT NULL,
     message_type VARCHAR(50) NOT NULL,
-    message_content TEXT NOT NULL,
-    status VARCHAR(20) NOT NULL,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Added timestamp
+    payload TEXT NOT NULL,                 -- Use payload, not message_content
+    status VARCHAR(20) NOT NULL DEFAULT 'sent',
+    seqnum BIGINT,                          -- Made seqnum nullable
     retries INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CHECK (status IN ('sent', 'acked', 'failed'))
+    CHECK (status IN ('sent', 'acked', 'failed', 'received', 'success')) -- Updated CHECK constraint
 );
+
 
 -- UPS Messages table (for communication with UPS)
 -- UPS Messages table (for communication with UPS)

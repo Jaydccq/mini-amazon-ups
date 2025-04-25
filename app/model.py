@@ -333,6 +333,8 @@ class UPSMessage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     message_type = db.Column(db.String(50), nullable=False)  # package_created, package_packed, package_loaded, etc.
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
     payload = db.Column(db.Text, nullable=False)  # JSON
 
 # app/model.py

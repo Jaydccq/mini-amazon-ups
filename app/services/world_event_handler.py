@@ -10,7 +10,7 @@ class WorldEventHandler:
     def __init__(self,app=None):
         self.app = app
         self.warehouse_service = WarehouseService()
-        self.shipment_service = ShipmentService()
+        self.shipment_service = ShipmentService(world_simulator_service=current_app.config.get('WORLD_SIMULATOR_SERVICE'))
 
     # Handle world events    
     def handle_world_event(self, event_type, event_data):

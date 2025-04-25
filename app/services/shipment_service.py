@@ -7,11 +7,12 @@ from app.services.world_simulator_service import WorldSimulatorService
 from app.services.ups_integration_service import UPSIntegrationService
 from datetime import datetime, timezone
 
+
 logger = logging.getLogger(__name__)
 
 class ShipmentService:
-    def __init__(self):
-        self.world_simulator = WorldSimulatorService()
+    def __init__(self, world_simulator_service=None):
+        self.world_simulator = world_simulator_service
         self.ups_integration = UPSIntegrationService()
     
     def create_shipment(self, order_id, warehouse_id, destination_x, destination_y, ups_account=None):
@@ -60,6 +61,8 @@ class ShipmentService:
             
             # Commit 
             db.session.commit()
+
+            logger.info(f"Sending Shipment ID: {shipment.shipment_id}")
             
             # Notify UPS 
             notify_res, msg = self.ups_integration.notify_package_created(
@@ -70,8 +73,11 @@ class ShipmentService:
             )
 
             if not notify_res:
+                logger.error(f"Failed to notify UPS: {msg}")
                 db.session.rollback()
                 return False, msg
+            
+            logger.info(f"Send Shipment ID Successfully: {shipment.shipment_id}")
             
             # adding shipment items
             items = []
@@ -83,6 +89,8 @@ class ShipmentService:
                         'description': product.product_name,
                         'quantity': order_item.quantity
                     })
+
+            logger.info(f"Send package info: {shipment.shipment_id}")
             # request packing from world simulator
             if items:
                 self.world_simulator.pack_shipment(
@@ -90,6 +98,7 @@ class ShipmentService:
                     shipment_id=shipment.shipment_id,
                     items=items
                 )
+            
             
             return True, shipment.shipment_id
         

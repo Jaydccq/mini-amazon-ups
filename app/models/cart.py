@@ -3,6 +3,7 @@ from flask import current_app as app
 from datetime import datetime
 from app.model import db, Cart, CartProduct, Order, OrderProduct, Product, User, Warehouse
 
+
 class CartService:
     @staticmethod
     def add_to_cart(user_id, product_id, seller_id, quantity):
@@ -90,7 +91,7 @@ class CartService:
             
             # Find nearest warehouse
             from app.services.warehouse_service import WarehouseService
-            warehouse_service = WarehouseService()
+            warehouse_service = WarehouseService(app.config.get('WORLD_SIMULATOR_SERVICE'))
             warehouse = warehouse_service.get_nearest_warehouse(0, 0)  # Default coordinates
             
             if not warehouse:

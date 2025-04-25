@@ -6,7 +6,9 @@ from app.services.warehouse_service import WarehouseService
 from app.services.shipment_service import ShipmentService
 from app.models.cart import CartService 
 from app.models.cart import Cart
+import logging
 bp = Blueprint("cart", __name__, url_prefix="/cart")
+logger = logging.getLogger(__name__)
 
 @bp.route('/', methods=["GET"])
 @login_required
@@ -54,61 +56,62 @@ def add_to_cart():
 @bp.route('/checkout', methods=['GET', 'POST'])
 @login_required
 def checkout():
+
+    logger.info("Checkout initiated")
+
+    warehouse_service = WarehouseService() 
+    
+    cart = Cart.query.filter_by(user_id=current_user.user_id).first()
+
+    if not cart or not cart.items:
+        flash('Your cart is empty', 'error')
+        return redirect(url_for('amazon.cart'))
+
+    total = sum(item.quantity * item.price_at_addition for item in cart.items)
+
     if request.method == 'POST':
         destination_x = request.form.get('destination_x', type=int)
         destination_y = request.form.get('destination_y', type=int)
         ups_account = request.form.get('ups_account')
-        warehouse_id = request.form.get('warehouse_id', type=int)
+
+        if destination_x is None or destination_y is None:
+            flash('Please provide delivery coordinates', 'error')
+            return redirect(url_for('amazon.checkout'))
         
-        if not destination_x or not destination_y:
-            flash('Please provide delivery coordinates', 'danger')
-            return redirect(url_for('cart.checkout'))
-        
-        # Find nearest warehouse if not specified
-        if not warehouse_id:
-            warehouse_service = WarehouseService()
-            warehouse = warehouse_service.get_nearest_warehouse(destination_x, destination_y)
-            if warehouse:
-                warehouse_id = warehouse.warehouse_id
-            else:
-                flash('No warehouse available for delivery', 'danger')
-                return redirect(url_for('cart.checkout'))
-        
-        # Process checkout
-        success, result = Cart.checkout_cart(current_user.user_id, destination_x, destination_y, ups_account=None)
-        
+        logger.info(f"Checkout coordinates: {destination_x}, {destination_y}")
+
+        success, checkout_count = Cart.checkout_cart(current_user.user_id,
+                                                     destination_x, destination_y, ups_account)
+
         if success:
-            # Create shipment for each order
-            shipment_service = ShipmentService()
-            
-            for order_id in result:
-                shipment_success, shipment_result = shipment_service.create_shipment(
-                    order_id=order_id,
-                    warehouse_id=warehouse_id,
-                    destination_x=destination_x,
-                    destination_y=destination_y,
-                    ups_account=ups_account
-                )
-                
-                if not shipment_success:
-                    flash(f'Order placed, but shipment creation failed: {shipment_result}', 'warning')
-            
-            flash('Order placed successfully!', 'success')
-            return redirect(url_for('amazon.order_list'))
+            flash(f'Order placed successfully! Total: {checkout_count} items', 'success')
+            return redirect(url_for('amazon.index'))
+
         else:
-            flash(f'Checkout failed: {result}', 'danger')
-    
-    # GET request
-    cart_items = CartService.get_cart_items(current_user.user_id)
-    total_cart_value = sum(item['total_price'] for item in cart_items) if cart_items else 0
-    
-    # Get available warehouses
-    warehouse_service = WarehouseService()
-    warehouses = warehouse_service.get_all_warehouses()
-    
+            flash(f'Checkout failed: only {checkout_count} checked out successful!', 'error')
+            return redirect(url_for('amazon.cart'))
+
+
+    warehouses = warehouse_service.get_all_warehouses() 
+
+    cart_items_data = []
+    for item in cart.items:
+        product = Product.query.get(item.product_id)
+        seller = User.query.get(item.seller_id)
+        cart_items_data.append({
+            'product_id': item.product_id,
+            'product_name': product.product_name if product else 'N/A',
+            'quantity': item.quantity,
+            'price': item.price_at_addition,
+            'seller_id': item.seller_id,
+            'seller_name': f"{seller.first_name} {seller.last_name}" if seller else 'N/A',
+            'total_price': item.quantity * item.price_at_addition
+        })
+
+
     return render_template('checkout.html',
-                          cart_items=cart_items,
-                          total=total_cart_value,
+                          cart_items=cart_items_data, 
+                          total=total,
                           warehouses=warehouses)
 
 @bp.route("/remove", methods=["POST"])

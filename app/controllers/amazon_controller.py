@@ -399,6 +399,8 @@ def checkout():
         if destination_x is None or destination_y is None:
             flash('Please provide delivery coordinates', 'error')
             return redirect(url_for('amazon.checkout'))
+        
+        logger.info(f"Checkout coordinates: {destination_x}, {destination_y}")
 
         success, checkout_count = Cart.checkout_cart(current_user.user_id,
                                                      destination_x, destination_y, ups_account)

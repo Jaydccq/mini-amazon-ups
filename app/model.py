@@ -2,9 +2,11 @@ from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
-
+from flask import current_app
+import logging
 
 db = SQLAlchemy()
+logger = logging.getLogger(__name__)
 
 
 class User(UserMixin, db.Model):
@@ -81,10 +83,12 @@ class Cart(db.Model):
     @classmethod
     def checkout_cart(cls, user_id,destination_x,destination_y,ups_account):
         """Process cart checkout and create an order"""
+        logger.info(f"Begin Checkout cart")
         from app.services.shipment_service import ShipmentService
-        shipment_service = ShipmentService()
+        shipment_service = ShipmentService(current_app.config.get('WORLD_SIMULATOR_SERVICE'))
         try:
             # Get the user's cart
+            logger.info(f"Checking out cart for user {user_id}")
             cart = Cart.query.filter_by(user_id=user_id).first()
             if not cart or not cart.items:
                 return False, -1
@@ -92,6 +96,7 @@ class Cart(db.Model):
             checkout_count = 0
             # Create orders
             for cart_item in cart.items:
+                logger.info(f"Processing cart item {cart_item.product_id} for user {user_id}")
                 # Create new order
                 order = Order(
                     buyer_id=user_id,
@@ -101,6 +106,8 @@ class Cart(db.Model):
                 )
                 db.session.add(order)
                 db.session.flush()  # Get the order ID
+
+                logger.info("getting warehouse id")
 
                 warehouse_id = Inventory.get_warehouse_id_by_productId_sellerId(cart_item.product_id,
                                                                                 cart_item.seller_id)
@@ -118,6 +125,8 @@ class Cart(db.Model):
                 db.session.delete(cart_item)
 
                 # subtract from inventory
+
+                logger.info("subtracting from inventory")
                 inventory_item = WarehouseProduct.query.filter_by(
                     warehouse_id=warehouse_id,
                     product_id=cart_item.product_id
@@ -128,6 +137,8 @@ class Cart(db.Model):
                     if inventory_item.quantity < 0:
                         db.session.rollback()
                         return False, checkout_count
+                    
+                logger.info(f"Send Request of creating shipment for product {cart_item.product_id} in warehouse {warehouse_id}")
 
                 shipment_success, shipment_id_or_error = shipment_service.create_shipment(
                     order_id=order.order_id,
@@ -136,6 +147,8 @@ class Cart(db.Model):
                     destination_y=destination_y,
                     ups_account=ups_account
                 )
+
+                logger.info(f"Shipment creation result: {shipment_success}, ID/Error: {shipment_id_or_error}")
 
                 if not shipment_success:
                     db.session.rollback()

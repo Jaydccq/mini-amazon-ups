@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 # Create a Blueprint for UPS webhook endpoints
 ups_webhooks = Blueprint('ups_webhooks', __name__, url_prefix='')
-shipment_service_instance = ShipmentService();
+
 
 @ups_webhooks.route('/set_worldid', methods=['POST'])
 def set_worldid():
@@ -193,6 +193,7 @@ def truck_arrived():
 
         # async call
         # TODO: load pakages to truck (world)
+        shipment_service_instance = ShipmentService(current_app.config.get('WORLD_SIMULATOR_SERVICE'))
 
         shipment_service_instance.handle_truck_arrived(
             truck_id=truck_id,

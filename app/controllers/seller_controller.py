@@ -13,6 +13,9 @@ from app.model import Product, Warehouse # Import Warehouse if needed for valida
 from app.model import db, User, Product, ProductCategory, Inventory, Order, OrderProduct, WarehouseProduct
 from sqlalchemy.orm import joinedload
 
+
+
+
 # Helper function to check if user is logged in as a seller
 def seller_required(f):
     @wraps(f)
@@ -187,7 +190,8 @@ def add_inventory():
     """Add an existing product to seller's inventory AND add initial stock to a specified warehouse"""
     seller_id = current_user.user_id
     # Instantiate WarehouseService here or ensure it's accessible
-    warehouse_service = WarehouseService()
+    warehouse_service = WarehouseService(current_app.config.get('WORLD_SIMULATOR_SERVICE'))
+    
 
     if request.method == 'POST':
         product_id = request.form.get('product_id', type=int)
@@ -286,7 +290,7 @@ def create_product():
     """Create a new product, add it to seller's inventory listing, AND add initial stock to a specified warehouse"""
     seller_id = current_user.user_id
     # Instantiate WarehouseService
-    warehouse_service = WarehouseService()
+    warehouse_service = WarehouseService(current_app.config.get('WORLD_SIMULATOR_SERVICE'))
 
     if request.method == 'POST':
         product_name = request.form.get('product_name')
@@ -567,7 +571,7 @@ def add_stock_to_warehouse():
 
         # --- Call Service ---
         # Assuming WarehouseService can be instantiated directly or fetched from app context
-        warehouse_service = WarehouseService()
+        warehouse_service = WarehouseService(current_app.config.get('WORLD_SIMULATOR_SERVICE'))
         # Use the existing add_product_to_warehouse function
         success, message = warehouse_service.add_product_to_warehouse(
             warehouse_id=warehouse_id,
@@ -607,7 +611,7 @@ def replenish_inventory():
         return redirect(referrer)
 
     # Call the service
-    warehouse_service = WarehouseService()
+    warehouse_service = WarehouseService(current_app.config.get('WORLD_SIMULATOR_SERVICE'))
     success, message = warehouse_service.replenish_product(
         warehouse_id=warehouse_id,
         product_id=product_id,

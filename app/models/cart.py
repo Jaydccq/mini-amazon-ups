@@ -122,7 +122,6 @@ class CartService:
     
     @staticmethod
     def get_cart_items(user_id):
-        """Get all items in the user's cart"""
         try:
             cart = Cart.query.filter_by(user_id=user_id).first()
             if not cart:

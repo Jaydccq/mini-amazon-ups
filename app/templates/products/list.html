@@ -103,22 +103,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="card-footer bg-white">
-                                {% if current_user.is_authenticated %}
-                                <form action="{{ url_for('amazon.add_to_cart') }}" method="POST"> {# Assuming add_to_cart is in amazon blueprint based on controller #}
-                                    <input type="hidden" name="product_id" value="{{ product.product_id }}">
-                                    {# seller_id is not needed if we use product.owner_id as per product model #}
-                                    <input type="hidden" name="quantity" value="1">
-                                    <button type="submit" class="btn btn-primary btn-sm w-100">
-                                        <i class="fas fa-cart-plus"></i> Add to Cart
-                                    </button>
-                                </form>
-                                {% else %}
-                                <a href="{{ url_for('amazon.login') }}" class="btn btn-outline-secondary btn-sm w-100">
-                                    <i class="fas fa-sign-in-alt"></i> Login to Purchase
-                                </a>
-                                {% endif %}
-                            </div>
+                            
                         </div>
                     </div>
                     {% endfor %}

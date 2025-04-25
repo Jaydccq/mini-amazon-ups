@@ -1,537 +1,797 @@
-{% extends "layout.html" %}
-
-{% block title %}{{ product.product_name or 'Product' }} | Mini-Amazon{% endblock %}
-
-{% block extra_css %}
+{% extends "layout.html" %} {% block title %}{{ product.product_name or
+'Product' }} | Mini-Amazon{% endblock %} {% block extra_css %}
 <style>
-    /* Increase the width and font size of the quantity input */
-    .quantity-input {
-        width: 90px; /* Increased width */
-        font-size: 1rem; /* Increased font size for better visibility */
-    }
-    /* Optional: Add a subtle border to make it stand out more */
-    .quantity-input .form-control {
-        border: 1px solid #ced4da; /* Standard Bootstrap border */
-    }
+  /* Increase the width and font size of the quantity input */
+  .quantity-input {
+    width: 90px; /* Increased width */
+    font-size: 1rem; /* Increased font size for better visibility */
+  }
+  /* Optional: Add a subtle border to make it stand out more */
+  .quantity-input .form-control {
+    border: 1px solid #ced4da; /* Standard Bootstrap border */
+  }
 
-    .rating-stars {
-        color: #ffc107;
-    }
+  .rating-stars {
+    color: #ffc107;
+  }
 
-    .rating-stars .far {
-        color: #e4e5e9;
-    }
+  .rating-stars .far {
+    color: #e4e5e9;
+  }
 
-    .inventory-badge {
-        font-size: 0.8rem;
-        padding: 0.2rem 0.5rem;
-    }
+  .inventory-badge {
+    font-size: 0.8rem;
+    padding: 0.2rem 0.5rem;
+  }
 
-    .nav-pills .nav-link.active {
-        background-color: var(--primary-color); /* Use primary color for active tab */
-        color: white;
-    }
-     .nav-pills .nav-link {
-        color: var(--text-color);
-    }
+  .nav-pills .nav-link.active {
+    background-color: var(
+      --primary-color
+    ); /* Use primary color for active tab */
+    color: white;
+  }
+  .nav-pills .nav-link {
+    color: var(--text-color);
+  }
 
-    .product-image {
-        max-height: 400px;
-        object-fit: contain;
-        border: 1px solid var(--border-color);
-        padding: 0.5rem;
-    }
+  .product-image {
+    max-height: 400px;
+    object-fit: contain;
+    border: 1px solid var(--border-color);
+    padding: 0.5rem;
+  }
 
-    .related-product-card {
-        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-    }
+  .related-product-card {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  }
 
-    .related-product-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
-    }
+  .related-product-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+  }
 
-    /* Style for the seller options table */
-    .seller-options-table th {
-        background-color: #f8f9fa;
-        font-weight: 600;
-        font-size: 0.9rem;
-        text-align: center;
-    }
-    .seller-options-table td {
-        vertical-align: middle;
-        text-align: center;
-    }
-    .seller-options-table .seller-name {
-        text-align: left;
-        font-weight: 500;
-    }
-     .seller-options-table .add-to-cart-cell {
-        min-width: 240px; /* Adjusted min-width to accommodate wider input */
-     }
+  /* Style for the seller options table */
+  .seller-options-table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-align: center;
+  }
+  .seller-options-table td {
+    vertical-align: middle;
+    text-align: center;
+  }
+  .seller-options-table .seller-name {
+    text-align: left;
+    font-weight: 500;
+  }
+  .seller-options-table .add-to-cart-cell {
+    min-width: 240px; /* Adjusted min-width to accommodate wider input */
+  }
 </style>
-{% endblock %}
-
-{% block content %}
+{% endblock %} {% block content %}
 <div class="container mt-4">
-    <nav aria-label="breadcrumb" class="mb-4">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ url_for('amazon.index') }}">Home</a></li>
-            <li class="breadcrumb-item"><a href="{{ url_for('amazon.product_list') }}">Products</a></li>
-            {% if product.category_name %}
-            <li class="breadcrumb-item"><a href="{{ url_for('amazon.product_list', category_id=product.category_id) }}">{{ product.category_name }}</a></li>
-            {% endif %}
-            <li class="breadcrumb-item active" aria-current="page">{{ product.product_name }}</li>
-        </ol>
-    </nav>
+  <nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item">
+        <a href="{{ url_for('amazon.index') }}">Home</a>
+      </li>
+      <li class="breadcrumb-item">
+        <a href="{{ url_for('amazon.product_list') }}">Products</a>
+      </li>
+      {% if product.category_name %}
+      <li class="breadcrumb-item">
+        <a
+          href="{{ url_for('amazon.product_list', category_id=product.category_id) }}"
+          >{{ product.category_name }}</a
+        >
+      </li>
+      {% endif %}
+      <li class="breadcrumb-item active" aria-current="page">
+        {{ product.product_name }}
+      </li>
+    </ol>
+  </nav>
 
-    <div class="row">
-        <div class="col-lg-9">
-            <div class="card shadow-sm mb-4">
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-5 mb-4 mb-md-0">
-                            <div class="text-center p-3">
-                                {% if product.image %}
-                                <img src="{{ product.image }}" alt="{{ product.product_name }}" class="img-fluid product-image rounded">
-                                {% else %}
-                                <div class="bg-light d-flex align-items-center justify-content-center rounded" style="height: 300px;">
-                                    <i class="fas fa-image fa-4x text-secondary"></i>
-                                </div>
-                                {% endif %}
-                            </div>
-                        </div>
-
-                        <div class="col-md-7">
-                            <h1 class="mb-2">{{ product.product_name }}</h1>
-
-                            <div class="mb-3">
-                                <div class="d-flex align-items-center mb-1">
-                                    <div class="rating-stars me-2">
-                                        {% set avg_rating = product.avg_rating|default(0)|float %}
-                                        {% for i in range(1, 6) %}
-                                            {% if i <= avg_rating %}
-                                                <i class="fas fa-star"></i>
-                                            {% elif i - 0.5 <= avg_rating %}
-                                                <i class="fas fa-star-half-alt"></i>
-                                            {% else %}
-                                                <i class="far fa-star"></i>
-                                            {% endif %}
-                                        {% endfor %}
-                                    </div>
-                                    <span class="text-muted small">
-                                        {{ "%.1f"|format(avg_rating) }} stars | <a href="#reviews" class="text-muted">{{ product.review_count|default(0) }} reviews</a>
-                                    </span>
-                                </div>
-                                {# Removed "Sold by: original owner" as the list below is clearer #}
-                            </div>
-
-                            {# --- MODIFIED PRICE DISPLAY --- #}
-                            {# Show price range or starting price if multiple sellers exist #}
-                            {% if product.inventory and product.inventory|length > 1 %}
-                                {% set min_price = (product.inventory|map(attribute='unit_price')|min) %}
-                                <h4 class="text-primary mb-3">Starting at ${{ "%.2f"|format(min_price) }}</h4>
-                            {% elif product.inventory %}
-                                {# If only one seller, show their price #}
-                                <h4 class="text-primary mb-3">${{ "%.2f"|format(product.inventory[0].unit_price) }}</h4>
-                            {% else %}
-                                 {# Fallback if no inventory/sellers somehow #}
-                                <h4 class="text-primary mb-3">${{ "%.2f"|format(product.price) }}</h4>
-                            {% endif %}
-                            {# Display base description - might be better in the description tab below #}
-                            <p class="text-muted mb-3">{{ product.description|truncate(120) }} <a href="#description" class="small">Read more</a></p>
-
-                            {# --- AVAILABLE OPTIONS / SELLERS SECTION --- #}
-                            <h5 class="mb-3">Available from {{ product.inventory|length }} Seller{% if product.inventory|length != 1 %}s{% endif %}:</h5>
-                            {% if product.inventory %}
-                            <div class="table-responsive border rounded mb-3">
-                                <table class="table table-sm table-hover mb-0 seller-options-table">
-                                    <thead>
-                                        <tr>
-                                            <th class="seller-name">Seller</th>
-                                            <th>Price</th>
-                                            <th>Stock</th>
-                                            <th class="add-to-cart-cell">Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {# Sort sellers by price #}
-                                        {% for item in product.inventory|sort(attribute='unit_price') %}
-                                        <tr>
-                                            <td class="seller-name">
-                                                {# Link to seller reviews page if available #}
-                                                <a href="{{ url_for('reviews.seller_reviews', seller_id=item.seller_id) if item.seller_id else '#' }}" class="text-decoration-none">{{ item.seller_name }}</a>
-                                            </td>
-                                            <td>
-                                                <span class="fw-bold text-primary">${{ "%.2f"|format(item.unit_price) }}</span>
-                                            </td>
-                                            <td>
-                                                {% if item.quantity > 10 %}
-                                                <span class="badge bg-success inventory-badge">In Stock</span>
-                                                {% elif item.quantity > 0 %}
-                                                <span class="badge bg-warning text-dark inventory-badge">Low Stock</span>
-                                                {% else %}
-                                                <span class="badge bg-danger inventory-badge">Out of Stock</span>
-                                                {% endif %}
-                                                <br><small class="text-muted">({{ item.quantity }} avail.)</small>
-                                            </td>
-                                            <td class="add-to-cart-cell">
-                                                {% if current_user.is_authenticated and item.quantity > 0 %}
-                                                <form action="{{ url_for('amazon.add_to_cart') }}" method="POST" class="d-flex justify-content-center align-items-center">
-                                                    <input type="hidden" name="product_id" value="{{ product.product_id }}">
-                                                    <input type="hidden" name="seller_id" value="{{ item.seller_id }}">
-                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                    {# ***** MODIFIED QUANTITY INPUT AREA ***** #}
-                                                    <div class="input-group quantity-input me-2">
-                                                        <button class="btn btn-outline-secondary btn-sm py-1 px-2" type="button" onclick="decrementQuantity(this)">-</button>
-                                                        {# Added quantity-input class to the form-control itself for better styling #}
-                                                        <input type="number" class="form-control form-control-sm text-center py-1 quantity-input" name="quantity" value="1" min="1" max="{{ item.quantity }}">
-                                                        <button class="btn btn-outline-secondary btn-sm py-1 px-2" type="button" onclick="incrementQuantity(this)">+</button>
-                                                    </div>
-                                                    {# ***** END MODIFIED QUANTITY INPUT AREA ***** #}
-                                                    <button type="submit" class="btn btn-primary btn-sm py-1">
-                                                        <i class="fas fa-cart-plus"></i> Add
-                                                    </button>
-                                                </form>
-                                                {% elif not current_user.is_authenticated %}
-                                                <a href="{{ url_for('amazon.login', next=request.url) }}" class="btn btn-outline-primary btn-sm py-1">
-                                                    <i class="fas fa-sign-in-alt"></i> Login
-                                                </a>
-                                                {% else %}
-                                                <button class="btn btn-secondary btn-sm py-1" disabled>
-                                                    <i class="fas fa-ban"></i> Out of Stock
-                                                </button>
-                                                {% endif %}
-                                            </td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                            {% else %}
-                            <div class="alert alert-warning">
-                                <i class="fas fa-exclamation-triangle me-2"></i> This product is currently unavailable from any seller.
-                            </div>
-                            {% endif %}
-                            {# --- END AVAILABLE OPTIONS --- #}
-                        </div>
-                    </div>
+  <div class="row">
+    <div class="col-lg-9">
+      <div class="card shadow-sm mb-4">
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-5 mb-4 mb-md-0">
+              <div class="text-center p-3">
+                {% if product.image %}
+                <img
+                  src="{{ product.image }}"
+                  alt="{{ product.product_name }}"
+                  class="img-fluid product-image rounded"
+                />
+                {% else %}
+                <div
+                  class="bg-light d-flex align-items-center justify-content-center rounded"
+                  style="height: 300px"
+                >
+                  <i class="fas fa-image fa-4x text-secondary"></i>
                 </div>
+                {% endif %}
+              </div>
             </div>
 
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-light p-0 border-bottom">
-                    <ul class="nav nav-pills nav-fill" id="productDetailTabs" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="description-tab" data-bs-toggle="tab" data-bs-target="#description" type="button" role="tab" aria-controls="description" aria-selected="true">Description</button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="reviews-tab" data-bs-toggle="tab" data-bs-target="#reviews" type="button" role="tab" aria-controls="reviews" aria-selected="false">Reviews ({{ product.review_count|default(0) }})</button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="shipping-tab" data-bs-toggle="tab" data-bs-target="#shipping" type="button" role="tab" aria-controls="shipping" aria-selected="false">Shipping</button>
-                        </li>
-                         {# NEW: Add Warehouse Info Tab #}
-                         <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="warehouse-tab" data-bs-toggle="tab" data-bs-target="#warehouse" type="button" role="tab" aria-controls="warehouse" aria-selected="false">Availability</button>
-                        </li>
-                    </ul>
-                </div>
-                <div class="card-body">
-                    <div class="tab-content" id="productDetailTabsContent">
-                        <div class="tab-pane fade show active p-3" id="description" role="tabpanel" aria-labelledby="description-tab">
-                            <h4>Product Details</h4>
-                            <p>{{ product.description }}</p> {# Full description here #}
+            <div class="col-md-7">
+              <h1 class="mb-2">{{ product.product_name }}</h1>
 
-                            <div class="row mt-4">
-                                <div class="col-md-6">
-                                    <h5>Features</h5>
-                                    {# Generate fake features or pull from product data if available #}
-                                    <ul>
-                                        <li>High-quality materials</li>
-                                        <li>Durable construction</li>
-                                        <li>User-friendly design</li>
-                                    </ul>
-                                </div>
-                                <div class="col-md-6">
-                                    <h5>Specifications</h5>
-                                    <table class="table table-sm table-borderless">
-                                        <tbody>
-                                            <tr>
-                                                <th scope="row" class="text-muted small">Category</th>
-                                                <td>{{ product.category_name }}</td>
-                                            </tr>
-                                            <tr>
-                                                <th scope="row" class="text-muted small">Product ID</th>
-                                                <td>#{{ product.product_id }}</td>
-                                            </tr>
-                                            <tr>
-                                                <th scope="row" class="text-muted small">Brand</th>
-                                                <td>{{ product.brand|default('Generic') }}</td>
-                                            </tr>
-                                            <tr>
-                                                <th scope="row" class="text-muted small">Model</th>
-                                                <td>{{ product.model|default('N/A') }}</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="tab-pane fade p-3" id="reviews" role="tabpanel" aria-labelledby="reviews-tab">
-                            {# --- REVIEWS TAB --- #}
-                            {% if current_user.is_authenticated %}
-                            <div class="d-flex justify-content-between align-items-center mb-4">
-                                <h4 class="mb-0">Customer Reviews</h4>
-                                <a href="{{ url_for('reviews.add_review', product_id=product.product_id) }}" class="btn btn-primary btn-sm">
-                                    <i class="fas fa-star"></i> Write a Review
-                                </a>
-                            </div>
-                            {% else %}
-                             <div class="d-flex justify-content-between align-items-center mb-4">
-                                <h4 class="mb-0">Customer Reviews</h4>
-                                <a href="{{ url_for('amazon.login', next=request.url) }}" class="btn btn-outline-primary btn-sm">
-                                    <i class="fas fa-sign-in-alt"></i> Login to Write a Review
-                                </a>
-                            </div>
-                            {% endif %}
-
-                             <div class="card bg-light mb-4 border">
-                                <div class="card-body">
-                                    <div class="row align-items-center">
-                                        <div class="col-md-4 text-center mb-3 mb-md-0">
-                                             <h1 class="display-4 mb-0">{{ "%.1f"|format(avg_rating) }}</h1>
-                                             <div class="rating-stars my-2">
-                                                 {% for i in range(1, 6) %}
-                                                     {% if i <= avg_rating %}
-                                                         <i class="fas fa-star"></i>
-                                                     {% elif i - 0.5 <= avg_rating %}
-                                                         <i class="fas fa-star-half-alt"></i>
-                                                     {% else %}
-                                                         <i class="far fa-star"></i>
-                                                     {% endif %}
-                                                 {% endfor %}
-                                             </div>
-                                             <p class="mb-0 text-muted small">{{ product.review_count|default(0) }} reviews</p>
-                                         </div>
-                                        <div class="col-md-8">
-                                             {% set total_reviews = product.review_count|default(0)|float %}
-                                             {% for star in [5, 4, 3, 2, 1] %}
-                                                 {% set count = product.rating_distribution[star]|default(0) if product.rating_distribution else 0 %}
-                                                 {% set percent = (count / total_reviews * 100) if total_reviews > 0 else 0 %}
-                                                 <div class="d-flex align-items-center mb-1">
-                                                     <div class="text-muted small" style="width: 45px;">{{ star }} <i class="fas fa-star" style="font-size: 0.7rem;"></i></div>
-                                                     <div class="progress flex-grow-1 mx-2" style="height: 6px;">
-                                                         <div class="progress-bar bg-warning" role="progressbar" style="width: {{ percent }}%;" aria-valuenow="{{ percent }}" aria-valuemin="0" aria-valuemax="100"></div>
-                                                     </div>
-                                                     <div class="text-muted small" style="width: 40px; text-align: right;">{{ count }}</div>
-                                                 </div>
-                                             {% endfor %}
-                                         </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {% if product.review_count > 0 %}
-                                 <div class="text-center mb-3">
-                                     <a href="{{ url_for('reviews.product_reviews', product_id=product.product_id) }}" class="btn btn-outline-primary btn-sm">
-                                         <i class="fas fa-list"></i> View All Reviews
-                                     </a>
-                                 </div>
-                             {% else %}
-                                 <div class="text-center py-5 border rounded bg-light">
-                                     <i class="fas fa-comments fa-3x text-muted mb-3"></i>
-                                     <h5>No Reviews Yet</h5>
-                                     <p class="text-muted">Be the first to review this product!</p>
-                                 </div>
-                             {% endif %}
-                            {# --- END REVIEWS TAB --- #}
-                        </div>
-
-                        <div class="tab-pane fade p-3" id="shipping" role="tabpanel" aria-labelledby="shipping-tab">
-                            {# --- SHIPPING TAB --- #}
-                            <h4>Shipping Information</h4>
-                             <p>Products are shipped from the nearest warehouse with available stock. Estimated delivery times vary based on your location and warehouse processing time.</p>
-                            <ul>
-                                <li>Standard Shipping: 3-5 business days</li>
-                                <li>Expedited Shipping: 1-2 business days (where available)</li>
-                                <li>Tracking number will be provided via email once shipped.</li>
-                            </ul>
-                            <p class="text-muted small">Please note: These are estimates and actual delivery times may vary.</p>
-                            {# --- END SHIPPING TAB --- #}
-                        </div>
-
-                        {# --- NEW WAREHOUSE AVAILABILITY TAB --- #}
-                        <div class="tab-pane fade p-3" id="warehouse" role="tabpanel" aria-labelledby="warehouse-tab">
-                             <h4>Warehouse Availability</h4>
-                             <p>Check stock levels at different warehouse locations.</p>
-                             {% if product.warehouses %}
-                                 <div class="table-responsive border rounded">
-                                     <table class="table table-sm table-striped mb-0">
-                                         <thead class="table-light">
-                                             <tr>
-                                                 <th>Warehouse ID</th>
-                                                 <th>Location (X, Y)</th>
-                                                 <th>Quantity</th>
-                                                 <th>Status</th> {# Assuming status comes from WarehouseProduct #}
-                                             </tr>
-                                         </thead>
-                                         <tbody>
-                                             {% for wh_item in product.warehouses %}
-                                             <tr>
-                                                 <td>#{{ wh_item.warehouse_id }}</td>
-                                                 <td>{{ wh_item.warehouse_location }}</td>
-                                                 <td>{{ wh_item.quantity }}</td>
-                                                 <td>
-                                                     {# Display status if available in wh_item, otherwise check quantity #}
-                                                     {% set item_status = wh_item.status | default('Unknown', true) %}
-                                                     {% if item_status == 'Available' %}
-                                                        <span class="badge bg-success inventory-badge">Available</span>
-                                                     {% elif item_status == 'Reserved' %}
-                                                        <span class="badge bg-info text-dark inventory-badge">Reserved</span>
-                                                     {% elif item_status == 'Damaged' %}
-                                                        <span class="badge bg-secondary inventory-badge">Damaged</span>
-                                                     {% elif item_status == 'Backordered' %}
-                                                        <span class="badge bg-light text-dark border inventory-badge">Backordered</span>
-                                                     {% elif wh_item.quantity > 10 %}
-                                                        <span class="badge bg-success inventory-badge">In Stock</span>
-                                                     {% elif wh_item.quantity > 0 %}
-                                                        <span class="badge bg-warning text-dark inventory-badge">Low Stock</span>
-                                                     {% else %}
-                                                         <span class="badge bg-danger inventory-badge">Out of Stock</span>
-                                                     {% endif %}
-                                                 </td>
-                                             </tr>
-                                             {% endfor %}
-                                         </tbody>
-                                     </table>
-                                 </div>
-                             {% else %}
-                                 <div class="alert alert-secondary">No specific warehouse availability information found for this product.</div>
-                             {% endif %}
-                         </div>
-                         {# --- END WAREHOUSE TAB --- #}
-
-                    </div>
-                </div>
-            </div>
-        </div> {# End col-lg-9 #}
-
-        {# Sidebar for related products #}
-        <div class="col-lg-3">
-            <div class="card shadow-sm mb-4 sticky-top" style="top: 80px;"> {# Make related products sticky #}
-                <div class="card-header bg-light">
-                    <h5 class="mb-0">Related Products</h5>
-                </div>
-                <div class="card-body">
-                    {% if related_products %}
-                        {% for rel_product in related_products %}
-                        <div class="d-flex mb-3 related-product-card p-2 border rounded bg-white">
-                             <img src="{{ rel_product.image or 'https://via.placeholder.com/60x60?text=N/A' }}" alt="{{ rel_product.product_name }}" class="img-thumbnail me-2" style="width: 60px; height: 60px; object-fit: cover;">
-                            <div>
-                                <a href="{{ url_for('amazon.product_detail', product_id=rel_product.product_id) }}" class="text-decoration-none stretched-link text-dark">
-                                    <h6 class="mb-0 small fw-normal">{{ rel_product.product_name|truncate(40) }}</h6>
-                                </a>
-                                <small class="text-primary fw-bold d-block mt-1">${{ "%.2f"|format(rel_product.price) }}</small>
-                            </div>
-                        </div>
-                        {% endfor %}
-                        <div class="text-center mt-2">
-                             <a href="{{ url_for('amazon.product_list', category_id=product.category_id) }}" class="btn btn-sm btn-outline-secondary">More in {{ product.category_name }}</a>
-                         </div>
+              <div class="mb-3">
+                <div class="d-flex align-items-center mb-1">
+                  <div class="rating-stars me-2">
+                    {% set avg_rating = product.avg_rating|default(0)|float %}
+                    {% for i in range(1, 6) %} {% if i <= avg_rating %}
+                    <i class="fas fa-star"></i>
+                    {% elif i - 0.5 <= avg_rating %}
+                    <i class="fas fa-star-half-alt"></i>
                     {% else %}
-                        <p class="text-muted small">No related products found.</p>
-                    {% endif %}
+                    <i class="far fa-star"></i>
+                    {% endif %} {% endfor %}
+                  </div>
+                  <span class="text-muted small">
+                    {{ "%.1f"|format(avg_rating) }} stars |
+                    <a href="#reviews" class="text-muted"
+                      >{{ product.review_count|default(0) }} reviews</a
+                    >
+                  </span>
                 </div>
+                {# Removed "Sold by: original owner" as the list below is
+                clearer #}
+              </div>
+
+              {# --- MODIFIED PRICE DISPLAY --- #} {# Show price range or
+              starting price if multiple sellers exist #} {% if
+              product.inventory and product.inventory|length > 1 %} {% set
+              min_price = (product.inventory|map(attribute='unit_price')|min) %}
+              <h4 class="text-primary mb-3">
+                Starting at ${{ "%.2f"|format(min_price) }}
+              </h4>
+              {% elif product.inventory %} {# If only one seller, show their
+              price #}
+              <h4 class="text-primary mb-3">
+                ${{ "%.2f"|format(product.inventory[0].unit_price) }}
+              </h4>
+              {% else %} {# Fallback if no inventory/sellers somehow #}
+              <h4 class="text-primary mb-3">
+                ${{ "%.2f"|format(product.price) }}
+              </h4>
+              {% endif %} {# Display base description - might be better in the
+              description tab below #}
+              <p class="text-muted mb-3">
+                {{ product.description|truncate(120) }}
+                <a href="#description" class="small">Read more</a>
+              </p>
+
+              {# --- AVAILABLE OPTIONS / SELLERS SECTION --- #}
+              <h5 class="mb-3">
+                Available from {{ product.inventory|length }} Seller{% if
+                product.inventory|length != 1 %}s{% endif %}:
+              </h5>
+              {% if product.inventory %}
+              <div class="table-responsive border rounded mb-3">
+                <table
+                  class="table table-sm table-hover mb-0 seller-options-table"
+                >
+                  <thead>
+                    <tr>
+                      <th class="seller-name">Seller</th>
+                      <th>Price</th>
+                      <th>Stock</th>
+                      <th class="add-to-cart-cell">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {# Sort sellers by price #} {% for item in
+                    product.inventory|sort(attribute='unit_price') %}
+                    <tr>
+                      <td class="seller-name">
+                        {# Link to seller reviews page if available #}
+                        <a
+                          href="{{ url_for('reviews.seller_reviews', seller_id=item.seller_id) if item.seller_id else '#' }}"
+                          class="text-decoration-none"
+                          >{{ item.seller_name }}</a
+                        >
+                      </td>
+                      <td>
+                        <span class="fw-bold text-primary"
+                          >${{ "%.2f"|format(item.unit_price) }}</span
+                        >
+                      </td>
+                      <td>
+                        {% if item.quantity > 10 %}
+                        <span class="badge bg-success inventory-badge"
+                          >In Stock</span
+                        >
+                        {% elif item.quantity > 0 %}
+                        <span class="badge bg-warning text-dark inventory-badge"
+                          >Low Stock</span
+                        >
+                        {% else %}
+                        <span class="badge bg-danger inventory-badge"
+                          >Out of Stock</span
+                        >
+                        {% endif %}
+                        <br /><small class="text-muted"
+                          >({{ item.quantity }} avail.)</small
+                        >
+                      </td>
+                      <td class="add-to-cart-cell">
+                        {% if current_user.is_authenticated and item.quantity >
+                        0 %}
+                        <form
+                          action="{{ url_for('amazon.add_to_cart') }}"
+                          method="POST"
+                          class="d-flex justify-content-center align-items-center"
+                        >
+                          <input
+                            type="hidden"
+                            name="csrf_token"
+                            value="{{ csrf_token() }}"
+                          />
+
+                          <input
+                            type="hidden"
+                            name="product_id"
+                            value="{{ product.product_id }}"
+                          />
+                          <input
+                            type="hidden"
+                            name="seller_id"
+                            value="{{ item.seller_id }}"
+                          />
+                          <input
+                            type="hidden"
+                            name="csrf_token"
+                            value="{{ csrf_token() }}"
+                          />
+                          {# ***** MODIFIED QUANTITY INPUT AREA ***** #}
+                          <div class="input-group quantity-input me-2">
+                            <button
+                              class="btn btn-outline-secondary btn-sm py-1 px-2"
+                              type="button"
+                              onclick="decrementQuantity(this)"
+                            >
+                              -
+                            </button>
+                            {# Added quantity-input class to the form-control
+                            itself for better styling #}
+                            <input
+                              type="number"
+                              class="form-control form-control-sm text-center py-1 quantity-input"
+                              name="quantity"
+                              value="1"
+                              min="1"
+                              max="{{ item.quantity }}"
+                            />
+                            <button
+                              class="btn btn-outline-secondary btn-sm py-1 px-2"
+                              type="button"
+                              onclick="incrementQuantity(this)"
+                            >
+                              +
+                            </button>
+                          </div>
+                          {# ***** END MODIFIED QUANTITY INPUT AREA ***** #}
+                          <button
+                            type="submit"
+                            class="btn btn-primary btn-sm py-1"
+                          >
+                            <i class="fas fa-cart-plus"></i> Add
+                          </button>
+                        </form>
+                        {% elif not current_user.is_authenticated %}
+                        <a
+                          href="{{ url_for('amazon.login', next=request.url) }}"
+                          class="btn btn-outline-primary btn-sm py-1"
+                        >
+                          <i class="fas fa-sign-in-alt"></i> Login
+                        </a>
+                        {% else %}
+                        <button class="btn btn-secondary btn-sm py-1" disabled>
+                          <i class="fas fa-ban"></i> Out of Stock
+                        </button>
+                        {% endif %}
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+              {% else %}
+              <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle me-2"></i> This product is
+                currently unavailable from any seller.
+              </div>
+              {% endif %} {# --- END AVAILABLE OPTIONS --- #}
             </div>
-        </div> {# End col-lg-3 #}
-    </div> {# End row #}
-</div> {# End container #}
-{% endblock %}
+          </div>
+        </div>
+      </div>
 
-{% block extra_js %}
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light p-0 border-bottom">
+          <ul
+            class="nav nav-pills nav-fill"
+            id="productDetailTabs"
+            role="tablist"
+          >
+            <li class="nav-item" role="presentation">
+              <button
+                class="nav-link active"
+                id="description-tab"
+                data-bs-toggle="tab"
+                data-bs-target="#description"
+                type="button"
+                role="tab"
+                aria-controls="description"
+                aria-selected="true"
+              >
+                Description
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button
+                class="nav-link"
+                id="reviews-tab"
+                data-bs-toggle="tab"
+                data-bs-target="#reviews"
+                type="button"
+                role="tab"
+                aria-controls="reviews"
+                aria-selected="false"
+              >
+                Reviews ({{ product.review_count|default(0) }})
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button
+                class="nav-link"
+                id="shipping-tab"
+                data-bs-toggle="tab"
+                data-bs-target="#shipping"
+                type="button"
+                role="tab"
+                aria-controls="shipping"
+                aria-selected="false"
+              >
+                Shipping
+              </button>
+            </li>
+            {# NEW: Add Warehouse Info Tab #}
+            <li class="nav-item" role="presentation">
+              <button
+                class="nav-link"
+                id="warehouse-tab"
+                data-bs-toggle="tab"
+                data-bs-target="#warehouse"
+                type="button"
+                role="tab"
+                aria-controls="warehouse"
+                aria-selected="false"
+              >
+                Availability
+              </button>
+            </li>
+          </ul>
+        </div>
+        <div class="card-body">
+          <div class="tab-content" id="productDetailTabsContent">
+            <div
+              class="tab-pane fade show active p-3"
+              id="description"
+              role="tabpanel"
+              aria-labelledby="description-tab"
+            >
+              <h4>Product Details</h4>
+              <p>{{ product.description }}</p>
+              {# Full description here #}
+
+              <div class="row mt-4">
+                <div class="col-md-6">
+                  <h5>Features</h5>
+                  {# Generate fake features or pull from product data if
+                  available #}
+                  <ul>
+                    <li>High-quality materials</li>
+                    <li>Durable construction</li>
+                    <li>User-friendly design</li>
+                  </ul>
+                </div>
+                <div class="col-md-6">
+                  <h5>Specifications</h5>
+                  <table class="table table-sm table-borderless">
+                    <tbody>
+                      <tr>
+                        <th scope="row" class="text-muted small">Category</th>
+                        <td>{{ product.category_name }}</td>
+                      </tr>
+                      <tr>
+                        <th scope="row" class="text-muted small">Product ID</th>
+                        <td>#{{ product.product_id }}</td>
+                      </tr>
+                      <tr>
+                        <th scope="row" class="text-muted small">Brand</th>
+                        <td>{{ product.brand|default('Generic') }}</td>
+                      </tr>
+                      <tr>
+                        <th scope="row" class="text-muted small">Model</th>
+                        <td>{{ product.model|default('N/A') }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div
+              class="tab-pane fade p-3"
+              id="reviews"
+              role="tabpanel"
+              aria-labelledby="reviews-tab"
+            >
+              {# --- REVIEWS TAB --- #} {% if current_user.is_authenticated %}
+              <div
+                class="d-flex justify-content-between align-items-center mb-4"
+              >
+                <h4 class="mb-0">Customer Reviews</h4>
+                <a
+                  href="{{ url_for('reviews.add_review', product_id=product.product_id) }}"
+                  class="btn btn-primary btn-sm"
+                >
+                  <i class="fas fa-star"></i> Write a Review
+                </a>
+              </div>
+              {% else %}
+              <div
+                class="d-flex justify-content-between align-items-center mb-4"
+              >
+                <h4 class="mb-0">Customer Reviews</h4>
+                <a
+                  href="{{ url_for('amazon.login', next=request.url) }}"
+                  class="btn btn-outline-primary btn-sm"
+                >
+                  <i class="fas fa-sign-in-alt"></i> Login to Write a Review
+                </a>
+              </div>
+              {% endif %}
+
+              <div class="card bg-light mb-4 border">
+                <div class="card-body">
+                  <div class="row align-items-center">
+                    <div class="col-md-4 text-center mb-3 mb-md-0">
+                      <h1 class="display-4 mb-0">
+                        {{ "%.1f"|format(avg_rating) }}
+                      </h1>
+                      <div class="rating-stars my-2">
+                        {% for i in range(1, 6) %} {% if i <= avg_rating %}
+                        <i class="fas fa-star"></i>
+                        {% elif i - 0.5 <= avg_rating %}
+                        <i class="fas fa-star-half-alt"></i>
+                        {% else %}
+                        <i class="far fa-star"></i>
+                        {% endif %} {% endfor %}
+                      </div>
+                      <p class="mb-0 text-muted small">
+                        {{ product.review_count|default(0) }} reviews
+                      </p>
+                    </div>
+                    <div class="col-md-8">
+                      {% set total_reviews =
+                      product.review_count|default(0)|float %} {% for star in
+                      [5, 4, 3, 2, 1] %} {% set count =
+                      product.rating_distribution[star]|default(0) if
+                      product.rating_distribution else 0 %} {% set percent =
+                      (count / total_reviews * 100) if total_reviews > 0 else 0
+                      %}
+                      <div class="d-flex align-items-center mb-1">
+                        <div class="text-muted small" style="width: 45px">
+                          {{ star }}
+                          <i class="fas fa-star" style="font-size: 0.7rem"></i>
+                        </div>
+                        <div
+                          class="progress flex-grow-1 mx-2"
+                          style="height: 6px"
+                        >
+                          <div
+                            class="progress-bar bg-warning"
+                            role="progressbar"
+                            style="width: {{ percent }}%;"
+                            aria-valuenow="{{ percent }}"
+                            aria-valuemin="0"
+                            aria-valuemax="100"
+                          ></div>
+                        </div>
+                        <div
+                          class="text-muted small"
+                          style="width: 40px; text-align: right"
+                        >
+                          {{ count }}
+                        </div>
+                      </div>
+                      {% endfor %}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {% if product.review_count > 0 %}
+              <div class="text-center mb-3">
+                <a
+                  href="{{ url_for('reviews.product_reviews', product_id=product.product_id) }}"
+                  class="btn btn-outline-primary btn-sm"
+                >
+                  <i class="fas fa-list"></i> View All Reviews
+                </a>
+              </div>
+              {% else %}
+              <div class="text-center py-5 border rounded bg-light">
+                <i class="fas fa-comments fa-3x text-muted mb-3"></i>
+                <h5>No Reviews Yet</h5>
+                <p class="text-muted">Be the first to review this product!</p>
+              </div>
+              {% endif %} {# --- END REVIEWS TAB --- #}
+            </div>
+
+            <div
+              class="tab-pane fade p-3"
+              id="shipping"
+              role="tabpanel"
+              aria-labelledby="shipping-tab"
+            >
+              {# --- SHIPPING TAB --- #}
+              <h4>Shipping Information</h4>
+              <p>
+                Products are shipped from the nearest warehouse with available
+                stock. Estimated delivery times vary based on your location and
+                warehouse processing time.
+              </p>
+              <ul>
+                <li>Standard Shipping: 3-5 business days</li>
+                <li>Expedited Shipping: 1-2 business days (where available)</li>
+                <li>
+                  Tracking number will be provided via email once shipped.
+                </li>
+              </ul>
+              <p class="text-muted small">
+                Please note: These are estimates and actual delivery times may
+                vary.
+              </p>
+              {# --- END SHIPPING TAB --- #}
+            </div>
+
+            {# --- NEW WAREHOUSE AVAILABILITY TAB --- #}
+            <div
+              class="tab-pane fade p-3"
+              id="warehouse"
+              role="tabpanel"
+              aria-labelledby="warehouse-tab"
+            >
+              <h4>Warehouse Availability</h4>
+              <p>Check stock levels at different warehouse locations.</p>
+              {% if product.warehouses %}
+              <div class="table-responsive border rounded">
+                <table class="table table-sm table-striped mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Warehouse ID</th>
+                      <th>Location (X, Y)</th>
+                      <th>Quantity</th>
+                      <th>Status</th>
+                      {# Assuming status comes from WarehouseProduct #}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for wh_item in product.warehouses %}
+                    <tr>
+                      <td>#{{ wh_item.warehouse_id }}</td>
+                      <td>{{ wh_item.warehouse_location }}</td>
+                      <td>{{ wh_item.quantity }}</td>
+                      <td>
+                        {# Display status if available in wh_item, otherwise
+                        check quantity #} {% set item_status = wh_item.status |
+                        default('Unknown', true) %} {% if item_status ==
+                        'Available' %}
+                        <span class="badge bg-success inventory-badge"
+                          >Available</span
+                        >
+                        {% elif item_status == 'Reserved' %}
+                        <span class="badge bg-info text-dark inventory-badge"
+                          >Reserved</span
+                        >
+                        {% elif item_status == 'Damaged' %}
+                        <span class="badge bg-secondary inventory-badge"
+                          >Damaged</span
+                        >
+                        {% elif item_status == 'Backordered' %}
+                        <span
+                          class="badge bg-light text-dark border inventory-badge"
+                          >Backordered</span
+                        >
+                        {% elif wh_item.quantity > 10 %}
+                        <span class="badge bg-success inventory-badge"
+                          >In Stock</span
+                        >
+                        {% elif wh_item.quantity > 0 %}
+                        <span class="badge bg-warning text-dark inventory-badge"
+                          >Low Stock</span
+                        >
+                        {% else %}
+                        <span class="badge bg-danger inventory-badge"
+                          >Out of Stock</span
+                        >
+                        {% endif %}
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+              {% else %}
+              <div class="alert alert-secondary">
+                No specific warehouse availability information found for this
+                product.
+              </div>
+              {% endif %}
+            </div>
+            {# --- END WAREHOUSE TAB --- #}
+          </div>
+        </div>
+      </div>
+    </div>
+    {# End col-lg-9 #} {# Sidebar for related products #}
+    <div class="col-lg-3">
+      <div class="card shadow-sm mb-4 sticky-top" style="top: 80px">
+        {# Make related products sticky #}
+        <div class="card-header bg-light">
+          <h5 class="mb-0">Related Products</h5>
+        </div>
+        <div class="card-body">
+          {% if related_products %} {% for rel_product in related_products %}
+          <div
+            class="d-flex mb-3 related-product-card p-2 border rounded bg-white"
+          >
+            <img
+              src="{{ rel_product.image or 'https://via.placeholder.com/60x60?text=N/A' }}"
+              alt="{{ rel_product.product_name }}"
+              class="img-thumbnail me-2"
+              style="width: 60px; height: 60px; object-fit: cover"
+            />
+            <div>
+              <a
+                href="{{ url_for('amazon.product_detail', product_id=rel_product.product_id) }}"
+                class="text-decoration-none stretched-link text-dark"
+              >
+                <h6 class="mb-0 small fw-normal">
+                  {{ rel_product.product_name|truncate(40) }}
+                </h6>
+              </a>
+              <small class="text-primary fw-bold d-block mt-1"
+                >${{ "%.2f"|format(rel_product.price) }}</small
+              >
+            </div>
+          </div>
+          {% endfor %}
+          <div class="text-center mt-2">
+            <a
+              href="{{ url_for('amazon.product_list', category_id=product.category_id) }}"
+              class="btn btn-sm btn-outline-secondary"
+              >More in {{ product.category_name }}</a
+            >
+          </div>
+          {% else %}
+          <p class="text-muted small">No related products found.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {# End col-lg-3 #}
+  </div>
+  {# End row #}
+</div>
+{# End container #} {% endblock %} {% block extra_js %}
 <script>
-    // Function to handle quantity increment
-    function incrementQuantity(button) {
-        const input = button.closest('.input-group').querySelector('input[type=number]');
-        const max = parseInt(input.getAttribute('max')) || 999; // Use 999 as default max if attribute not set
-        let currentValue = parseInt(input.value);
-        if (isNaN(currentValue)) currentValue = 1; // Handle non-numeric input
-        if (currentValue < max) {
-            input.value = currentValue + 1;
-        } else {
-             input.value = max; // Set to max if exceeding
-             button.classList.add('disabled');
-             setTimeout(() => button.classList.remove('disabled'), 300);
-        }
+  // Function to handle quantity increment
+  function incrementQuantity(button) {
+    const input = button
+      .closest(".input-group")
+      .querySelector("input[type=number]");
+    const max = parseInt(input.getAttribute("max")) || 999; // Use 999 as default max if attribute not set
+    let currentValue = parseInt(input.value);
+    if (isNaN(currentValue)) currentValue = 1; // Handle non-numeric input
+    if (currentValue < max) {
+      input.value = currentValue + 1;
+    } else {
+      input.value = max; // Set to max if exceeding
+      button.classList.add("disabled");
+      setTimeout(() => button.classList.remove("disabled"), 300);
     }
+  }
 
-    // Function to handle quantity decrement
-    function decrementQuantity(button) {
-        const input = button.closest('.input-group').querySelector('input[type=number]');
-        const min = parseInt(input.getAttribute('min')) || 1; // Use 1 as default min
-        let currentValue = parseInt(input.value);
-         if (isNaN(currentValue)) currentValue = 1; // Handle non-numeric input
-        if (currentValue > min) {
-            input.value = currentValue - 1;
-        } else {
-             input.value = min; // Set to min if going below
-        }
+  // Function to handle quantity decrement
+  function decrementQuantity(button) {
+    const input = button
+      .closest(".input-group")
+      .querySelector("input[type=number]");
+    const min = parseInt(input.getAttribute("min")) || 1; // Use 1 as default min
+    let currentValue = parseInt(input.value);
+    if (isNaN(currentValue)) currentValue = 1; // Handle non-numeric input
+    if (currentValue > min) {
+      input.value = currentValue - 1;
+    } else {
+      input.value = min; // Set to min if going below
     }
+  }
 
-    // Optional: Add validation on input change/blur
-    document.querySelectorAll('.quantity-input input[type="number"]').forEach(input => {
-        input.addEventListener('change', function() {
-            const min = parseInt(this.getAttribute('min')) || 1;
-            const max = parseInt(this.getAttribute('max')) || 999;
-            let value = parseInt(this.value);
+  // Optional: Add validation on input change/blur
+  document
+    .querySelectorAll('.quantity-input input[type="number"]')
+    .forEach((input) => {
+      input.addEventListener("change", function () {
+        const min = parseInt(this.getAttribute("min")) || 1;
+        const max = parseInt(this.getAttribute("max")) || 999;
+        let value = parseInt(this.value);
 
-            if (isNaN(value) || value < min) {
-                this.value = min;
-                console.warn(`Quantity adjusted to minimum (${min})`);
-            } else if (value > max) {
-                this.value = max;
-                 console.warn(`Quantity adjusted to maximum (${max})`);
-            }
-        });
-         // Prevent non-numeric input if needed (optional)
-         input.addEventListener('keypress', function (e) {
-             if (e.key.length === 1 && (e.key < '0' || e.key > '9')) {
-                 e.preventDefault();
-             }
-         });
+        if (isNaN(value) || value < min) {
+          this.value = min;
+          console.warn(`Quantity adjusted to minimum (${min})`);
+        } else if (value > max) {
+          this.value = max;
+          console.warn(`Quantity adjusted to maximum (${max})`);
+        }
+      });
+      // Prevent non-numeric input if needed (optional)
+      input.addEventListener("keypress", function (e) {
+        if (e.key.length === 1 && (e.key < "0" || e.key > "9")) {
+          e.preventDefault();
+        }
+      });
     });
 
-    // Activate the first tab if no hash is present or if hash doesn't match a tab
-    document.addEventListener('DOMContentLoaded', function() {
-        let activeTab = document.querySelector('#productDetailTabs .nav-link.active');
-        if (!activeTab) {
-            let firstTabEl = document.querySelector('#productDetailTabs button[data-bs-toggle="tab"]');
-            if (firstTabEl) {
-                var firstTab = new bootstrap.Tab(firstTabEl);
-                firstTab.show();
-            }
+  // Activate the first tab if no hash is present or if hash doesn't match a tab
+  document.addEventListener("DOMContentLoaded", function () {
+    let activeTab = document.querySelector(
+      "#productDetailTabs .nav-link.active"
+    );
+    if (!activeTab) {
+      let firstTabEl = document.querySelector(
+        '#productDetailTabs button[data-bs-toggle="tab"]'
+      );
+      if (firstTabEl) {
+        var firstTab = new bootstrap.Tab(firstTabEl);
+        firstTab.show();
+      }
+    }
+    // Handle clicking internal links (like #description) to switch tabs
+    document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
+      anchor.addEventListener("click", function (e) {
+        const targetId = this.getAttribute("href");
+        const targetTab = document.querySelector(
+          `button[data-bs-target="${targetId}"]`
+        );
+        if (targetTab) {
+          e.preventDefault(); // Prevent default anchor behavior
+          const tab = new bootstrap.Tab(targetTab);
+          tab.show();
+          // Optional: scroll to the tab content area
+          const tabContent = document.querySelector(targetId);
+          if (tabContent) {
+            // Add slight delay for tab transition
+            setTimeout(
+              () =>
+                tabContent.scrollIntoView({
+                  behavior: "smooth",
+                  block: "start",
+                }),
+              150
+            );
+          }
         }
-        // Handle clicking internal links (like #description) to switch tabs
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                const targetId = this.getAttribute('href');
-                const targetTab = document.querySelector(`button[data-bs-target="${targetId}"]`);
-                if (targetTab) {
-                    e.preventDefault(); // Prevent default anchor behavior
-                    const tab = new bootstrap.Tab(targetTab);
-                    tab.show();
-                    // Optional: scroll to the tab content area
-                    const tabContent = document.querySelector(targetId);
-                    if (tabContent) {
-                         // Add slight delay for tab transition
-                        setTimeout(() => tabContent.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
-                    }
-                }
-            });
-        });
+      });
     });
-
+  });
 </script>
 {% endblock %}

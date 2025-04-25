@@ -1,18 +1,18 @@
 # app/controllers/cart_controller.py
 from flask import Blueprint, request, redirect, url_for, flash, render_template, current_app as app
 from flask_login import login_required, current_user
-from app.models.cart import Cart
 from app.models.inventory import Inventory
 from app.services.warehouse_service import WarehouseService
 from app.services.shipment_service import ShipmentService
-
+from app.models.cart import CartService 
+from app.models.cart import Cart
 bp = Blueprint("cart", __name__, url_prefix="/cart")
 
 @bp.route('/', methods=["GET"])
 @login_required
 def view_cart():
     try:
-        cart_items = Cart.get_cart_items(current_user.id)
+        cart_items = CartService.get_cart_items(current_user.user_id)
         total_cart_value = sum(item[7] for item in cart_items) if cart_items else 0
 
         return render_template('cart.html',
@@ -40,7 +40,7 @@ def add_to_cart():
             flash("This product is out of stock or not available in the requested quantity", "warning")
             return redirect(request.referrer or url_for('index.index'))
 
-        cart_id = Cart.add_to_cart(current_user.id, product_id, seller_id, quantity)
+        cart_id = Cart.add_to_cart(current_user.user_id, product_id, seller_id, quantity)
         if cart_id:
             flash("Product added to cart", "success")
         else:
@@ -75,7 +75,7 @@ def checkout():
                 return redirect(url_for('cart.checkout'))
         
         # Process checkout
-        success, result = Cart.checkout_cart(current_user.id)
+        success, result = Cart.checkout_cart(current_user.user_id, destination_x, destination_y, ups_account=None)
         
         if success:
             # Create shipment for each order
@@ -99,8 +99,8 @@ def checkout():
             flash(f'Checkout failed: {result}', 'danger')
     
     # GET request
-    cart_items = Cart.get_cart_items(current_user.id)
-    total_cart_value = sum(item[7] for item in cart_items) if cart_items else 0
+    cart_items = CartService.get_cart_items(current_user.user_id)
+    total_cart_value = sum(item['total_price'] for item in cart_items) if cart_items else 0
     
     # Get available warehouses
     warehouse_service = WarehouseService()
@@ -108,7 +108,7 @@ def checkout():
     
     return render_template('checkout.html',
                           cart_items=cart_items,
-                          total_cart_value=total_cart_value,
+                          total=total_cart_value,
                           warehouses=warehouses)
 
 @bp.route("/remove", methods=["POST"])
@@ -125,7 +125,7 @@ def remove_from_cart():
         cart_rows = app.db.execute('''
         SELECT cart_id FROM Carts 
         WHERE user_id = :user_id
-        ''', user_id=current_user.id)
+        ''', user_id=current_user.user_id)
 
         if not cart_rows:
             flash("Cart not found", "danger")
@@ -169,7 +169,7 @@ def update_cart():
         cart_rows = app.db.execute('''
         SELECT cart_id FROM Carts 
         WHERE user_id = :user_id
-        ''', user_id=current_user.id)
+        ''', user_id=current_user.user_id)
 
         if not cart_rows:
             flash("Cart not found", "danger")

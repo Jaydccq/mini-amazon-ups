@@ -61,7 +61,7 @@ def set_worldid():
             }
         }), 500
 
-@ups_webhooks.route('/truck-dispatched', methods=['POST'])
+@ups_webhooks.route('/api/webhooks/truck-dispatched', methods=['POST'])
 def truck_dispatched():
     """
     UPS notifies Amazon that a truck has been dispatched
@@ -131,7 +131,7 @@ def truck_dispatched():
         }), 500
 
 
-@ups_webhooks.route('/truck-arrived', methods=['POST'])
+@ups_webhooks.route('/api/webhooks/truck-arrived', methods=['POST'])
 def truck_arrived():
     """
     UPS notifies Amazon that a truck has arrived at warehouse
@@ -223,7 +223,7 @@ def truck_arrived():
         }), 500
 
 
-@ups_webhooks.route('/shipment-delivered', methods=['POST'])
+@ups_webhooks.route('/api/webhooks/shipment-delivered', methods=['POST'])
 def shipment_delivered():
     """
     UPS notifies Amazon that a shipment has been delivered
@@ -303,7 +303,7 @@ def shipment_delivered():
         }), 500
 
 
-@ups_webhooks.route('/shipment-detail-request', methods=['POST'])
+@ups_webhooks.route('/api/webhooks/shipment-detail-request', methods=['POST'])
 def shipment_detail_request():
     """
     UPS requests details of a shipment

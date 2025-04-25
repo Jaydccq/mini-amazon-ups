@@ -17,7 +17,7 @@ uri_map = {
 }
 
 class UPSIntegrationService:
-    def __init__(self, ups_url='http://localhost:8081/api'):
+    def __init__(self, ups_url='http://host.docker.internal:8081/api'):
         self.ups_url = ups_url
         self.session = requests.Session()
 
@@ -49,6 +49,8 @@ class UPSIntegrationService:
 
         # Send message immediately and return response
         success, response = self.send_message('ShipmentCreated', message)
+
+        logger.info(f"UPS response: {response}")
 
         if(response.get('payload').get('status') == 'success'):
             return True, 'Order created successfully'

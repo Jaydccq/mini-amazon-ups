@@ -5,13 +5,13 @@ from datetime import datetime
 import logging
 from app.services.shipment_service import ShipmentService
 from app.services.world_simulator_service import WorldSimulatorService
+from flask import current_app
 
 logger = logging.getLogger(__name__)
 
 # Create a Blueprint for UPS webhook endpoints
 ups_webhooks = Blueprint('ups_webhooks', __name__, url_prefix='')
 shipment_service_instance = ShipmentService();
-world_simulator_service_instance = WorldSimulatorService()
 
 @ups_webhooks.route('/set_worldid', methods=['POST'])
 def set_worldid():
@@ -21,20 +21,23 @@ def set_worldid():
     try:
         message = request.get_json()
 
-        print(message)
+        logger.info(message)
 
         # {world_id: 1234567890}
 
         # Extract data
-        world_id = message.get('world_id')
+        world_id = message.get('worldid')
 
         # Connect to world
 
-        if world_simulator_service_instance.world_id != world_id:
+        world_simulator_service = current_app.config.get('WORLD_SIMULATOR_SERVICE')
+
+        if world_simulator_service.world_id != world_id:
             logger.info(f"Connecting to new world: {world_id}")
             # Disconnect from the previous world if connected
-            world_simulator_service_instance.disconnect()
-            world_simulator_service_instance.connect(world_id)
+            world_simulator_service.disconnect()
+            world_simulator_service.connect(world_id)
+            current_app.config['CURRENT_WORLD_ID'] = world_id
         else:
             logger.info(f"Already connected to world: {world_id}")
 

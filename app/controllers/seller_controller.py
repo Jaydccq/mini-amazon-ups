@@ -290,7 +290,7 @@ def create_product():
     """Create a new product, add it to seller's inventory listing, AND add initial stock to a specified warehouse"""
     seller_id = current_user.user_id
     # Instantiate WarehouseService
-    warehouse_service = WarehouseService(current_app.config.get('WORLD_SIMULATOR_SERVICE'))
+    warehouse_service = WarehouseService()
 
     if request.method == 'POST':
         product_name = request.form.get('product_name')

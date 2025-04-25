@@ -4,6 +4,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 from flask import current_app
 import logging
+from sqlalchemy import text
 
 db = SQLAlchemy()
 logger = logging.getLogger(__name__)
@@ -109,8 +110,13 @@ class Cart(db.Model):
 
                 logger.info("getting warehouse id")
 
+                logger.info(f"Getting warehouse id for product {cart_item.product_id} and seller {cart_item.seller_id}")
                 warehouse_id = Inventory.get_warehouse_id_by_productId_sellerId(cart_item.product_id,
                                                                                 cart_item.seller_id)
+
+                if not warehouse_id:
+                    db.session.rollback()
+                    return False, checkout_count
 
                 order_item = OrderProduct(
                     order_id=order.order_id,
@@ -127,6 +133,8 @@ class Cart(db.Model):
                 # subtract from inventory
 
                 logger.info("subtracting from inventory")
+
+
                 inventory_item = WarehouseProduct.query.filter_by(
                     warehouse_id=warehouse_id,
                     product_id=cart_item.product_id
@@ -140,7 +148,12 @@ class Cart(db.Model):
                     
                 logger.info(f"Send Request of creating shipment for product {cart_item.product_id} in warehouse {warehouse_id}")
 
+                # get user email
+                user = User.query.filter_by(user_id=user_id).first()
+
                 shipment_success, shipment_id_or_error = shipment_service.create_shipment(
+                    user_id=user_id,
+                    email= user.email,
                     order_id=order.order_id,
                     warehouse_id=warehouse_id,
                     destination_x=destination_x,
@@ -160,6 +173,7 @@ class Cart(db.Model):
             return True, checkout_count
         except Exception as e:
             db.session.rollback()
+            logger.error(f"Error during checkout: {e}")
             return False, -1
 
 class CartProduct(db.Model):
@@ -335,7 +349,7 @@ class UPSMessage(db.Model):
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    payload = db.Column(db.Text, nullable=False)  # JSON
+    message_content = db.Column(db.Text, nullable=False)  # JSON
 
 # app/model.py
 # ... (all other existing model classes like User, Product, Order, Shipment, etc.) ...
@@ -386,3 +400,23 @@ class Inventory(db.Model):
     __table_args__ = (
         db.UniqueConstraint('seller_id', 'product_id', name='uq_inventory_seller_product'),
     )
+
+    @staticmethod
+    def get_warehouse_id_by_productId_sellerId(product_id, seller_id):
+        try:
+            rows = db.session.execute(
+                text('''
+                        SELECT warehouse_id
+                        FROM Inventory
+                        WHERE product_id = :product_id AND seller_id = :seller_id
+                    '''),
+                {"product_id": product_id, "seller_id": seller_id}
+            ).first()
+
+            logger.info(f"Warehouse ID for product {product_id} and seller {seller_id}: {rows[0]}")
+
+            return rows[0] if rows else None
+        except Exception as e:
+            print(f"Error getting warehouse ID for product {product_id} and seller {seller_id}: {e}")
+            return None
+

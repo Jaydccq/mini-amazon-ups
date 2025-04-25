@@ -15,7 +15,7 @@ class ShipmentService:
         self.world_simulator = world_simulator_service
         self.ups_integration = UPSIntegrationService()
     
-    def create_shipment(self, order_id, warehouse_id, destination_x, destination_y, ups_account=None):
+    def create_shipment(self, user_id, email, order_id, warehouse_id, destination_x, destination_y, ups_account=None):
         try:
             # Get the order
             order = Order.query.filter_by(order_id=order_id).first()
@@ -42,6 +42,7 @@ class ShipmentService:
                 status='packing'
             )
 
+            logger.info("Save Shipment")
             db.session.add(shipment)
             db.session.flush()  # without commit
             
@@ -51,6 +52,7 @@ class ShipmentService:
                 return False, "Order has no items"
             
             # Create shipment items
+            logger.info("Save Shipment Items")
             for order_item in order_items:
                 shipment_item = ShipmentItem(
                     shipment_id=shipment.shipment_id,
@@ -58,15 +60,15 @@ class ShipmentService:
                     quantity=order_item.quantity
                 )
                 db.session.add(shipment_item)
-            
-            # Commit 
-            db.session.commit()
 
             logger.info(f"Sending Shipment ID: {shipment.shipment_id}")
             
             # Notify UPS 
             notify_res, msg = self.ups_integration.notify_package_created(
+                user_id=user_id,
+                email=email,
                 shipment_id=shipment.shipment_id,
+                warehouse_id=warehouse_id,
                 destination_x=destination_x,
                 destination_y=destination_y,
                 ups_account=ups_account
@@ -76,6 +78,8 @@ class ShipmentService:
                 logger.error(f"Failed to notify UPS: {msg}")
                 db.session.rollback()
                 return False, msg
+
+            db.session.commit()
             
             logger.info(f"Send Shipment ID Successfully: {shipment.shipment_id}")
             

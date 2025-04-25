@@ -71,7 +71,7 @@ def setup_test_env():
                  seller = db.session.query(User).filter_by(is_seller=True).first()
                  if not seller:
                       logger.warning("No seller found, creating dummy seller admin@example.com if not exists")
-                      # Assuming admin user from create_database.sql or __init__.py exists
+                      # Assuming admin user from init.sql or __init__.py exists
                       seller = db.session.query(User).filter_by(email='admin@example.com').first()
                       if not seller: # If admin still not found, create a basic one (adjust as needed)
                            seller = User(email='test_seller@example.com', first_name='Test', last_name='Seller', is_seller=True)

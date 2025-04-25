@@ -6,7 +6,7 @@ from datetime import datetime,timezone
 logger = logging.getLogger(__name__)
 from flask import current_app
 class WarehouseService:
-    def __init__(self):
+    def __init__(self,world_simulator_service=None):
         self.world_simulator = current_app.config.get('WORLD_SIMULATOR_SERVICE') 
         
     

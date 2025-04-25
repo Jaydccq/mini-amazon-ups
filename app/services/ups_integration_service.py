@@ -10,21 +10,21 @@ from app.model import db, UPSMessage, Shipment, Order
 logger = logging.getLogger(__name__)
 
 uri_map = {
-    'ShipmentCreated': '/shipment/',
-    'ShipmentLoaded': '/shipment_loaded/',
-    'ShipmentStatusRequest': '/shipment_status/',
+    'ShipmentCreated': 'shipment',
+    'ShipmentLoaded': 'shipment_loaded',
+    'ShipmentStatusRequest': 'shipment_status',
     # 'ShipmentStatusResponse': '/shipment_detail_response/',
 }
 
 class UPSIntegrationService:
-    def __init__(self, ups_url='http://ups-service:8081/api'):
+    def __init__(self, ups_url='http://localhost:8081/api'):
         self.ups_url = ups_url
         self.session = requests.Session()
 
     def notify_package_created(self, user_id, email, shipment_id, warehouse_id, destination_x, destination_y, ups_account=None):
         message = {
             "message_type": "ShipmentCreated",
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.utcnow().isoformat(),
             "payload": {
                 'user_id': user_id,
                 'email': email,
@@ -39,55 +39,43 @@ class UPSIntegrationService:
             message['ups_account'] = ups_account
 
         # Save message to database
-        db_message = UPSMessage(
-            message_type='ShipmentCreated',
-            timestamp=datetime.utcnow(),
-            pay_load=json.dumps(message)
-        )
-        db.session.add(db_message)
-        db.session.commit()
+        # db_message = UPSMessage(
+        #     message_type='ShipmentCreated',
+        #     timestamp=datetime.utcnow().isoformat(),
+        #     pay_load=json.dumps(message)
+        # )
+        # db.session.add(db_message)
+        # db.session.commit()
 
         # Send message immediately and return response
         success, response = self.send_message('ShipmentCreated', message)
 
-        # Update message status in database
-        db_message.status = 'success' if success else 'failed'
-
         if(response.get('payload').get('status') == 'success'):
-            db_message.status = 'success'
-            db.session.commit()
             return True, 'Order created successfully'
         else:
-            db_message.status = 'failed'
-            db.session.commit()
             return False, 'Order creation failed: '+response.get('payload').get('message')
 
     # Notify UPS that a package has been loaded
     def notify_package_loaded(self, shipment_id):
         message = {
             "message_type": "ShipmentLoaded",
-              "timestamp": datetime.utcnow(),
+              "timestamp": datetime.utcnow().isoformat(),
               "payload": {
                 "shipment_id": shipment_id
               }
         }
 
         # Save message to database
-        db_message = UPSMessage(
-            message_type='ShipmentLoaded',
-            timestamp=datetime.utcnow(),
-            message_content=json.dumps(message),
-        )
-        db.session.add(db_message)
-        db.session.commit()
+        # db_message = UPSMessage(
+        #     message_type='ShipmentLoaded',
+        #     timestamp=datetime.utcnow().isoformat(),
+        #     message_content=json.dumps(message),
+        # )
+        # db.session.add(db_message)
+        # db.session.commit()
 
         # Send message immediately and return response
         success, response = self.send_message('ShipmentLoaded', message)
-
-        # Update message status in database
-        db_message.status = 'success' if success else 'failed'
-
-        db.session.commit()
 
         return response
 
@@ -98,7 +86,7 @@ class UPSIntegrationService:
             # Query the shipment status from UPS
             message = {
                 "message_type": "ShipmentStatusRequest",
-                  "timestamp": datetime.utcnow(),
+                  "timestamp": datetime.utcnow().isoformat(),
                   "payload": {
                     "shipment_id": shipment_id
                 }
@@ -116,7 +104,8 @@ class UPSIntegrationService:
 
     def send_message(self, message_type, message_content):
         try:
-            endpoint = f"{self.ups_url}/{message_type}"
+            endpoint = f"{self.ups_url}/{uri_map.get(message_type)}"
+            logger.info(f"Sending message to UPS: {message_content} to {endpoint}")
             response = self.session.post(
                 endpoint,
                 json=message_content,

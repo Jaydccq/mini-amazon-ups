@@ -97,9 +97,13 @@ class CartService:
             if not warehouse:
                 db.session.rollback()
                 return False, "No warehouse available"
-            
+
+            # Get user's email
+
             # Create shipment
             shipment_success, shipment_result = shipment_service.create_shipment(
+                user_id=user_id,
+                email = user.email,
                 order_id=order.order_id,
                 warehouse_id=warehouse.warehouse_id,
                 destination_x=0,  # Default coordinates

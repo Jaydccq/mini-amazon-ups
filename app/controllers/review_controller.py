@@ -54,8 +54,11 @@ def add_review():
             seller_id = int(request.form.get('seller_id'))
 
         try:
-            Review.create(current_user.id, comment, product_id, seller_id, rating)
-            flash('Review added successfully!')
+            success, message = Review.create_review(current_user.user_id, comment, product_id, seller_id, rating)
+            if success:
+                flash('Review added successfully!')
+            else:
+                flash(f'Error adding review: {message}', 'danger')
         except ValueError as e:
             flash(f'Error: {str(e)}')
 

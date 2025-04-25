@@ -259,6 +259,7 @@ def create_products(categories, sellers, n_per_category):
             # More realistic price distribution (skewed towards lower prices)
             price = round(random.paretovariate(1.5) * random.uniform(5, 50), 2)
             price = max(0.99, min(price, 5000.0)) # Clamp price between $0.99 and $5000
+            image=f"https://picsum.photos/seed/{prod_name.replace(' ', '_')}/400/300"
 
             product = Product(
                 category_id=category.category_id,
@@ -266,7 +267,7 @@ def create_products(categories, sellers, n_per_category):
                 description=fake.paragraph(nb_sentences=random.randint(3, 7)), # Longer descriptions
                 price=price,
                 owner_id=seller.user_id,
-                image=fake.image_url(width=random.randint(400, 800), height=random.randint(300, 600)) # Varied image size
+                image=image,
             )
             products_to_add.append(product)
             existing_names.add(prod_name)

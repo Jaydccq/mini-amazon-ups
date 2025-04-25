@@ -65,12 +65,11 @@ class WorldSimulatorService:
             self.cleanup_old_world_messages()
             logger.info(f"Connecting to World Simulator at {self.host}:{self.port}...")
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.socket.connect((self.host, self.port))
+            self.socket.connect(('docker_deploy-server-1', self.port))
             logger.info("Connected to World Simulator")
             # Create connection message
             connect_msg = amazon_pb2.AConnect()
             connect_msg.isAmazon = True
-            print("Connecting to World Simulator...")
 
             default_init_warehouses = []
             for i in range(1, 51):

@@ -42,6 +42,14 @@ def create_app(test_config=None):
     except OSError:
         pass
 
+    logging.basicConfig(
+        level=logging.DEBUG,  # 设置为DEBUG可以显示所有级别的日志
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.StreamHandler(),  # 添加控制台输出处理器
+        ]
+    )
+
     db.init_app(app)
 
     app.register_blueprint(amazon_bp)

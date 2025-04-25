@@ -6,6 +6,8 @@ from app.services.warehouse_service import WarehouseService
 from app.services.shipment_service import ShipmentService
 from app.models.cart import CartService 
 from app.models.cart import Cart
+from app.models.product import Product  # Add this import
+
 import logging
 bp = Blueprint("cart", __name__, url_prefix="/cart")
 logger = logging.getLogger(__name__)

@@ -167,8 +167,6 @@ def create_users(n_users, n_sellers):
         print(f"Error creating users: {e}")
         return [] # Return empty list on error
 
-# --- (create_categories, create_products, create_warehouses remain the same as previous correct version) ---
-
 def create_categories(n):
     """Creates product categories with more variety."""
     ProductCategory = db_models['ProductCategory']
@@ -319,65 +317,7 @@ def create_warehouses(n):
         print(f"Error creating warehouses: {e}")
         return []
 
-# --- Warehouse Inventory Function (Populates WarehouseProduct) ---
-def create_warehouse_inventory(products, warehouses, default_max_qty):
-    """Adds or updates product inventory IN WAREHOUSES."""
-    WarehouseProduct = db_models['WarehouseProduct']
-    inventory_items_to_add = []
-    inventory_items_to_update = 0
-
-    if not warehouses or not products:
-        print("Error: Warehouses and products are required to create warehouse inventory.")
-        return []
-
-    print(f"Populating/updating WAREHOUSE inventory for {len(products)} products...")
-
-    existing_inventory = {}
-    for item in session.query(WarehouseProduct).all():
-         existing_inventory[(item.warehouse_id, item.product_id)] = item
-
-    product_count = 0
-    for product in products:
-        if len(warehouses) > 0:
-            num_warehouse_assignments = random.randint(1, min(5, len(warehouses)))
-            assigned_warehouses = random.sample(warehouses, num_warehouse_assignments)
-        else:
-            assigned_warehouses = []
-
-        for warehouse in assigned_warehouses:
-            key = (warehouse.warehouse_id, product.product_id)
-            quantity = random.randint(1, default_max_qty)
-
-            if key not in existing_inventory:
-                 inventory_item = WarehouseProduct(
-                    warehouse_id=warehouse.warehouse_id,
-                    product_id=product.product_id,
-                    quantity=quantity
-                 )
-                 inventory_items_to_add.append(inventory_item)
-                 existing_inventory[key] = inventory_item
-            else:
-                 # Simple update: just set a new random quantity
-                 existing_item = existing_inventory[key]
-                 existing_item.quantity = quantity
-                 inventory_items_to_update += 1
-
-        product_count += 1
-        if product_count % 100 == 0:
-             print(f"  Processed warehouse inventory for {product_count}/{len(products)} products...")
-
-    try:
-        if inventory_items_to_add:
-             session.add_all(inventory_items_to_add)
-        session.commit()
-        print(f"Successfully created {len(inventory_items_to_add)} new WAREHOUSE inventory records and updated {inventory_items_to_update} existing records.")
-        return session.query(WarehouseProduct).all()
-    except SQLAlchemyError as e:
-        session.rollback()
-        print(f"Error creating/updating warehouse inventory: {e}")
-        return []
-
-# --- NEW SELLER INVENTORY FUNCTION (Populates Inventory) ---
+# --- MODIFIED: Updated Seller Inventory Function ---
 def create_seller_inventory(products, sellers, min_sellers_per_prod):
     """Ensures each product is listed by at least min_sellers_per_prod sellers in the Inventory table."""
     Inventory = db_models['Inventory']
@@ -403,6 +343,59 @@ def create_seller_inventory(products, sellers, min_sellers_per_prod):
         if inv.product_id not in existing_seller_map:
             existing_seller_map[inv.product_id] = set()
         existing_seller_map[inv.product_id].add(inv.seller_id)
+
+    # ADDED: Create a test product with guaranteed high inventory for checkout testing
+    try:
+        # Find an existing product to use as test product, preferably the first one
+        test_product = None
+        if products:
+            test_product = products[0]
+        
+        if test_product:
+            # Ensure this product has listings from all sellers with high quantities
+            product_id = test_product.product_id
+            for seller in sellers:
+                if seller.user_id == test_product.owner_id:
+                    continue  # Skip the product owner
+                
+                # Check if we already have this seller listing this product
+                if product_id in existing_seller_map and seller.user_id in existing_seller_map[product_id]:
+                    # Update existing entry instead of adding new one
+                    existing_inventory = session.query(Inventory).filter_by(
+                        product_id=product_id, 
+                        seller_id=seller.user_id
+                    ).first()
+                    if existing_inventory:
+                        existing_inventory.quantity = 100  # Set a high quantity
+                        existing_inventory.unit_price = round(float(test_product.price) * 0.95, 2)  # Competitive price
+                else:
+                    # Create new listing with high quantity
+                    inventory_item = Inventory(
+                        seller_id=seller.user_id,
+                        product_id=product_id,
+                        quantity=100,  # High quantity
+                        unit_price=round(float(test_product.price) * 0.95, 2),  # Slightly below product price
+                        owner_id=test_product.owner_id
+                    )
+                    inventory_items_to_add.append(inventory_item)
+                    # Update local map
+                    if product_id not in existing_seller_map:
+                        existing_seller_map[product_id] = set()
+                    existing_seller_map[product_id].add(seller.user_id)
+            
+            # Commit the test product inventory changes immediately
+            if inventory_items_to_add:
+                try:
+                    session.add_all(inventory_items_to_add)
+                    session.commit()
+                    print(f"Created guaranteed high-inventory listings for test product ID {product_id}")
+                    inventory_items_to_add = []  # Reset for regular products
+                except SQLAlchemyError as e:
+                    session.rollback()
+                    print(f"Error adding test product inventory: {e}")
+    except Exception as e:
+        print(f"Error creating test product inventory: {e}")
+        session.rollback()
 
     product_count = 0
     added_count_total = 0
@@ -431,7 +424,8 @@ def create_seller_inventory(products, sellers, min_sellers_per_prod):
 
                 for seller in sellers_to_add:
                     # Generate quantity and price for this seller's listing
-                    quantity = random.randint(5, MAX_INITIAL_INVENTORY // 2) # Seller listing quantity
+                    # MODIFIED: Increased minimum quantity to ensure more stock is available
+                    quantity = random.randint(20, MAX_INITIAL_INVENTORY) # Increased from 5 to 20
                     unit_price = round(float(product.price) * random.uniform(0.90, 1.25), 2) # Price variation +/- 15%
                     unit_price = max(0.01, unit_price)
 
@@ -449,7 +443,6 @@ def create_seller_inventory(products, sellers, min_sellers_per_prod):
                          existing_seller_map[product.product_id] = set()
                     existing_seller_map[product.product_id].add(seller.user_id)
 
-
     # Commit all new inventory items at the end
     if inventory_items_to_add:
         try:
@@ -460,7 +453,102 @@ def create_seller_inventory(products, sellers, min_sellers_per_prod):
             session.rollback()
             print(f"Error adding seller inventory listings: {e}")
 
-# --- (create_carts_and_orders, create_shipments, create_reviews remain the same) ---
+# --- MODIFIED: Updated Warehouse Inventory Function ---
+def create_warehouse_inventory(products, warehouses, default_max_qty):
+    """Adds or updates product inventory IN WAREHOUSES."""
+    WarehouseProduct = db_models['WarehouseProduct']
+    inventory_items_to_add = []
+    inventory_items_to_update = 0
+    Inventory = db_models['Inventory']
+
+    if not warehouses or not products:
+        print("Error: Warehouses and products are required to create warehouse inventory.")
+        return []
+
+    print(f"Populating/updating WAREHOUSE inventory for {len(products)} products...")
+
+    # ADDED: Get seller inventory to ensure warehouse stock aligns with seller listings
+    seller_inventory = {}
+    for inv in session.query(Inventory).all():
+        if inv.product_id not in seller_inventory:
+            seller_inventory[inv.product_id] = 0
+        seller_inventory[inv.product_id] += inv.quantity
+
+    existing_inventory = {}
+    for item in session.query(WarehouseProduct).all():
+         existing_inventory[(item.warehouse_id, item.product_id)] = item
+
+    product_count = 0
+    for product in products:
+        product_count += 1
+        
+        # ADDED: Get total seller inventory for this product
+        total_seller_quantity = seller_inventory.get(product.product_id, 0)
+        
+        # MODIFIED: Ensure enough warehouses have this product
+        if len(warehouses) > 1:
+            # Make sure most warehouses have this product to improve checkout chance
+            num_warehouse_assignments = random.randint(max(1, len(warehouses)//2), len(warehouses))
+            assigned_warehouses = random.sample(warehouses, num_warehouse_assignments)
+        else:
+            assigned_warehouses = warehouses.copy()
+
+        # MODIFIED: Make sure total warehouse quantity exceeds seller quantity
+        total_wh_quantity_needed = max(total_seller_quantity * 1.5, 100)  # 50% more than seller inventory, min 100
+        qty_per_warehouse = max(20, int(total_wh_quantity_needed / len(assigned_warehouses)))
+        
+        for warehouse in assigned_warehouses:
+            key = (warehouse.warehouse_id, product.product_id)
+            # MODIFIED: Ensure higher minimum quantity
+            quantity = random.randint(qty_per_warehouse, qty_per_warehouse * 2)
+
+            if key not in existing_inventory:
+                 inventory_item = WarehouseProduct(
+                    warehouse_id=warehouse.warehouse_id,
+                    product_id=product.product_id,
+                    quantity=quantity
+                 )
+                 inventory_items_to_add.append(inventory_item)
+                 existing_inventory[key] = inventory_item
+            else:
+                 # Update existing item with new higher quantity
+                 existing_item = existing_inventory[key]
+                 # Only increase quantity, never decrease
+                 existing_item.quantity = max(existing_item.quantity, quantity)
+                 inventory_items_to_update += 1
+
+        if product_count % 100 == 0:
+             print(f"  Processed warehouse inventory for {product_count}/{len(products)} products...")
+
+    # ADDED: Make sure we have at least one product with very high inventory in all warehouses
+    try:
+        if products:
+            test_product = products[0]
+            print(f"Setting high warehouse inventory for test product ID {test_product.product_id}")
+            for warehouse in warehouses:
+                key = (warehouse.warehouse_id, test_product.product_id)
+                if key not in existing_inventory:
+                    inventory_item = WarehouseProduct(
+                        warehouse_id=warehouse.warehouse_id,
+                        product_id=test_product.product_id,
+                        quantity=200  # Very high quantity
+                    )
+                    inventory_items_to_add.append(inventory_item)
+                else:
+                    existing_inventory[key].quantity = 200  # Update to high quantity
+    except Exception as e:
+        print(f"Error setting high warehouse inventory for test product: {e}")
+
+    try:
+        if inventory_items_to_add:
+             session.add_all(inventory_items_to_add)
+        session.commit()
+        print(f"Successfully created {len(inventory_items_to_add)} new WAREHOUSE inventory records and updated {inventory_items_to_update} existing records.")
+        return session.query(WarehouseProduct).all()
+    except SQLAlchemyError as e:
+        session.rollback()
+        print(f"Error creating/updating warehouse inventory: {e}")
+        return []
 
 def create_carts_and_orders(users, products, n_orders_per_user, max_items):
     """Simulates users adding items to cart and creating orders with varied dates."""

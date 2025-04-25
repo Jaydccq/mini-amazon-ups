@@ -1,168 +1,231 @@
-{% extends "layout.html" %}
-
-{% block title %}Add Warehouse | Mini-Amazon{% endblock %}
-
-{% block content %}
+{% extends "layout.html" %} {% block title %}Add Warehouse | Mini-Amazon{%
+endblock %} {% block content %}
 <div class="container mt-4">
-    <nav aria-label="breadcrumb" class="mb-4">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ url_for('amazon.index') }}">Home</a></li>
-            <li class="breadcrumb-item"><a href="{{ url_for('admin.warehouses') }}">Warehouses</a></li>
-            <li class="breadcrumb-item active">Add Warehouse</li>
-        </ol>
-    </nav>
+  <nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item">
+        <a href="{{ url_for('amazon.index') }}">Home</a>
+      </li>
+      <li class="breadcrumb-item">
+        <a href="{{ url_for('admin.warehouses') }}">Warehouses</a>
+      </li>
+      <li class="breadcrumb-item active">Add Warehouse</li>
+    </ol>
+  </nav>
 
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header bg-light">
-                    <h2 class="mb-0">Add New Warehouse</h2>
-                </div>
-                <div class="card-body">
-                    {# Form action points to the correct admin endpoint #}
-                    <form method="POST" action="{{ url_for('admin.add_warehouse') }}">
-                        <div class="alert alert-info mb-4">
-                            <i class="fas fa-info-circle"></i> Enter the coordinates where you want to place your warehouse. The coordinates will be used to position the warehouse in the simulated world.
-                        </div>
-                        
-                        <div class="row mb-4">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="x" class="form-label">X Coordinate</label>
-                                    <input type="number" class="form-control" id="x" name="x" required>
-                                    <div class="form-text">X coordinate (horizontal position)</div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="y" class="form-label">Y Coordinate</label>
-                                    <input type="number" class="form-control" id="y" name="y" required>
-                                    <div class="form-text">Y coordinate (vertical position)</div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="mb-4">
-                            <label class="form-label">Preview Location</label>
-                            <div id="warehousePreviewMap" style="height: 300px; background-color: #f8f9fa; position: relative; border: 1px solid #dee2e6; border-radius: 0.25rem;">
-                                <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-size: 20px 20px; background-image: linear-gradient(to right, #e9ecef 1px, transparent 1px), linear-gradient(to bottom, #e9ecef 1px, transparent 1px);"></div>
-                                
-                                <div id="warehouseMarker" style="position: absolute; width: 12px; height: 12px; background-color: #28a745; border-radius: 50%; display: none; margin-left: -6px; margin-top: -6px;"></div>
-                                <div id="warehouseLabel" style="position: absolute; white-space: nowrap; background-color: rgba(255, 255, 255, 0.8); padding: 2px 5px; border-radius: 3px; font-size: 0.8rem; display: none; transform: translate(-50%, -100%); margin-top: -5px;">
-                                    New Warehouse
-                                </div>
-                                
-                                {# IMPORTANT: 'existing_warehouses' needs to be passed from the controller #}
-                                {% for warehouse in existing_warehouses or [] %} {# Added 'or []' to prevent error if variable is missing #}
-                                <div style="position: absolute; width: 10px; height: 10px; background-color: #6c757d; border-radius: 50%; left: {{ (warehouse.x / 100) * 100 }}%; top: {{ (warehouse.y / 100) * 100 }}%; margin-left: -5px; margin-top: -5px;"></div>
-                                <div style="position: absolute; white-space: nowrap; background-color: rgba(255, 255, 255, 0.8); padding: 2px 5px; border-radius: 3px; font-size: 0.7rem; left: {{ (warehouse.x / 100) * 100 }}%; top: {{ (warehouse.y / 100) * 100 }}%; transform: translate(-50%, -100%); margin-top: -5px;">
-                                    #{{ warehouse.warehouse_id }}
-                                </div>
-                                {% endfor %}
-                            </div>
-                            <div class="form-text text-muted">
-                                <i class="fas fa-info-circle"></i> Click on the map to set coordinates.
-                            </div>
-                        </div>
-                        
-                        <div class="d-flex justify-content-between">
-                            {# Cancel link points to the correct admin endpoint #}
-                            <a href="{{ url_for('admin.warehouses') }}" class="btn btn-outline-secondary">
-                                <i class="fas fa-arrow-left"></i> Cancel
-                            </a>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-plus-circle"></i> Create Warehouse
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-header bg-light">
+          <h2 class="mb-0">Add New Warehouse</h2>
         </div>
+        <div class="card-body">
+          <form method="POST" action="{{ url_for('admin.add_warehouse') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+
+            <div class="alert alert-info mb-4">
+              <i class="fas fa-info-circle"></i> Enter the coordinates where you
+              want to place your warehouse. The coordinates will be used to
+              position the warehouse in the simulated world.
+            </div>
+
+            <div class="row mb-4">
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label for="x" class="form-label">X Coordinate</label>
+                  <input
+                    type="number"
+                    class="form-control"
+                    id="x"
+                    name="x"
+                    required
+                  />
+                  <div class="form-text">
+                    X coordinate (horizontal position)
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label for="y" class="form-label">Y Coordinate</label>
+                  <input
+                    type="number"
+                    class="form-control"
+                    id="y"
+                    name="y"
+                    required
+                  />
+                  <div class="form-text">Y coordinate (vertical position)</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label">Preview Location</label>
+              <div
+                id="warehousePreviewMap"
+                style="
+                  height: 300px;
+                  background-color: #f8f9fa;
+                  position: relative;
+                  border: 1px solid #dee2e6;
+                  border-radius: 0.25rem;
+                "
+              >
+                <div
+                  style="
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background-size: 20px 20px;
+                    background-image: linear-gradient(
+                        to right,
+                        #e9ecef 1px,
+                        transparent 1px
+                      ),
+                      linear-gradient(to bottom, #e9ecef 1px, transparent 1px);
+                  "
+                ></div>
+
+                <div
+                  id="warehouseMarker"
+                  style="
+                    position: absolute;
+                    width: 12px;
+                    height: 12px;
+                    background-color: #28a745;
+                    border-radius: 50%;
+                    display: none;
+                    margin-left: -6px;
+                    margin-top: -6px;
+                  "
+                ></div>
+                <div
+                  id="warehouseLabel"
+                  style="
+                    position: absolute;
+                    white-space: nowrap;
+                    background-color: rgba(255, 255, 255, 0.8);
+                    padding: 2px 5px;
+                    border-radius: 3px;
+                    font-size: 0.8rem;
+                    display: none;
+                    transform: translate(-50%, -100%);
+                    margin-top: -5px;
+                  "
+                >
+                  New Warehouse
+                </div>
+
+                {% for warehouse in existing_warehouses or [] %}
+                <div
+                  style="position: absolute; width: 10px; height: 10px; background-color: #6c757d; border-radius: 50%; left: {{ (warehouse.x / 100) * 100 }}%; top: {{ (warehouse.y / 100) * 100 }}%; margin-left: -5px; margin-top: -5px;"
+                ></div>
+                <div
+                  style="position: absolute; white-space: nowrap; background-color: rgba(255, 255, 255, 0.8); padding: 2px 5px; border-radius: 3px; font-size: 0.7rem; left: {{ (warehouse.x / 100) * 100 }}%; top: {{ (warehouse.y / 100) * 100 }}%; transform: translate(-50%, -100%); margin-top: -5px;"
+                >
+                  #{{ warehouse.warehouse_id }}
+                </div>
+                {% endfor %}
+              </div>
+              <div class="form-text text-muted">
+                <i class="fas fa-info-circle"></i> Click on the map to set
+                coordinates.
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-between">
+              <a
+                href="{{ url_for('admin.warehouses') }}"
+                class="btn btn-outline-secondary"
+              >
+                <i class="fas fa-arrow-left"></i> Cancel
+              </a>
+              <button type="submit" class="btn btn-primary">
+                <i class="fas fa-plus-circle"></i> Create Warehouse
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
+  </div>
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script> {# Added jQuery dependency #}
+{% endblock %} {% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-    $(document).ready(function() {
-        // Get elements
-        const xInput = $('#x');
-        const yInput = $('#y');
-        const warehousePreviewMap = $('#warehousePreviewMap');
-        const warehouseMarker = $('#warehouseMarker');
-        const warehouseLabel = $('#warehouseLabel');
-        
-        // Function to update marker position
-        function updateMarkerPosition() {
-            const x = parseFloat(xInput.val());
-            const y = parseFloat(yInput.val());
-            
-            if (!isNaN(x) && !isNaN(y)) {
-                // Basic validation (assuming 0-100 range for simplicity)
-                const validX = Math.max(0, Math.min(100, x));
-                const validY = Math.max(0, Math.min(100, y));
-                
-                // Update inputs if values were clamped
-                if (validX !== x) xInput.val(validX);
-                if (validY !== y) yInput.val(validY);
+  $(document).ready(function () {
+    const xInput = $("#x");
+    const yInput = $("#y");
+    const warehousePreviewMap = $("#warehousePreviewMap");
+    const warehouseMarker = $("#warehouseMarker");
+    const warehouseLabel = $("#warehouseLabel");
 
-                const mapWidth = warehousePreviewMap.width();
-                const mapHeight = warehousePreviewMap.height();
-                
-                // Convert coordinates to percentages
-                const xPercent = (validX / 100) * 100;
-                const yPercent = (validY / 100) * 100;
-                
-                // Position marker
-                warehouseMarker.css({
-                    'left': xPercent + '%',
-                    'top': yPercent + '%',
-                    'display': 'block'
-                });
-                
-                // Position label
-                warehouseLabel.css({
-                    'left': xPercent + '%',
-                    'top': yPercent + '%',
-                    'display': 'block'
-                });
-            } else {
-                warehouseMarker.hide();
-                warehouseLabel.hide();
-            }
-        }
-        
-        // Update marker when inputs change
-        xInput.on('input change', updateMarkerPosition); // Added change event
-        yInput.on('input change', updateMarkerPosition); // Added change event
-        
-        // Update coordinates when clicking on map
-        warehousePreviewMap.on('click', function(e) {
-            const mapWidth = warehousePreviewMap.width();
-            const mapHeight = warehousePreviewMap.height();
-            
-            if (mapWidth <= 0 || mapHeight <= 0) return; // Avoid division by zero
+    function updateMarkerPosition() {
+      const x = parseFloat(xInput.val());
+      const y = parseFloat(yInput.val());
 
-            // Get click position relative to map
-            const offset = warehousePreviewMap.offset();
-            const clickX = e.pageX - offset.left;
-            const clickY = e.pageY - offset.top;
-            
-            // Convert to coordinates (assuming max coordinates are 100) and clamp
-            const xCoord = Math.max(0, Math.min(100, Math.round((clickX / mapWidth) * 100)));
-            const yCoord = Math.max(0, Math.min(100, Math.round((clickY / mapHeight) * 100)));
-            
-            // Update inputs
-            xInput.val(xCoord);
-            yInput.val(yCoord);
-            
-            // Update marker
-            updateMarkerPosition();
+      if (!isNaN(x) && !isNaN(y)) {
+        const validX = Math.max(0, Math.min(100, x));
+        const validY = Math.max(0, Math.min(100, y));
+
+        if (validX !== x) xInput.val(validX);
+        if (validY !== y) yInput.val(validY);
+
+        const mapWidth = warehousePreviewMap.width();
+        const mapHeight = warehousePreviewMap.height();
+
+        const xPercent = (validX / 100) * 100;
+        const yPercent = (validY / 100) * 100;
+
+        warehouseMarker.css({
+          left: xPercent + "%",
+          top: yPercent + "%",
+          display: "block",
         });
-        
-        // Initialize marker if coordinates are pre-filled
-        updateMarkerPosition();
+
+        warehouseLabel.css({
+          left: xPercent + "%",
+          top: yPercent + "%",
+          display: "block",
+        });
+      } else {
+        warehouseMarker.hide();
+        warehouseLabel.hide();
+      }
+    }
+
+    xInput.on("input change", updateMarkerPosition);
+    yInput.on("input change", updateMarkerPosition);
+
+    warehousePreviewMap.on("click", function (e) {
+      const mapWidth = warehousePreviewMap.width();
+      const mapHeight = warehousePreviewMap.height();
+
+      if (mapWidth <= 0 || mapHeight <= 0) return;
+
+      const offset = warehousePreviewMap.offset();
+      const clickX = e.pageX - offset.left;
+      const clickY = e.pageY - offset.top;
+
+      const xCoord = Math.max(
+        0,
+        Math.min(100, Math.round((clickX / mapWidth) * 100))
+      );
+      const yCoord = Math.max(
+        0,
+        Math.min(100, Math.round((clickY / mapHeight) * 100))
+      );
+
+      xInput.val(xCoord);
+      yInput.val(yCoord);
+
+      updateMarkerPosition();
     });
+
+    updateMarkerPosition();
+  });
 </script>
 {% endblock %}

@@ -69,9 +69,10 @@ class WorldSimulatorService:
     # Connect to the world simulator
     def connect(self, world_id=None, init_warehouses=default_init_warehouses):
         try:
+            logger.info(f"Connecting to World Simulator at {self.host}:{self.port}...")
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.connect((self.host, self.port))
-            
+            logger.info("Connected to World Simulator")
             # Create connection message
             connect_msg = amazon_pb2.AConnect()
             connect_msg.isAmazon = True

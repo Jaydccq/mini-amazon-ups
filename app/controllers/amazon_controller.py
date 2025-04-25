@@ -1,22 +1,27 @@
+# app/controllers/amazon_controller.py
+
 from flask import Blueprint, request, jsonify, render_template, flash, redirect, url_for, current_app
 from flask_login import login_required, current_user, login_user, logout_user
 from app.model import db, Product, ProductCategory, Order, OrderProduct, User, Cart, CartProduct, Shipment, Warehouse
-from app.services.warehouse_service import WarehouseService
-from app.services.shipment_service import ShipmentService
+from app.services.warehouse_service import WarehouseService 
+from app.services.shipment_service import ShipmentService 
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import os
 from sqlalchemy import func
-from app.model import db, Warehouse, WarehouseProduct
+from app.model import db, Warehouse, WarehouseProduct 
 from datetime import datetime
 from app.models.review import ReviewService
-from app.forms import LoginForm
+from app.forms import LoginForm, RegistrationForm, EditProfileForm 
+from flask import abort
+import logging
+from app.models.inventory import Inventory 
+
+logger = logging.getLogger(__name__)
 amazon_bp = Blueprint('amazon', __name__)
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
-from flask import abort
-warehouse_service = WarehouseService()
-shipment_service = ShipmentService()
+
 
 @amazon_bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -32,7 +37,7 @@ def login():
             flash('Invalid email or password', 'danger') 
             return render_template('login.html', title='Login', form=form) 
 
-        login_user(user, remember=remember) # Use remember value
+        login_user(user, remember=remember) 
 
         if not user.cart:
              cart = Cart(user_id=user.user_id)
@@ -44,13 +49,12 @@ def login():
 
     return render_template('login.html', title='Login', form=form)
 
-from app.forms import RegistrationForm
 
 @amazon_bp.route('/register', methods=['GET', 'POST'])
 def register():
     form = RegistrationForm() 
 
-    if form.validate_on_submit(): # This handles POST and validation
+    if form.validate_on_submit(): 
         existing_user = User.query.filter_by(email=form.email.data).first()
         if existing_user:
             flash('Email already registered', 'danger')
@@ -61,13 +65,13 @@ def register():
             first_name=form.firstname.data,
             last_name=form.lastname.data,
             address=form.address.data,
-            is_seller=False # Assuming default is not a seller
+            is_seller=False 
         )
-        new_user.set_password(form.password.data) # Use the model's method
+        new_user.set_password(form.password.data) 
 
         try:
             db.session.add(new_user)
-            db.session.flush() # Flush to get the new_user.user_id
+            db.session.flush() 
 
             cart = Cart(user_id=new_user.user_id)
             db.session.add(cart)
@@ -142,14 +146,16 @@ def product_list():
                           sort_by=sort_by,
                           sort_dir=sort_dir)
 
-from app.models.inventory import Inventory 
+
 @amazon_bp.route('/products/<int:product_id>')
 def product_detail(product_id):
+    warehouse_service = WarehouseService() 
+    
     product = Product.query.get_or_404(product_id)
     sellers_inventory_objects = Inventory.get_sellers_for_product(product_id)
-    product.inventory = sellers_inventory_objects # Assign to product.inventory
+    product.inventory = sellers_inventory_objects 
 
-    inventory = warehouse_service.get_product_inventory(product_id)
+    inventory = warehouse_service.get_product_inventory(product_id) 
     related_products = Product.query.filter(
         Product.category_id == product.category_id,
         Product.product_id != product.product_id
@@ -211,7 +217,7 @@ def cart():
 @login_required
 def add_to_cart():
     product_id = request.form.get('product_id', type=int)
-    seller_id = request.form.get('seller_id', type=int) # Get seller_id from form
+    seller_id = request.form.get('seller_id', type=int) 
     quantity = request.form.get('quantity', 1, type=int)
 
     if not product_id or not seller_id or quantity <= 0:
@@ -223,7 +229,6 @@ def add_to_cart():
         flash('Product not found', 'error')
         return redirect(request.referrer or url_for('amazon.index'))
 
-    # Use the seller_id from the form if provided, otherwise default to product owner
     actual_seller_id = seller_id if seller_id else product.owner_id
 
     cart = Cart.query.filter_by(user_id=current_user.user_id).first()
@@ -235,7 +240,7 @@ def add_to_cart():
     cart_product = CartProduct.query.filter_by(
         cart_id=cart.cart_id,
         product_id=product_id,
-        seller_id=actual_seller_id # Use the determined seller_id
+        seller_id=actual_seller_id 
     ).first()
 
     if cart_product:
@@ -244,7 +249,7 @@ def add_to_cart():
         cart_product = CartProduct(
             cart_id=cart.cart_id,
             product_id=product_id,
-            seller_id=actual_seller_id, # Use the determined seller_id
+            seller_id=actual_seller_id, 
             quantity=quantity,
             price_at_addition=product.price
         )
@@ -252,7 +257,6 @@ def add_to_cart():
 
     db.session.commit()
     flash(f'Added {quantity} of {product.product_name} to your cart', 'success')
-    # Redirect back to the product page or cart
     return redirect(request.referrer or url_for('amazon.cart'))
 
 
@@ -354,6 +358,7 @@ def order_detail(order_id):
 @amazon_bp.route('/shipments/<int:shipment_id>')
 @login_required
 def shipment_detail(shipment_id):
+    shipment_service = ShipmentService() 
     shipment_data = shipment_service.get_shipment_status(shipment_id)
 
     if not shipment_data:
@@ -375,6 +380,8 @@ def shipment_detail(shipment_id):
 @amazon_bp.route('/checkout', methods=['GET', 'POST'])
 @login_required
 def checkout():
+    warehouse_service = WarehouseService() 
+    
     cart = Cart.query.filter_by(user_id=current_user.user_id).first()
 
     if not cart or not cart.items:
@@ -387,14 +394,13 @@ def checkout():
         destination_x = request.form.get('destination_x', type=int)
         destination_y = request.form.get('destination_y', type=int)
         ups_account = request.form.get('ups_account')
-        # warehouse_id = request.form.get('warehouse_id', type=int)
 
         if destination_x is None or destination_y is None:
             flash('Please provide delivery coordinates', 'error')
             return redirect(url_for('amazon.checkout'))
 
         success, checkout_count = Cart.checkout_cart(current_user.user_id,
-                                                                     destination_x, destination_y, ups_account)
+                                                     destination_x, destination_y, ups_account)
 
         if success:
             flash(f'Order placed successfully! Total: {checkout_count} items', 'success')
@@ -405,9 +411,8 @@ def checkout():
             return redirect(url_for('amazon.cart'))
 
 
-    warehouses = Warehouse.query.filter_by(active=True).all()
+    warehouses = warehouse_service.get_all_warehouses() 
 
-    # Prepare cart items data for the template
     cart_items_data = []
     for item in cart.items:
         product = Product.query.get(item.product_id)
@@ -424,14 +429,15 @@ def checkout():
 
 
     return render_template('checkout.html',
-                        #   cart=cart, # No longer needed if using cart_items_data
-                          cart_items=cart_items_data, # Pass processed list
+                          cart_items=cart_items_data, 
                           total=total,
                           warehouses=warehouses)
 
 @amazon_bp.route('/orders/<int:order_id>/update_address/<int:shipment_id>', methods=['POST'])
 @login_required
 def update_address(order_id, shipment_id):
+    shipment_service = ShipmentService() 
+    
     destination_x = request.form.get('destination_x', type=int)
     destination_y = request.form.get('destination_y', type=int)
 
@@ -445,8 +451,8 @@ def update_address(order_id, shipment_id):
     if order.buyer_id != current_user.user_id:
         flash('You do not have permission to modify this shipment.', 'danger')
         return redirect(url_for('amazon.order_detail', order_id=order_id))
-
-    success, message = shipment_service.update_delivery_address(shipment_id, destination_x, destination_y)
+    
+    success, message = shipment_service.update_delivery_address(shipment_id, destination_x, destination_y) 
 
     if success:
         flash('Delivery address updated successfully!', 'success')
@@ -459,46 +465,44 @@ def update_address(order_id, shipment_id):
 @admin_bp.route('/warehouses')
 @login_required
 def warehouses():
+    warehouse_service = WarehouseService() 
+    
     if not current_user.is_seller:
         flash('Access denied', 'error')
         return redirect(url_for('amazon.index'))
-    all_warehouses = Warehouse.query.order_by(Warehouse.warehouse_id).all()
+    
+    all_warehouses = warehouse_service.get_all_warehouses() 
     for wh in all_warehouses:
-        wh.product_count = wh.products.count()
+        wh.product_count = wh.products.count() 
+    
     try:
-        from app.utils.mapping import convert_sim_coords_to_latlon # Adjust import if needed
+        from app.utils.mapping import convert_sim_coords_to_latlon 
         warehouses_latlon_data = convert_sim_coords_to_latlon(all_warehouses)
     except ImportError:
-        warehouses_latlon_data = [] # Handle case where util is not found
+        warehouses_latlon_data = [] 
         flash("Mapping utility not found, Google Map may not display correctly.", "warning")
     except Exception as map_e:
          warehouses_latlon_data = []
          flash(f"Error generating map data: {map_e}", "warning")
 
-
-    # Get world connection status
     world_simulator = current_app.config.get('WORLD_SIMULATOR_SERVICE')
-    if not world_simulator:
-        from app.services.world_simulator_service import WorldSimulatorService
-        world_simulator = WorldSimulatorService(app=current_app)
-        current_app.config['WORLD_SIMULATOR_SERVICE'] = world_simulator
     world_connected = world_simulator.connected if world_simulator else False
     world_id = world_simulator.world_id if world_simulator and world_simulator.connected else None
 
     return render_template(
         'admin/warehouses.html',
-        warehouses=all_warehouses, # Now includes .product_count
+        warehouses=all_warehouses, 
         warehouses_latlon=warehouses_latlon_data,
         world_connected=world_connected,
         world_id=world_id
     )
     
 
-
-
 @admin_bp.route('/warehouses/add', methods=['GET', 'POST'])
 @login_required
 def add_warehouse():
+    warehouse_service = WarehouseService() 
+    
     if not current_user.is_seller:
         flash('Access denied', 'error')
         return redirect(url_for('amazon.index'))
@@ -510,8 +514,8 @@ def add_warehouse():
         if x is None or y is None :
             flash('Please provide warehouse coordinates', 'error')
             return redirect(url_for('admin.add_warehouse'))
-
-        warehouse_id = warehouse_service.initialize_warehouse(x, y)
+        
+        warehouse_id = warehouse_service.initialize_warehouse(x, y) 
 
         if warehouse_id:
             flash('Warehouse added successfully', 'success')
@@ -526,59 +530,74 @@ def add_warehouse():
 @admin_bp.route('/connect-world', methods=['GET', 'POST'])
 @login_required
 def connect_world():
+    logger.info("Connecting to World 进")
     if not current_user.is_seller:
         flash('Access denied', 'error')
         return redirect(url_for('amazon.index'))
 
     world_simulator = current_app.config.get('WORLD_SIMULATOR_SERVICE')
     if not world_simulator:
-         from app.services.world_simulator_service import WorldSimulatorService
-         world_simulator = WorldSimulatorService(app=current_app)
-         current_app.config['WORLD_SIMULATOR_SERVICE'] = world_simulator
+         flash("World simulator service not initialized.", "danger")
+         return redirect(url_for('admin.warehouses'))
 
 
     if request.method == 'POST':
         action = request.form.get('action')
-        world_id = request.form.get('world_id')
+        world_id_str = request.form.get('world_id') 
         warehouse_ids = request.form.getlist('warehouse_ids')
         sim_speed = request.form.get('sim_speed', 100, type=int)
 
 
+        logger.info(f"Received action: {action}, world_id_str: {world_id_str}, warehouse_ids: {warehouse_ids}, sim_speed: {sim_speed}")
+        
+        world_id_to_connect = None
         init_warehouses = []
-        if action == 'create' and warehouse_ids:
-            init_warehouses = Warehouse.query.filter(Warehouse.warehouse_id.in_(warehouse_ids)).all()
-        elif action == 'connect' and world_id:
-            world_id = int(world_id) # Ensure world_id is int if connecting
+
+        if action == 'create':
+            if not warehouse_ids:
+                flash('Please select at least one warehouse to initialize.', 'warning')
+                return redirect(url_for('admin.connect_world'))
+            try:
+                 warehouse_ids_int = [int(wid) for wid in warehouse_ids]
+                 init_warehouses = Warehouse.query.filter(Warehouse.warehouse_id.in_(warehouse_ids_int)).all()
+                 if len(init_warehouses) != len(warehouse_ids_int):
+                      flash('One or more selected warehouses not found.', 'warning')
+                      return redirect(url_for('admin.connect_world'))
+            except ValueError:
+                 flash('Invalid warehouse ID selected.', 'danger')
+                 return redirect(url_for('admin.connect_world'))
+        elif action == 'connect':
+            if not world_id_str:
+                flash('Please provide a World ID to connect.', 'warning')
+                return redirect(url_for('admin.connect_world'))
+            try:
+                world_id_to_connect = int(world_id_str)
+            except ValueError:
+                flash('Invalid World ID provided. Must be a number.', 'danger')
+                return redirect(url_for('admin.connect_world'))
         else:
-             # Determine which field was missing or invalid
-            if action == 'connect' and not world_id:
-                 flash('Please provide a World ID to connect.', 'warning')
-            elif action == 'create' and not warehouse_ids:
-                 flash('Please select at least one warehouse to initialize.', 'warning')
-            else:
-                 flash('Invalid request.', 'danger')
+            flash('Invalid action.', 'danger')
             return redirect(url_for('admin.connect_world'))
 
 
-        if action == 'create':
-            world_id_to_connect = None
-        else: # action == 'connect'
-            world_id_to_connect = world_id
-
+        logger.info(f"Connecting to World Simulator with action: {action}, world_id: {world_id_to_connect}, warehouses: {[w.warehouse_id for w in init_warehouses]}")
 
         connected_world_id, result = world_simulator.connect(world_id=world_id_to_connect, init_warehouses=init_warehouses)
 
         if connected_world_id:
             flash(f'Connected to world simulator: {result} (World ID: {connected_world_id})', 'success')
 
-            # Update all active warehouses with the new world_id
             active_warehouses = Warehouse.query.filter_by(active=True).all()
             for w in active_warehouses:
                 w.world_id = connected_world_id
-            db.session.commit()
+            try:
+                db.session.commit()
+            except Exception as e:
+                 db.session.rollback()
+                 flash(f'Error updating warehouse world IDs: {e}', 'warning')
 
-            # Optionally set simulation speed
-            if sim_speed != 100: # Only set if different from default
+
+            if sim_speed != 100: 
                 speed_set = world_simulator.set_sim_speed(sim_speed)
                 if speed_set:
                      flash(f'Simulation speed set to {sim_speed}.', 'info')
@@ -597,7 +616,7 @@ def connect_world():
     return render_template('admin/connect_world.html',
                            current_world_id=current_world_id,
                            warehouses=warehouses,
-                           world_connected=world_simulator.connected) # Pass connection status
+                           world_connected=world_simulator.connected) 
 
 
 @admin_bp.route('/disconnect-world', methods=['POST'])
@@ -610,7 +629,7 @@ def disconnect_world():
      world_simulator = current_app.config.get('WORLD_SIMULATOR_SERVICE')
      if world_simulator and world_simulator.connected:
           world_simulator.disconnect()
-          current_app.config['CURRENT_WORLD_ID'] = None # Clear stored world ID
+          current_app.config['CURRENT_WORLD_ID'] = None 
           flash('Disconnected from World Simulator.', 'success')
      else:
           flash('Not connected to any world.', 'warning')
@@ -651,13 +670,18 @@ def api_warehouses():
 @api_bp.route('/shipments/<int:shipment_id>/status')
 @login_required
 def api_shipment_status(shipment_id):
+    shipment_service = ShipmentService() 
     shipment_data = shipment_service.get_shipment_status(shipment_id)
 
     if not shipment_data:
         return jsonify({'error': 'Shipment not found'}), 404
 
-    shipment = Shipment.query.get_or_404(shipment_id)
-    order = Order.query.get_or_404(shipment.order_id)
+    shipment = Shipment.query.get(shipment_id) 
+    if not shipment: 
+         return jsonify({'error': 'Shipment not found'}), 404
+    order = Order.query.get(shipment.order_id)
+    if not order: 
+         return jsonify({'error': 'Associated order not found'}), 500
 
     if order.buyer_id != current_user.user_id and not current_user.is_seller:
         return jsonify({'error': 'Permission denied'}), 403
@@ -667,6 +691,8 @@ def api_shipment_status(shipment_id):
 
 @api_bp.route('/tracking/<tracking_id>')
 def api_tracking(tracking_id):
+    shipment_service = ShipmentService() 
+    
     shipment = Shipment.query.filter_by(ups_tracking_id=tracking_id).first()
 
     if not shipment:
@@ -694,15 +720,11 @@ def product_reviews(product_id):
                           rating_distribution=rating_distribution)
 
 
-
 @amazon_bp.route('/seller/<int:seller_id>/reviews')
 def seller_reviews(seller_id):
     seller = User.query.get_or_404(seller_id)
-    # Assuming get_seller_reviews exists and returns review objects
     reviews = ReviewService.get_seller_reviews(seller_id)
-    # Assuming get_avg_rating_seller exists
     avg_rating, review_count = ReviewService.get_avg_rating_seller(seller_id)
-    # Assuming get_rating_distribution_seller exists
     rating_distribution = ReviewService.get_rating_distribution_seller(seller_id)
 
     return render_template('seller/reviews.html',
@@ -716,10 +738,9 @@ def seller_reviews(seller_id):
 @amazon_bp.route('/profile')
 @login_required
 def profile():
-
     return render_template('profile.html', user=current_user)
 
-from app.forms import EditProfileForm
+
 @amazon_bp.route('/profile/edit', methods=['GET', 'POST'])
 @login_required
 def edit_profile():
@@ -728,7 +749,6 @@ def edit_profile():
         flash('User not found.', 'error')
         return redirect(url_for('amazon.index'))
 
-    # Instantiate the form
     form = EditProfileForm()
 
     if form.validate_on_submit():
@@ -736,12 +756,11 @@ def edit_profile():
         user.first_name = form.first_name.data
         user.last_name = form.last_name.data
         user.address = form.address.data
-        # Note: Email and password changes are not handled here
 
         try:
             db.session.commit()
             flash('Profile updated successfully!', 'success')
-            return redirect(url_for('amazon.profile')) # Redirect back to the profile view
+            return redirect(url_for('amazon.profile')) 
         except Exception as e:
             db.session.rollback()
             flash(f'An error occurred while updating profile: {e}', 'danger')
@@ -755,22 +774,23 @@ def edit_profile():
     return render_template('edit_profile.html', user=user, form=form)
 
 
-
 @admin_bp.route('/warehouses/view/<int:warehouse_id>')
 @login_required
 def view_warehouse(warehouse_id):
+    warehouse_service = WarehouseService() 
+    
     if not current_user.is_seller: 
         flash('Access denied', 'error')
         return redirect(url_for('amazon.index'))
 
-    warehouse = warehouse_service.get_warehouse(warehouse_id)
+    warehouse = warehouse_service.get_warehouse(warehouse_id) 
     if not warehouse:
-        abort(404, description="Warehouse not found") # Handle not found case
+        abort(404, description="Warehouse not found") 
 
-    inventory = warehouse_service.get_warehouse_inventory(warehouse_id)
+    inventory = warehouse_service.get_warehouse_inventory(warehouse_id) 
 
     return render_template(
-        'admin/view_warehouse.html', # You'll need to create this template
+        'admin/view_warehouse.html', 
         warehouse=warehouse,
         inventory=inventory
     )
@@ -778,29 +798,31 @@ def view_warehouse(warehouse_id):
 @admin_bp.route('/warehouses/edit/<int:warehouse_id>', methods=['GET', 'POST'])
 @login_required
 def edit_warehouse(warehouse_id):
+     warehouse_service = WarehouseService() 
      if not current_user.is_seller:
          flash('Access denied', 'error')
          return redirect(url_for('amazon.index'))
-     warehouse = warehouse_service.get_warehouse(warehouse_id)
+     
+     warehouse = warehouse_service.get_warehouse(warehouse_id) 
      if not warehouse:
           abort(404)
 
-     flash("Edit functionality not fully implemented yet.", "info") # Placeholder
-     return redirect(url_for('admin.warehouses')) # Redirect back for now
+     flash("Edit functionality not fully implemented yet.", "info") 
+     return redirect(url_for('admin.warehouses')) 
 
 
 @admin_bp.route('/warehouses/delete/<int:warehouse_id>', methods=['POST'])
 @login_required
 def delete_warehouse(warehouse_id):
+     warehouse_service = WarehouseService() 
+     
      if not current_user.is_seller:
          flash('Access denied', 'error')
          return redirect(url_for('amazon.index'))
-     # --- Add logic for deleting ---
-     warehouse = warehouse_service.get_warehouse(warehouse_id)
+     warehouse = warehouse_service.get_warehouse(warehouse_id) 
      if warehouse:
-         # Add check for products before deleting if needed
          try:
-             warehouse.active = False # Example: Make inactive
+             warehouse.active = False 
              db.session.commit()
              flash(f'Warehouse #{warehouse_id} marked as inactive.', 'success')
          except Exception as e:

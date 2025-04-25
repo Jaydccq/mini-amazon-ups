@@ -447,3 +447,67 @@ def fulfill_item(order_item_id):
         current_app.logger.error(f"Error fulfilling order item {order_item_id}: {e}")
 
     return redirect(request.referrer or url_for('seller.list_orders'))
+
+from app.services.warehouse_service import WarehouseService
+from app.model import db, User, Product, ProductCategory, Inventory, Order, OrderProduct, Warehouse
+
+@seller_bp.route('/inventory/replenish', methods=['POST'])
+@seller_required
+def replenish_inventory():
+    """Handles request to replenish stock for a product."""
+    product_id = request.form.get('product_id', type=int)
+    quantity = request.form.get('quantity', type=int)
+    # Optional: Get warehouse_id from form if you added a selector
+    warehouse_id = request.form.get('warehouse_id', type=int)
+
+    # --- Basic Validation ---
+    if not product_id or not quantity or quantity <= 0:
+        flash('Invalid product ID or quantity specified.', 'danger')
+        return redirect(request.referrer or url_for('seller.inventory_list'))
+
+    # --- Check World Connection ---
+    # Ensure the app is connected to the world simulator
+    world_simulator = current_app.config.get('WORLD_SIMULATOR_SERVICE')
+    if not world_simulator or not world_simulator.connected:
+         flash('Cannot replenish stock: Not connected to the World Simulator. Please connect via Admin > Connect to World.', 'danger')
+         return redirect(request.referrer or url_for('seller.inventory_list'))
+
+    # --- Determine Warehouse ID ---
+    if not warehouse_id:
+        # If no specific warehouse selected, find the first active one
+        # Note: You might want more sophisticated logic (e.g., nearest, user preference)
+        first_active_warehouse = Warehouse.query.filter_by(active=True).first()
+        if not first_active_warehouse:
+            flash('Cannot replenish stock: No active warehouses found.', 'danger')
+            return redirect(request.referrer or url_for('seller.inventory_list'))
+        warehouse_id = first_active_warehouse.warehouse_id
+        flash(f'Replenishing at first active warehouse: ID #{warehouse_id}', 'info') # Inform user
+    else:
+        # Validate the selected warehouse_id exists and is active (optional but recommended)
+        target_warehouse = Warehouse.query.filter_by(warehouse_id=warehouse_id, active=True).first()
+        if not target_warehouse:
+             flash(f'Cannot replenish stock: Selected warehouse ID #{warehouse_id} is invalid or inactive.', 'danger')
+             return redirect(request.referrer or url_for('seller.inventory_list'))
+
+    # --- Call the Warehouse Service ---
+    # Instantiate the service (consider dependency injection for larger apps)
+    warehouse_service = WarehouseService()
+
+    # Note: The WarehouseService currently initializes WorldSimulatorService with app=None.
+    # This *might* cause issues if the service's background thread needs app context.
+    # A more robust approach would be to pass the app instance or get the simulator
+    # service from current_app.config within the WarehouseService.
+    # For now, we assume the current implementation works for the 'buy' command.
+
+    success, message = warehouse_service.replenish_product(
+        warehouse_id=warehouse_id,
+        product_id=product_id,
+        quantity=quantity
+    )
+
+    if success:
+        flash(f'Replenishment request for {quantity} of Product ID {product_id} sent to Warehouse ID {warehouse_id}. Status: {message}', 'success')
+    else:
+        flash(f'Failed to send replenishment request: {message}', 'danger')
+
+    return redirect(request.referrer or url_for('seller.inventory_list'))

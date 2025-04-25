@@ -1,19 +1,25 @@
+# app/controllers/webhook_controller.py
+
 from flask import Blueprint, request, jsonify, current_app
-from app.services.world_event_handler import WorldEventHandler
-from app.services.ups_integration_service import UPSIntegrationService
-from app.services.shipment_service import ShipmentService
+# Import the service classes
+from app.services.world_event_handler import WorldEventHandler 
+from app.services.ups_integration_service import UPSIntegrationService 
+from app.services.shipment_service import ShipmentService 
 
 # Create the blueprints
 world_bp = Blueprint('world', __name__, url_prefix='/api/world')
 ups_bp = Blueprint('ups', __name__, url_prefix='/api/ups')
 
-# Initialize services
-world_event_handler = WorldEventHandler()
-ups_integration = UPSIntegrationService()
-shipment_service = ShipmentService()
+# !! REMOVE global instantiations !!
+# world_event_handler = WorldEventHandler() # REMOVED
+# ups_integration = UPSIntegrationService() # REMOVED
+# shipment_service = ShipmentService() # REMOVED
 
 @world_bp.route('/event', methods=['POST'])
 def handle_world_event():
+    # Instantiate handler INSIDE the route
+    world_event_handler = WorldEventHandler() 
+    
     data = request.json
     if not data or 'event_type' not in data or 'event_data' not in data:
         return jsonify({
@@ -28,8 +34,8 @@ def handle_world_event():
     if 'seqnum' in data:
         acks.append(data['seqnum'])
     
-    # Handle the event
-    success, message = world_event_handler.handle_world_event(event_type, event_data)
+    # Use the locally instantiated handler
+    success, message = world_event_handler.handle_world_event(event_type, event_data) 
     
     return jsonify({
         'success': success,
@@ -37,10 +43,11 @@ def handle_world_event():
         'acks': acks
     })
 
-# UPS 卡车到达：/api/ups/truck-arrived
 @ups_bp.route('/truck-arrived', methods=['POST'])
 def handle_truck_arrived():
-    """Endpoint for receiving truck arrived notifications from UPS"""
+    # Instantiate service INSIDE the route
+    shipment_service = ShipmentService() 
+    
     data = request.json
     if not data or 'truck_id' not in data or 'warehouse_id' not in data:
         return jsonify({
@@ -48,22 +55,23 @@ def handle_truck_arrived():
             'error': 'Missing required fields'
         }), 400
     
-    # Process acknowledgments if present
     acks = []
     if 'seqnum' in data:
         acks.append(data['seqnum'])
     
-    # Handle the truck arrival
-    success = shipment_service.handle_truck_arrived(data['truck_id'], data['warehouse_id'])
+    # Use the locally instantiated service
+    success = shipment_service.handle_truck_arrived(data['truck_id'], data['warehouse_id']) 
     
     return jsonify({
         'success': success,
         'acks': acks
     })
-#UPS 包裹已送达：/api/ups/package-delivered
+
 @ups_bp.route('/package-delivered', methods=['POST'])
 def handle_package_delivered():
-    """Endpoint for receiving package delivered notifications from UPS"""
+    # Instantiate service INSIDE the route
+    shipment_service = ShipmentService() 
+    
     data = request.json
     if not data or 'shipment_id' not in data:
         return jsonify({
@@ -75,7 +83,8 @@ def handle_package_delivered():
     if 'seqnum' in data:
         acks.append(data['seqnum'])
     
-    success, message = shipment_service.handle_package_delivered(data['shipment_id'])
+    # Use the locally instantiated service
+    success, message = shipment_service.handle_package_delivered(data['shipment_id']) 
     
     return jsonify({
         'success': success,
@@ -83,10 +92,9 @@ def handle_package_delivered():
         'acks': acks
     })
 
-# UPS 记录追踪号：/api/ups/tracking
 @ups_bp.route('/tracking', methods=['POST'])
 def add_tracking_number():
-    """Endpoint for UPS to provide tracking number for a shipment"""
+    # No service needed here directly, just DB access
     data = request.json
     if not data or 'shipment_id' not in data or 'tracking_id' not in data:
         return jsonify({
@@ -94,13 +102,13 @@ def add_tracking_number():
             'error': 'Missing required fields'
         }), 400
     
-    # Process acknowledgments if present
     acks = []
     if 'seqnum' in data:
         acks.append(data['seqnum'])
     
     try:
-        from app.model import db, Shipment
+        # Import model here, inside the function
+        from app.model import db, Shipment 
         
         shipment = Shipment.query.filter_by(shipment_id=data['shipment_id']).first()
         if shipment:
@@ -112,6 +120,7 @@ def add_tracking_number():
             success = False
             message = "Shipment not found"
     except Exception as e:
+        db.session.rollback() # Ensure rollback on error
         success = False
         message = str(e)
     
@@ -121,9 +130,11 @@ def add_tracking_number():
         'acks': acks
     })
 
-#UPS 包裹状态更新：/api/ups/status-update
 @ups_bp.route('/status-update', methods=['POST'])
 def handle_status_update():
+    # Instantiate service INSIDE the route (needed for handle_package_delivered)
+    shipment_service = ShipmentService() 
+    
     data = request.json
     if not data or 'shipment_id' not in data or 'status' not in data:
         return jsonify({
@@ -131,14 +142,13 @@ def handle_status_update():
             'error': 'Missing required fields'
         }), 400
     
-    # Process acknowledgments if present
     acks = []
     if 'seqnum' in data:
         acks.append(data['seqnum'])
     
     try:
-        # Update status in shipment
-        from app.model import db, Shipment
+        # Import model here, inside the function
+        from app.model import db, Shipment 
         
         shipment = Shipment.query.filter_by(shipment_id=data['shipment_id']).first()
         if shipment:
@@ -148,7 +158,8 @@ def handle_status_update():
                 success = True
                 message = "Status updated successfully"
             elif data['status'] == 'delivered':
-                success, message = shipment_service.handle_package_delivered(data['shipment_id'])
+                # Use the locally instantiated service
+                success, message = shipment_service.handle_package_delivered(data['shipment_id']) 
             else:
                 success = False
                 message = f"Unknown status: {data['status']}"
@@ -156,6 +167,7 @@ def handle_status_update():
             success = False
             message = "Shipment not found"
     except Exception as e:
+        db.session.rollback() # Ensure rollback on error
         success = False
         message = str(e)
     

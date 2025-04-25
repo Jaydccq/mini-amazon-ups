@@ -4,10 +4,11 @@ from app.model import db, Warehouse, WarehouseProduct, Product
 from app.services.world_simulator_service import WorldSimulatorService
 
 logger = logging.getLogger(__name__)
-
+from flask import current_app
 class WarehouseService:
     def __init__(self):
-        self.world_simulator = WorldSimulatorService(app=None)
+        # self.world_simulator = current_app.config.get('WORLD_SIMULATOR_SERVICE')
+        self.world_simulator = current_app.config.get('WORLD_SIMULATOR_SERVICE') 
     
     def initialize_warehouse(self, x, y, world_id=None):
         try:
@@ -115,6 +116,9 @@ class WarehouseService:
     
     # replenish a product from the world simulator
     def replenish_product(self, warehouse_id, product_id, quantity):
+        if not self.world_simulator or not self.world_simulator.connected:
+             logger.warning("WarehouseService: Attempted replenish_product but world_simulator is not connected.")
+             return False, "Not connected to World Simulator"
         try:
             warehouse = Warehouse.query.filter_by(warehouse_id=warehouse_id).first()
             if not warehouse:
@@ -132,8 +136,10 @@ class WarehouseService:
             )
             
             if not success:
+                logger.error(f"World sim buy_product failed for WH:{warehouse_id}, Prod:{product_id}. Result: {result}")
+
                 return False, result
-            
+            logger.info(f"Replenishment request successful for WH:{warehouse_id}, Prod:{product_id}. Result: {result}")
             return True, "Replenishment requested"
         except Exception as e:
             logger.error(f"Error requesting product replenishment: {str(e)}")

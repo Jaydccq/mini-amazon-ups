@@ -1,0 +1,123 @@
+{% extends "base.html" %} {% block content %}
+<div class="container mt-4">
+  {# ... Title, Search, Filter ... #} {% if inventory_items %}
+  <div class="table-responsive">
+    <table class="table table-hover">
+      <thead class="table-light">
+        <tr>
+          <th>Product</th>
+          <th>Category</th>
+          <th>Unit Price</th>
+          <th>Quantity</th>
+          <th>Last Updated</th>
+          <th>Actions</th>
+          <th>Replenish Stock</th>
+          {# <-- New Column #}
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in inventory_items %}
+        <tr>
+          <td>
+            <a
+              href="{{ url_for('amazon.product_detail', product_id=item.product_id) }}"
+            >
+              {{ item.product.product_name if item.product else 'Unknown' }}
+            </a>
+          </td>
+          <td>
+            {{ item.product.category.category_name if item.product and
+            item.product.category else 'N/A' }}
+          </td>
+          <td>${{ "%.2f"|format(item.unit_price) }}</td>
+          <td>
+            <span
+              class="badge {% if item.quantity < 5 %}bg-warning text-dark{% elif item.quantity == 0 %}bg-danger{% else %}bg-success{% endif %}"
+            >
+              {{ item.quantity }}
+            </span>
+          </td>
+          <td>
+            {{ item.updated_at.strftime('%Y-%m-%d') if item.updated_at else
+            'N/A' }}
+          </td>
+          <td>
+            <a
+              href="{{ url_for('seller.edit_inventory', inventory_id=item.inventory_id) }}"
+              class="btn btn-sm btn-outline-secondary"
+              title="Edit"
+            >
+              <i class="fas fa-edit"></i>
+            </a>
+            <form
+              action="{{ url_for('seller.delete_inventory', inventory_id=item.inventory_id) }}"
+              method="POST"
+              class="d-inline"
+              onsubmit="return confirm('Are you sure you want to remove this item from your inventory?');"
+            >
+              <input
+                type="hidden"
+                name="csrf_token"
+                value="{{ csrf_token() }}"
+              />
+              <button
+                type="submit"
+                class="btn btn-sm btn-outline-danger"
+                title="Delete"
+              >
+                <i class="fas fa-trash"></i>
+              </button>
+            </form>
+          </td>
+          {# --- REPLENISH FORM --- #}
+          <td>
+            <form
+              action="{{ url_for('seller.replenish_inventory') }}"
+              method="POST"
+              class="d-flex"
+            >
+              <input
+                type="hidden"
+                name="csrf_token"
+                value="{{ csrf_token() }}"
+              />
+              <input
+                type="hidden"
+                name="product_id"
+                value="{{ item.product_id }}"
+              />
+              {# Optional: Add a warehouse selector here if needed #} {#
+              <input
+                type="hidden"
+                name="warehouse_id"
+                value="SOME_WAREHOUSE_ID"
+              />
+              #}
+              <input
+                type="number"
+                name="quantity"
+                class="form-control form-control-sm me-1"
+                placeholder="Qty"
+                min="1"
+                required
+                style="width: 70px"
+              />
+              <button
+                type="submit"
+                class="btn btn-sm btn-primary"
+                title="Request More Stock"
+              >
+                <i class="fas fa-plus"></i> Buy
+              </button>
+            </form>
+          </td>
+          {# --- END REPLENISH FORM --- #}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {# ... Pagination ... #} {% else %} {# ... No inventory message ... #} {%
+  endif %}
+</div>
+{% endblock %} {# Existing extra_js block if any... #}

@@ -254,10 +254,9 @@
               >
             </li>
             {% if current_user.is_authenticated %}
-            <li>
-              <a
-                class="dropdown-item"
-                href="{{ url_for('admin.ups_messages') }}"
+
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('admin.ups_messages') }}"
                 ><i class="fas fa-shipping-fast me-2"></i> UPS Messages</a
               >
             </li>
@@ -493,91 +492,140 @@
 
     <main class="py-5">{% block content %}{% endblock %}</main>
 
-    <footer class="footer mt-auto">
+    <footer class="footer py-4">
       <div class="container">
         <div class="row">
-          <div class="col-lg-4 mb-4 mb-lg-0">
-            <h5 class="mb-3">Mini-Amazon</h5>
-            <p class="mb-4">
-              Your one-stop shop for all your online shopping needs. Enjoy fast
-              delivery and excellent customer service.
-            </p>
-            <div class="d-flex">
-              <a href="#" class="social-icon"
+          <div class="col-lg-4 col-md-6 mb-4 mb-md-0">
+            <h5 class="text-uppercase mb-4">
+              <i class="fas fa-box-open me-2"></i> Mini-Amazon-Web
+            </h5>
+            <div class="d-flex mt-4">
+              <a
+                href="https://x.com/realdonaldtrump"
+                class="btn btn-outline-light btn-sm me-2"
+                target="_blank"
+                rel="noopener noreferrer"
                 ><i class="fab fa-facebook-f"></i
               ></a>
-              <a href="#" class="social-icon"><i class="fab fa-twitter"></i></a>
-              <a href="#" class="social-icon"
+              <a
+                href="https://x.com/realdonaldtrump"
+                class="btn btn-outline-light btn-sm me-2"
+                target="_blank"
+                rel="noopener noreferrer"
+                ><i class="fab fa-twitter"></i
+              ></a>
+              <a
+                href="https://x.com/realdonaldtrump"
+                class="btn btn-outline-light btn-sm me-2"
+                target="_blank"
+                rel="noopener noreferrer"
                 ><i class="fab fa-instagram"></i
               ></a>
-              <a href="#" class="social-icon"
+              <a
+                href="https://x.com/realdonaldtrump"
+                class="btn btn-outline-light btn-sm"
+                target="_blank"
+                rel="noopener noreferrer"
                 ><i class="fab fa-linkedin-in"></i
               ></a>
             </div>
           </div>
-          <div class="col-lg-2 col-md-4 mb-4 mb-md-0">
-            <h5>Shop</h5>
+
+          <div class="col-lg-2 col-md-6 mb-4 mb-md-0">
+            <h5 class="text-uppercase mb-4">Shop</h5>
             <ul class="list-unstyled">
-              <li><a href="{{ url_for('amazon.index') }}">Home</a></li>
-              <li>
-                <a href="{{ url_for('amazon.product_list') }}">Products</a>
+              <li class="mb-2">
+                <a
+                  href="{{ url_for('amazon.index') }}"
+                  class="text-decoration-none"
+                  >Home</a
+                >
               </li>
-              <li><a href="#">Categories</a></li>
-              <li><a href="#">Deals</a></li>
+              <li class="mb-2">
+                <a
+                  href="{{ url_for('amazon.product_list') }}"
+                  class="text-decoration-none"
+                  >Products</a
+                >
+              </li>
+              <li class="mb-2">
+                <a href="#" class="text-decoration-none">Categories</a>
+              </li>
+              <li class="mb-2">
+                <a href="#" class="text-decoration-none">New Arrivals</a>
+              </li>
             </ul>
           </div>
-          <div class="col-lg-2 col-md-4 mb-4 mb-md-0">
-            <h5>Account</h5>
+
+          <div class="col-lg-2 col-md-6 mb-4 mb-md-0">
+            <h5 class="text-uppercase mb-4">My Account</h5>
             <ul class="list-unstyled">
-              {% if current_user.is_authenticated %}
-              <li>
-                <a href="{{ url_for('amazon.order_list') }}">My Orders</a>
-              </li>
-              <li>
-                <a href="{{ url_for('amazon.shipment_list') }}"
-                  >All Shipments</a
+              <li class="mb-2">
+                <a
+                  href="{{ url_for('amazon.order_list') }}"
+                  class="text-decoration-none"
+                  >My Orders</a
                 >
               </li>
-              <li><a href="{{ url_for('amazon.cart') }}">My Cart</a></li>
-              <li><a href="{{ url_for('amazon.profile') }}">Profile</a></li>
-              <li><a href="{{ url_for('amazon.logout') }}">Logout</a></li>
-              {% else %}
-              <li><a href="{{ url_for('amazon.login') }}">Login</a></li>
-              <li><a href="{{ url_for('amazon.register') }}">Register</a></li>
-              {% endif %}
+              <li class="mb-2">
+                <a
+                  href="{{ url_for('amazon.cart') }}"
+                  class="text-decoration-none"
+                  >My Cart</a
+                >
+              </li>
+              <!-- <li class="mb-2">
+                <a href="#" class="text-decoration-none">Wishlist</a>
+              </li> -->
+              <li class="mb-2">
+                <a href="#" class="text-decoration-none">Account Settings</a>
+              </li>
             </ul>
           </div>
-          <div class="col-lg-4 col-md-4">
-            <h5>Contact Us</h5>
-            <ul class="list-unstyled">
-              <li>
-                <a href="#"
-                  ><i class="fas fa-map-marker-alt me-2"></i> 123 E-Commerce St,
-                  Digital City</a
-                >
-              </li>
-              <li>
-                <a href="#"><i class="fas fa-phone me-2"></i> (123) 456-7890</a>
-              </li>
-              <li>
-                <a href="#"
-                  ><i class="fas fa-envelope me-2"></i>
-                  support@mini-amazon.com</a
-                >
-              </li>
-            </ul>
+
+          <div class="col-lg-4 col-md-6">
+            <h5 class="text-uppercase mb-4">Contact Us</h5>
+            <p>
+              <i class="fas fa-map-marker-alt me-2"></i> 2127 Campus Drive
+              Durham, NC 27708
+            </p>
+            <p><i class="fas fa-phone me-2"></i> (123) 456-7890</p>
+            <p><i class="fas fa-envelope me-2"></i> szk@szk.com</p>
           </div>
         </div>
-        <hr class="mt-4 mb-3 border-top border-secondary" />
+
+        <hr class="my-4 bg-light opacity-25" />
+
         <div class="row align-items-center">
-          <div class="col-md-6 text-center text-md-start">
-            <p class="mb-0">&copy; 2025 Mini-Amazon. All rights reserved.</p>
-          </div>
-          <div class="col-md-6 text-center text-md-end mt-3 mt-md-0">
+          <div class="col-md-6 text-center text-md-end">
             <ul class="list-inline mb-0">
-              <li class="list-inline-item"><a href="#">Privacy Policy</a></li>
-              <li class="list-inline-item"><a href="#">Terms of Service</a></li>
-              <li class="list-inline-item"><a href="#">FAQ</a></li>
+              <li class="list-inline-item">
+                <a
+                  href="https://x.com/hongkong_doll?lang=en"
+                  class="text-decoration-none"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >Privacy</a
+                >
+              </li>
+              <li class="list-inline-item">
+                <a
+                  href="https://x.com/ishowspeedsui?lang=en"
+                  class="text-decoration-none"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >Term</a
+                >
+              </li>
+              <li class="list-inline-item">
+                <a
+                  href="https://www.instagram.com/newjeans_official/?hl=en"
+                  class="text-decoration-none"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >Term</a
+                >
+              </li>
             </ul>
           </div>
         </div>

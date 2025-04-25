@@ -90,7 +90,7 @@ endblock %} {% block content %}
           <form method="POST" action="{{ url_for('admin.connect_world') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
             <div class="mb-4">
-              <h5>Option 1: Connect to an Existing World</h5>
+              <h5>Connect to an Existing World</h5>
               <div class="form-group">
                 <label for="world_id" class="form-label">World ID</label>
                 <input
@@ -135,100 +135,6 @@ endblock %} {% block content %}
             </div>
 
             <hr />
-
-            <div class="mb-4">
-              <h5>Option 2: Create a New World</h5>
-              <p>
-                This will create a new world and initialize your warehouses in
-                it. You'll need to share the World ID with your UPS partner.
-              </p>
-
-              <div class="form-group mb-3">
-                <label for="sim_speed" class="form-label"
-                  >Simulation Speed</label
-                >
-                <input
-                  type="number"
-                  class="form-control"
-                  id="sim_speed"
-                  name="sim_speed"
-                  value="3000"
-                  min="100"
-                  max="100000"
-                />
-                <div class="form-text">
-                  Higher values make the simulation run faster. Default is 100.
-                </div>
-              </div>
-
-              {% if warehouses %}
-              <div class="mb-3">
-                <label class="form-label">Available Warehouses</label>
-                <div class="table-responsive">
-                  <table class="table table-sm table-bordered">
-                    <thead class="table-light">
-                      <tr>
-                        <th>ID</th>
-                        <th>Location</th>
-                        <th>Include</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {% for warehouse in warehouses %}
-                      <tr>
-                        <td>{{ warehouse.warehouse_id }}</td>
-                        <td>({{ warehouse.x }}, {{ warehouse.y }})</td>
-                        <td>
-                          <div class="form-check">
-                            <input
-                              class="form-check-input"
-                              type="checkbox"
-                              name="warehouse_ids"
-                              value="{{ warehouse.warehouse_id }}"
-                              id="warehouse{{ warehouse.warehouse_id }}"
-                              checked
-                            />
-                            <label
-                              class="form-check-label"
-                              for="warehouse{{ warehouse.warehouse_id }}"
-                            >
-                              Include
-                            </label>
-                          </div>
-                        </td>
-                      </tr>
-                      {% endfor %}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-              {% else %}
-              <div class="alert alert-warning">
-                <i class="fas fa-exclamation-triangle"></i> You don't have any
-                warehouses yet.
-                <a href="{{ url_for('admin.add_warehouse') }}"
-                  >Add a warehouse</a
-                >
-                before creating a world.
-              </div>
-              {% endif %}
-
-              <button
-                type="submit"
-                name="action"
-                value="create"
-                class="btn btn-success mt-2"
-                {%
-                if
-                not
-                warehouses
-                %}disabled{%
-                endif
-                %}
-              >
-                <i class="fas fa-plus-circle"></i> Create New World
-              </button>
-            </div>
           </form>
         </div>
       </div>

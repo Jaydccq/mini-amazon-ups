@@ -226,3 +226,49 @@ class WarehouseService:
         except Exception as e:
             logger.error(f"Error getting warehouse inventory: {str(e)}")
             return []
+        
+    from datetime import datetime
+    def add_product_to_warehouse(self, warehouse_id, product_id, quantity):
+        try:
+            # Ensure warehouse and product exist (important!)
+            warehouse = Warehouse.query.get(warehouse_id)
+            if not warehouse:
+                return False, f"Warehouse ID {warehouse_id} not found."
+            # Ensure product exists (important!)
+            product = Product.query.get(product_id)
+            if not product:
+                return False, f"Product ID {product_id} not found."
+
+            # Find existing warehouse-product link
+            warehouse_product = WarehouseProduct.query.filter_by(
+                warehouse_id=warehouse_id,
+                product_id=product_id
+            ).first()
+
+            if warehouse_product:
+                # Update quantity if record exists
+                warehouse_product.quantity += quantity
+                warehouse_product.updated_at = datetime.utcnow() # Manually update timestamp
+                # print(f"Updating WHP: WH={warehouse_id}, Prod={product_id}, New Qty={warehouse_product.quantity}")
+            else:
+                # Create new inventory entry if it doesn't exist
+                warehouse_product = WarehouseProduct(
+                    warehouse_id=warehouse_id,
+                    product_id=product_id,
+                    quantity=quantity
+                )
+                # print(f"Creating WHP: WH={warehouse_id}, Prod={product_id}, Qty={quantity}")
+                db.session.add(warehouse_product)
+
+            db.session.commit()
+            return True, warehouse_product.quantity # Return the new total quantity
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            # Log the error properly in a real application
+            logger.error(f"Database error adding product {product_id} to warehouse {warehouse_id}: {str(e)}")
+            return False, f"Database error: {str(e)}"
+        except Exception as e:
+            db.session.rollback()
+            # Log the error properly in a real application
+            logger.error(f"Error adding product {product_id} to warehouse {warehouse_id}: {str(e)}")
+            return False, f"Error: {str(e)}"

@@ -1,0 +1,189 @@
+{% extends "layout.html" %} {% block title %}Create New Product | Mini-Amazon{%
+endblock %} {% block content %}
+<div class="container mt-4">
+  <nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item">
+        <a href="{{ url_for('amazon.index') }}">Home</a>
+      </li>
+      <li class="breadcrumb-item">
+        <a href="{{ url_for('seller.dashboard') }}">Seller Dashboard</a>
+      </li>
+      <li class="breadcrumb-item">
+        <a href="{{ url_for('seller.inventory_list') }}">Inventory</a>
+      </li>
+      <li class="breadcrumb-item active">Create New Product</li>
+    </ol>
+  </nav>
+
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+          <h2 class="mb-0">Create New Product</h2>
+        </div>
+        <div class="card-body">
+          <p class="text-muted mb-4">
+            Create a new product listing. The initial quantity will be added to
+            the selected warehouse.
+          </p>
+          {# Add enctype for file uploads #}
+          <form
+            method="POST"
+            action="{{ url_for('seller.create_product') }}"
+            enctype="multipart/form-data"
+          >
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+
+            <div class="mb-3">
+              <label for="product_name" class="form-label">Product Name</label>
+              <input
+                type="text"
+                class="form-control"
+                id="product_name"
+                name="product_name"
+                required
+                placeholder="Enter product name"
+              />
+            </div>
+
+            <div class="mb-3">
+              <label for="category_id" class="form-label">Category</label>
+              <select
+                class="form-select"
+                id="category_id"
+                name="category_id"
+                required
+              >
+                <option value="" selected disabled>Select a category...</option>
+                {# categories variable must be passed from the controller #} {%
+                for category in categories %}
+                <option value="{{ category.category_id }}">
+                  {{ category.category_name }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <label for="description" class="form-label">Description</label>
+              <textarea
+                class="form-control"
+                id="description"
+                name="description"
+                rows="4"
+                required
+                placeholder="Describe your product"
+              ></textarea>
+            </div>
+
+            {# --- ADDED WAREHOUSE SELECTOR --- #}
+            <div class="mb-3">
+              <label for="warehouse_id" class="form-label"
+                >Add Initial Stock To Warehouse</label
+              >
+              {# warehouses variable must be passed from the controller #}
+              <select
+                class="form-select"
+                id="warehouse_id"
+                name="warehouse_id"
+                required
+              >
+                <option value="" selected disabled>
+                  Select a warehouse...
+                </option>
+                {% for warehouse in warehouses %}
+                <option value="{{ warehouse.warehouse_id }}">
+                  #{{ warehouse.warehouse_id }} - Location ({{ warehouse.x }},
+                  {{ warehouse.y }})
+                </option>
+                {% else %}
+                <option value="" disabled>
+                  No active warehouses available. Please add one first.
+                </option>
+                {% endfor %}
+              </select>
+              <div class="form-text">
+                Select the warehouse where the initial quantity will be stored.
+              </div>
+            </div>
+            {# --- END WAREHOUSE SELECTOR --- #}
+
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label for="quantity" class="form-label"
+                  >Initial Quantity</label
+                >
+                <input
+                  type="number"
+                  class="form-control"
+                  id="quantity"
+                  name="quantity"
+                  min="1"
+                  required
+                  placeholder="e.g., 10"
+                />
+                <div class="form-text">Must be at least 1.</div>
+              </div>
+              <div class="col-md-6">
+                <label for="unit_price" class="form-label"
+                  >Unit Price ($)</label
+                >
+                <input
+                  type="number"
+                  class="form-control"
+                  id="unit_price"
+                  name="unit_price"
+                  step="0.01"
+                  min="0.01"
+                  required
+                  placeholder="e.g., 19.99"
+                />
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="product_image" class="form-label"
+                >Product Image (Optional)</label
+              >
+              <input
+                class="form-control"
+                type="file"
+                id="product_image"
+                name="product_image"
+                accept="image/png, image/jpeg, image/gif, image/webp"
+              />
+              <div class="form-text">Upload an image for your product.</div>
+            </div>
+
+            <hr />
+
+            <div class="d-flex justify-content-between">
+              <a
+                href="{{ url_for('seller.inventory_list') }}"
+                class="btn btn-outline-secondary"
+              >
+                <i class="fas fa-arrow-left"></i> Cancel
+              </a>
+              {# Disable button if no warehouses exist #}
+              <button
+                type="submit"
+                class="btn btn-primary"
+                {%
+                if
+                not
+                warehouses
+                %}disabled{%
+                endif
+                %}
+              >
+                <i class="fas fa-plus-circle"></i> Create Product & Add Stock
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

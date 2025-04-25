@@ -1,123 +1,244 @@
-{% extends "base.html" %} {% block content %}
+{% extends "base.html" %}
+
+{% block title %}Seller Inventory | Mini-Amazon{% endblock %}
+
+{% block content %}
 <div class="container mt-4">
-  {# ... Title, Search, Filter ... #} {% if inventory_items %}
-  <div class="table-responsive">
-    <table class="table table-hover">
-      <thead class="table-light">
-        <tr>
-          <th>Product</th>
-          <th>Category</th>
-          <th>Unit Price</th>
-          <th>Quantity</th>
-          <th>Last Updated</th>
-          <th>Actions</th>
-          <th>Replenish Stock</th>
-          {# <-- New Column #}
-        </tr>
-      </thead>
-      <tbody>
-        {% for item in inventory_items %}
-        <tr>
-          <td>
-            <a
-              href="{{ url_for('amazon.product_detail', product_id=item.product_id) }}"
-            >
-              {{ item.product.product_name if item.product else 'Unknown' }}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Seller Inventory</h1>
+        <div>
+            <a href="{{ url_for('seller.add_inventory') }}" class="btn btn-success me-2">
+                <i class="fas fa-plus"></i> Add Existing Product
             </a>
-          </td>
-          <td>
-            {{ item.product.category.category_name if item.product and
-            item.product.category else 'N/A' }}
-          </td>
-          <td>${{ "%.2f"|format(item.unit_price) }}</td>
-          <td>
-            <span
-              class="badge {% if item.quantity < 5 %}bg-warning text-dark{% elif item.quantity == 0 %}bg-danger{% else %}bg-success{% endif %}"
-            >
-              {{ item.quantity }}
-            </span>
-          </td>
-          <td>
-            {{ item.updated_at.strftime('%Y-%m-%d') if item.updated_at else
-            'N/A' }}
-          </td>
-          <td>
-            <a
-              href="{{ url_for('seller.edit_inventory', inventory_id=item.inventory_id) }}"
-              class="btn btn-sm btn-outline-secondary"
-              title="Edit"
-            >
-              <i class="fas fa-edit"></i>
+            <a href="{{ url_for('seller.create_product') }}" class="btn btn-primary">
+                <i class="fas fa-plus-circle"></i> Create New Product
             </a>
-            <form
-              action="{{ url_for('seller.delete_inventory', inventory_id=item.inventory_id) }}"
-              method="POST"
-              class="d-inline"
-              onsubmit="return confirm('Are you sure you want to remove this item from your inventory?');"
-            >
-              <input
-                type="hidden"
-                name="csrf_token"
-                value="{{ csrf_token() }}"
-              />
-              <button
-                type="submit"
-                class="btn btn-sm btn-outline-danger"
-                title="Delete"
-              >
-                <i class="fas fa-trash"></i>
-              </button>
-            </form>
-          </td>
-          {# --- REPLENISH FORM --- #}
-          <td>
-            <form
-              action="{{ url_for('seller.replenish_inventory') }}"
-              method="POST"
-              class="d-flex"
-            >
-              <input
-                type="hidden"
-                name="csrf_token"
-                value="{{ csrf_token() }}"
-              />
-              <input
-                type="hidden"
-                name="product_id"
-                value="{{ item.product_id }}"
-              />
-              {# Optional: Add a warehouse selector here if needed #} {#
-              <input
-                type="hidden"
-                name="warehouse_id"
-                value="SOME_WAREHOUSE_ID"
-              />
-              #}
-              <input
-                type="number"
-                name="quantity"
-                class="form-control form-control-sm me-1"
-                placeholder="Qty"
-                min="1"
-                required
-                style="width: 70px"
-              />
-              <button
-                type="submit"
-                class="btn btn-sm btn-primary"
-                title="Request More Stock"
-              >
-                <i class="fas fa-plus"></i> Buy
-              </button>
-            </form>
-          </td>
-          {# --- END REPLENISH FORM --- #}
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {# ... Pagination ... #} {% else %} {# ... No inventory message ... #} {%
-  endif %}
+        </div>
+    </div>
+
+    {# Search and Filter Form #}
+    <form method="GET" action="{{ url_for('seller.inventory_list') }}" class="mb-4 p-3 border rounded bg-light">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-5">
+                <label for="search" class="form-label">Search Product Name</label>
+                <input type="text" class="form-control" id="search" name="search" value="{{ search_query or '' }}" placeholder="Enter product name...">
+            </div>
+            <div class="col-md-4">
+                <label for="category_id" class="form-label">Category</label>
+                <select class="form-select" id="category_id" name="category_id">
+                    <option value="">All Categories</option>
+                    {% for category in categories %}
+                    <option value="{{ category.category_id }}" {% if category.category_id == current_category %}selected{% endif %}>
+                        {{ category.category_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-filter"></i> Filter / Search
+                </button>
+            </div>
+        </div>
+    </form>
+
+    {% if inventory_items %}
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Product</th>
+                            <th>Category</th>
+                            <th>Your Price</th> {# Seller's list price #}
+                            <th>Your Quantity</th> {# Seller's total listed quantity #}
+                            <th>Warehouse Stock</th> {# New Column #}
+                            <th>Actions</th> {# Edit/Delete Seller Listing #}
+                            <th>Replenish (World Sim)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in inventory_items %} {# item is an Inventory object #}
+                        <tr>
+                            {# Product Name #}
+                            <td>
+                                <a href="{{ url_for('amazon.product_detail', product_id=item.product_id) }}">
+                                    {{ item.product.product_name if item.product else 'Unknown' }}
+                                </a>
+                                <small class="d-block text-muted">ID: {{ item.product_id }}</small>
+                            </td>
+                            {# Category #}
+                            <td>
+                                {{ item.product.category.category_name if item.product and item.product.category else 'N/A' }}
+                            </td>
+                            {# Seller's Listed Price #}
+                            <td>${{ "%.2f"|format(item.unit_price) }}</td>
+                            {# Seller's Listed Quantity (from Inventory table) #}
+                            <td>
+                                 <span class="badge {% if item.quantity < 5 %}bg-warning text-dark{% elif item.quantity == 0 %}bg-danger{% else %}bg-success{% endif %}">
+                                    {{ item.quantity }}
+                                </span>
+                                 <small class="d-block text-muted">(Your Listing)</small>
+                            </td>
+
+                            {# --- Warehouse Stock Column --- #}
+                            <td>
+                                {# Button to trigger modal #}
+                                <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#warehouseStockModal{{ item.product_id }}">
+                                    <i class="fas fa-warehouse"></i> Manage
+                                </button>
+
+                                {# --- MODAL DEFINITION (Modified Table) --- #}
+                                <div class="modal fade" id="warehouseStockModal{{ item.product_id }}" tabindex="-1" aria-labelledby="warehouseStockModalLabel{{ item.product_id }}" aria-hidden="true">
+                                    <div class="modal-dialog modal-lg"> {# Larger modal #}
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="warehouseStockModalLabel{{ item.product_id }}">
+                                                    Manage Warehouse Stock for: {{ item.product.product_name }} (Product ID: {{ item.product_id }})
+                                                </h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p>View current stock levels and add physical inventory to specific warehouses.</p>
+                                                <div class="table-responsive">
+                                                    <table class="table table-sm table-bordered">
+                                                        <thead class="table-light">
+                                                            <tr>
+                                                                {# MODIFIED HEADER #}
+                                                                <th>Warehouse</th>
+                                                                <th>Location</th>
+                                                                <th>Current Stock Qty</th>
+                                                                <th>Add Stock</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {# Loop through ALL warehouses passed from controller #}
+                                                            {% for wh in warehouses %}
+                                                                {# Find the current stock for this product in this warehouse #}
+                                                                {% set current_stock = 0 %}
+                                                                {% if item.product and item.product.inventory_items %}
+                                                                    {% for whp in item.product.inventory_items if whp.warehouse_id == wh.warehouse_id %}
+                                                                        {% set current_stock = whp.quantity %}
+                                                                    {% endfor %}
+                                                                {% endif %}
+                                                                <tr>
+                                                                    {# MODIFIED CELL to clearly show Warehouse ID #}
+                                                                    <td><strong>#{{ wh.warehouse_id }}</strong></td>
+                                                                    <td>({{ wh.x }}, {{ wh.y }})</td>
+                                                                    <td>{{ current_stock }}</td>
+                                                                    <td>
+                                                                        {# Form to add stock to THIS specific warehouse #}
+                                                                        <form action="{{ url_for('seller.add_stock_to_warehouse') }}" method="POST" class="d-flex">
+                                                                            {# CORRECTED CSRF TOKEN IMPLEMENTATION #}
+                                                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                                            <input type="hidden" name="product_id" value="{{ item.product_id }}">
+                                                                            <input type="hidden" name="warehouse_id" value="{{ wh.warehouse_id }}">
+                                                                            <input type="hidden" name="referrer" value="{{ request.url }}">
+                                                                            <input type="number" name="quantity_to_add" class="form-control form-control-sm me-1" placeholder="Qty" min="1" required style="width: 70px;">
+                                                                            <button type="submit" class="btn btn-sm btn-success" title="Add {{ item.product.product_name }} to Warehouse #{{ wh.warehouse_id }}">
+                                                                                <i class="fas fa-plus"></i> Add
+                                                                            </button>
+                                                                        </form>
+                                                                    </td>
+                                                                </tr>
+                                                            {% else %}
+                                                                <tr>
+                                                                    <td colspan="4" class="text-center text-muted">No active warehouses found.</td>
+                                                                </tr>
+                                                            {% endfor %}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {# --- End Modal --- #}
+                            </td>
+                            {# --- End Warehouse Stock Column --- #}
+
+                            {# Seller Listing Actions #}
+                            <td>
+                                 <a href="{{ url_for('seller.edit_inventory', inventory_id=item.inventory_id) }}" class="btn btn-sm btn-outline-secondary" title="Edit Listing Price/Qty">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form action="{{ url_for('seller.delete_inventory', inventory_id=item.inventory_id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to remove this item from your listing? This does not affect warehouse stock.');">
+                                    {# CORRECTED CSRF TOKEN IMPLEMENTATION #}
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Listing">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                            {# Replenish (World Sim) Actions #}
+                            <td>
+                                {# Form to request replenishment from World Simulator #}
+                                <form action="{{ url_for('seller.replenish_inventory') }}" method="POST" class="d-flex">
+                                    {# CORRECTED CSRF TOKEN IMPLEMENTATION #}
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="product_id" value="{{ item.product_id }}">
+                                    <input type="number" name="quantity" class="form-control form-control-sm me-1" placeholder="Qty" min="1" required style="width: 70px;">
+                                    <button type="submit" class="btn btn-sm btn-primary" title="Request More Stock from World Simulator (choose warehouse in next step or uses default)">
+                                        <i class="fas fa-plus"></i> Buy
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div> {# End Card #}
+
+        {# Pagination controls #}
+        {% if pagination and pagination.pages > 1 %}
+        <nav aria-label="Inventory Pagination" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {# Previous Page Link #}
+                <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('seller.inventory_list', search=search_query, category_id=current_category, page=pagination.prev_num) if pagination.has_prev else '#' }}">Previous</a>
+                </li>
+
+                {# Page Number Links #}
+                {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                    {% if page_num %}
+                        {% if page_num == pagination.page %}
+                            <li class="page-item active" aria-current="page">
+                                <span class="page-link">{{ page_num }}</span>
+                            </li>
+                        {% else %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('seller.inventory_list', search=search_query, category_id=current_category, page=page_num) }}">{{ page_num }}</a>
+                            </li>
+                        {% endif %}
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {% endif %}
+                {% endfor %}
+
+                {# Next Page Link #}
+                <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('seller.inventory_list', search=search_query, category_id=current_category, page=pagination.next_num) if pagination.has_next else '#' }}">Next</a>
+                </li>
+            </ul>
+        </nav>
+        {% endif %}
+
+    {% else %}
+        <div class="alert alert-info text-center p-5">
+            <i class="fas fa-box-open fa-3x mb-3"></i>
+            <h4>No inventory items found</h4>
+            <p>Your inventory is empty or no items match the current filters.</p>
+            <a href="{{ url_for('seller.add_inventory') }}" class="btn btn-primary mt-2">Add Your First Product</a>
+        </div>
+    {% endif %}
 </div>
-{% endblock %} {# Existing extra_js block if any... #}
+{% endblock %}
+
+{% block extra_js %}
+{# Add any specific JS if needed #}
+{% endblock %}

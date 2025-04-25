@@ -1,0 +1,212 @@
+{% extends "layout.html" %} {% block title %}Add Existing Product to Inventory |
+Mini-Amazon{% endblock %} {% block extra_css %} {# Optional: Add CSS for select2
+if using it #}
+<link
+  href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css"
+  rel="stylesheet"
+/>
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css"
+/>
+<style>
+  .select2-container--bootstrap-5 .select2-selection--single {
+    height: calc(1.5em + 0.75rem + 2px);
+    padding: 0.375rem 0.75rem;
+  }
+  .select2-container--bootstrap-5
+    .select2-selection--single
+    .select2-selection__rendered {
+    line-height: 1.5;
+    padding-left: 0;
+  }
+  .select2-container--bootstrap-5
+    .select2-selection--single
+    .select2-selection__arrow {
+    height: calc(1.5em + 0.75rem);
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="container mt-4">
+  <nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item">
+        <a href="{{ url_for('amazon.index') }}">Home</a>
+      </li>
+      <li class="breadcrumb-item">
+        <a href="{{ url_for('seller.dashboard') }}">Seller Dashboard</a>
+      </li>
+      <li class="breadcrumb-item">
+        <a href="{{ url_for('seller.inventory_list') }}">Inventory</a>
+      </li>
+      <li class="breadcrumb-item active">Add Existing Product</li>
+    </ol>
+  </nav>
+
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card shadow-sm">
+        <div class="card-header bg-success text-white">
+          <h2 class="mb-0">Add Existing Product to Inventory</h2>
+        </div>
+        <div class="card-body">
+          <p class="text-muted mb-4">
+            Select a product from the catalog, list it in your inventory, and
+            add the initial stock to a specific warehouse.
+          </p>
+          <form method="POST" action="{{ url_for('seller.add_inventory') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+
+            <div class="mb-3">
+              <label for="product_id" class="form-label">Select Product</label>
+              {# available_products must be passed from controller #} {% if
+              available_products %}
+              <select
+                class="form-select"
+                id="product_id"
+                name="product_id"
+                required
+              >
+                <option value="" selected disabled>
+                  Search or select a product...
+                </option>
+                {% for product in available_products %} {# Display product name
+                and original owner's price for reference #}
+                <option value="{{ product.product_id }}">
+                  {{ product.product_name }} (Orig. Price: ${{
+                  "%.2f"|format(product.price) }})
+                </option>
+                {% endfor %}
+              </select>
+              <div class="form-text">
+                Only products not currently in your inventory listing are shown.
+              </div>
+              {% else %}
+              <div class="alert alert-warning">
+                No available products found to add. You might already be listing
+                all existing products.
+              </div>
+              {% endif %}
+            </div>
+
+            {# --- ADDED WAREHOUSE SELECTOR --- #}
+            <div class="mb-3">
+              <label for="warehouse_id" class="form-label"
+                >Add Stock To Warehouse</label
+              >
+              {# warehouses variable must be passed from the controller #}
+              <select
+                class="form-select"
+                id="warehouse_id"
+                name="warehouse_id"
+                required
+              >
+                <option value="" selected disabled>
+                  Select a warehouse...
+                </option>
+                {% for warehouse in warehouses %}
+                <option value="{{ warehouse.warehouse_id }}">
+                  #{{ warehouse.warehouse_id }} - Location ({{ warehouse.x }},
+                  {{ warehouse.y }})
+                </option>
+                {% else %}
+                <option value="" disabled>
+                  No active warehouses available. Please add one first.
+                </option>
+                {% endfor %}
+              </select>
+              <div class="form-text">
+                Select the warehouse where the specified quantity will be
+                stored.
+              </div>
+            </div>
+            {# --- END WAREHOUSE SELECTOR --- #}
+
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label for="quantity" class="form-label">Quantity to Add</label>
+                <input
+                  type="number"
+                  class="form-control"
+                  id="quantity"
+                  name="quantity"
+                  min="1"
+                  required
+                  placeholder="e.g., 5"
+                />
+                <div class="form-text">
+                  How many units you are adding now. Must be at least 1.
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label for="unit_price" class="form-label"
+                  >Your Selling Price ($)</label
+                >
+                <input
+                  type="number"
+                  class="form-control"
+                  id="unit_price"
+                  name="unit_price"
+                  step="0.01"
+                  min="0.01"
+                  required
+                  placeholder="e.g., 21.50"
+                />
+                <div class="form-text">
+                  The price you want to list this item for.
+                </div>
+              </div>
+            </div>
+
+            <hr />
+
+            <div class="d-flex justify-content-between">
+              <a
+                href="{{ url_for('seller.inventory_list') }}"
+                class="btn btn-outline-secondary"
+              >
+                <i class="fas fa-arrow-left"></i> Cancel
+              </a>
+              {# Disable button if no products or warehouses are available #}
+              <button
+                type="submit"
+                class="btn btn-success"
+                {%
+                if
+                not
+                available_products
+                or
+                not
+                warehouses
+                %}disabled{%
+                endif
+                %}
+              >
+                <i class="fas fa-plus"></i> Add Listing & Stock
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %} {# Optional: Initialize select2 for better
+product search/selection #}
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+  $(document).ready(function () {
+    $("#product_id").select2({
+      theme: "bootstrap-5",
+      placeholder: "Search or select a product...", // Updated placeholder
+    });
+    $("#warehouse_id").select2({
+      // Also apply to warehouse dropdown if desired
+      theme: "bootstrap-5",
+      placeholder: "Select a warehouse...",
+      minimumResultsForSearch: Infinity, // Disable search for warehouse dropdown
+    });
+  });
+</script>
+{% endblock %}

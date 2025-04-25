@@ -62,12 +62,16 @@ class ShipmentService:
             db.session.commit()
             
             # Notify UPS 
-            self.ups_integration.notify_package_created(
+            notify_res, msg = self.ups_integration.notify_package_created(
                 shipment_id=shipment.shipment_id,
                 destination_x=destination_x,
                 destination_y=destination_y,
                 ups_account=ups_account
             )
+
+            if not notify_res:
+                db.session.rollback()
+                return False, msg
             
             # adding shipment items
             items = []

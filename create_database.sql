@@ -38,6 +38,19 @@ CREATE TABLE products (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE Inventory (
+    inventory_id SERIAL PRIMARY KEY,
+    seller_id INTEGER NOT NULL,
+    product_id INTEGER NOT NULL,
+    quantity INTEGER NOT NULL,
+    unit_price DECIMAL(10, 2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    owner_id INTEGER,
+    warehouse_id INTEGER,
+    UNIQUE (seller_id, product_id)
+);
+
 -- Carts table
 CREATE TABLE carts (
     cart_id SERIAL PRIMARY KEY,
@@ -92,6 +105,8 @@ CREATE TABLE warehouses (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+
 
 -- Warehouse Products (inventory)
 CREATE TABLE warehouse_products (
@@ -168,17 +183,7 @@ CREATE TABLE reviews (
     CHECK ((product_id IS NOT NULL AND seller_id IS NULL) OR (product_id IS NULL AND seller_id IS NOT NULL))
 );
 
-CREATE TABLE Inventory (
-    inventory_id SERIAL PRIMARY KEY,
-    seller_id INTEGER NOT NULL,
-    product_id INTEGER NOT NULL,
-    quantity INTEGER NOT NULL,
-    unit_price DECIMAL(10, 2) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    owner_id INTEGER,
-    UNIQUE (seller_id, product_id)
-);
+
 
 -- Insert default category
 INSERT INTO products_categories (category_name) VALUES ('General');

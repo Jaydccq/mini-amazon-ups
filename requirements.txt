@@ -12,3 +12,5 @@ faker==18.4.0
 python-dotenv==1.0.0
 email-validator==2.0.0
 flask_login==0.6.3
+requests ==2.31.0
+email_validator==2.0.0

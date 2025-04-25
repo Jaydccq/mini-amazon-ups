@@ -496,6 +496,10 @@ def warehouses():
 
     # Get world connection status
     world_simulator = current_app.config.get('WORLD_SIMULATOR_SERVICE')
+    if not world_simulator:
+        from app.services.world_simulator_service import WorldSimulatorService
+        world_simulator = WorldSimulatorService(app=current_app)
+        current_app.config['WORLD_SIMULATOR_SERVICE'] = world_simulator
     world_connected = world_simulator.connected if world_simulator else False
     world_id = world_simulator.world_id if world_simulator and world_simulator.connected else None
 

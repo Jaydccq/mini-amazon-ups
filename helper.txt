@@ -3,3 +3,5 @@ http://127.0.0.1:5001
 
 邮箱 (Email): admin@example.com
 密码 (Password): admin
+
+docker compose exec web python

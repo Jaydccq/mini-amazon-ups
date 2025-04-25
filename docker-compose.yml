@@ -1,19 +1,20 @@
-version: '3.8'
+version: "3.8"
 
 services:
   web:
     build: .
+    container_name: mini-amazon-web
     ports:
-      - "5001:5000"                # Flask HTTP
+      - "5001:5000"
     volumes:
       - .:/app
     environment:
-      - FLASK_APP=app
-      - FLASK_ENV=development
-      - DATABASE_URL=postgresql://postgres:abc123@db:5432/mini_amazon  
-      - SECRET_KEY=dev
-      - WORLD_HOST=world-simulator  
-      - WORLD_PORT=23456
+      FLASK_APP: app
+      FLASK_ENV: development
+      DATABASE_URL: postgresql://postgres:abc123@db:5432/mini_amazon
+      SECRET_KEY: dev
+      WORLD_HOST: server
+      WORLD_PORT: "23456"
     depends_on:
       - db
     networks:
@@ -21,12 +22,13 @@ services:
 
   db:
     image: postgres:12-alpine3.15
+    container_name: mini-amazon-db
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     environment:
-      - POSTGRES_PASSWORD=abc123
-      - POSTGRES_USER=postgres
-      - POSTGRES_DB=mini_amazon
+      POSTGRES_PASSWORD: abc123
+      POSTGRES_USER: postgres
+      POSTGRES_DB: mini_amazon
     ports:
       - "5432:5432"
     networks:
@@ -34,7 +36,7 @@ services:
 
 networks:
   project-network:
-    external: false
+    external: true
 
 volumes:
   postgres_data:

@@ -17,7 +17,7 @@ from app.proto import world_amazon_1_pb2 as amazon_pb2
 logger = logging.getLogger(__name__)
 
 class WorldSimulatorService:
-    def __init__(self, app=None, host='world-simulator', port=23456):
+    def __init__(self, app=None, host='server', port=23456):
         self.app = app
         self.host = host
         self.port = port

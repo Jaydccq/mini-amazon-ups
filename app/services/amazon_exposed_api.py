@@ -139,6 +139,8 @@ def truck_arrived():
     try:
         message = request.get_json()
 
+        logger.info("Truck arrived message: %s", message)
+
         # Validate message structure
         if not validate_message_structure(message, 'TruckArrived'):
             return jsonify({
@@ -184,7 +186,7 @@ def truck_arrived():
             }), 500
 
         shipment.status = 'ready_for_loading'
-        shipment.updated_at = datetime.utcnow()
+        shipment.updated_at = datetime.utcnow().isoformat()
 
         db.session.commit()
 

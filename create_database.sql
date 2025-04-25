@@ -152,7 +152,6 @@ CREATE TABLE shipments (
     status VARCHAR(50) NOT NULL DEFAULT 'packing',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CHECK (status IN ('packing', 'packed', 'loading', 'loaded', 'delivering', 'delivered'))
 );
 
 -- Shipment Items (products in shipment)

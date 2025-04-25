@@ -281,22 +281,26 @@ class ShipmentItem(db.Model):
 
 class WorldMessage(db.Model):
     __tablename__ = 'world_messages'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     seqnum = db.Column(db.BigInteger, nullable=False)
-    message_type = db.Column(db.String(50), nullable=False)  # buy, topack, load, query, etc.
-    message_content = db.Column(db.Text, nullable=False)  # JSON or serialized protobuf
-    status = db.Column(db.String(20), nullable=False)  # sent, acked, failed
+    message_type = db.Column(db.String(50), nullable=False)  # e.g., buy, topack, load
+    message_content = db.Column(db.Text, nullable=False)  # Store relevant details
+    status = db.Column(db.String(20), nullable=False, default='sent')  # sent, acked, failed
     retries = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     __table_args__ = (
         db.CheckConstraint(
             "status IN ('sent', 'acked', 'failed')",
             name='world_messages_status_check'
         ),
     )
+
+    def __repr__(self):
+        return f'<WorldMessage {self.id} Seq:{self.seqnum} Type:{self.message_type} Status:{self.status}>'
+
 
 class UPSMessage(db.Model):
     __tablename__ = 'ups_messages'

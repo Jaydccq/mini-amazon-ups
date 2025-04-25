@@ -16,6 +16,7 @@ from app.forms import LoginForm, RegistrationForm, EditProfileForm
 from flask import abort
 import logging
 from app.models.inventory import Inventory 
+from app.model import db, WorldMessage 
 
 logger = logging.getLogger(__name__)
 amazon_bp = Blueprint('amazon', __name__)
@@ -831,3 +832,24 @@ def delete_warehouse(warehouse_id):
      else:
          flash('Warehouse not found.', 'warning')
      return redirect(url_for('admin.warehouses'))
+
+@admin_bp.route('/world-messages')
+@login_required
+def world_messages():
+    if not current_user.is_seller:
+        flash('Access denied', 'error')
+        return redirect(url_for('amazon.index'))
+
+    messages = WorldMessage.query.order_by(WorldMessage.id.desc()).limit(100).all()
+
+    # Check if world simulator is connected
+    world_simulator = current_app.config.get('WORLD_SIMULATOR_SERVICE')
+    connected = world_simulator.connected if world_simulator else False
+    world_id = world_simulator.world_id if world_simulator and world_simulator.connected else None
+
+    return render_template(
+        'admin/world_messages.html', # Path to the new template
+        messages=messages,
+        connected=connected,
+        world_id=world_id
+    )

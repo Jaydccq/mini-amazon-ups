@@ -159,6 +159,7 @@ class WorldSimulatorService:
         except Exception as e:
             logger.error(f"Error disconnecting from World Simulator: {e}")
     
+    # Modify in app/services/world_simulator_service.py
     def buy_product(self, warehouse_id, product_id, description, quantity):
         if not self.connected:
             return False, "Not connected to World Simulator"
@@ -181,28 +182,14 @@ class WorldSimulatorService:
                 status='sent'
             )
             db.session.add(db_message)
-
-            # TODO: increase the inventory or create a new product and inventory
-
-
             db.session.commit()
             
-            event = threading.Event()
-            with self.lock:
-                self.response_events[buy.seqnum] = event
-            
-            # Queue the command
+            # Queue the command without waiting for response
             self.queue_command(command)
             
-            if event.wait(timeout=10):
-                with self.lock:
-                    if buy.seqnum in self.pending_responses:
-                        response = self.pending_responses[buy.seqnum]
-                        del self.pending_responses[buy.seqnum]
-                        del self.response_events[buy.seqnum]
-                        return True, response
-                    
-            return False, "Timeout waiting for response"
+            # Return success immediately - we'll get notification later when products arrive
+            return True, "Replenishment request sent successfully"
+            
         except Exception as e:
             logger.error(f"Error buying product: {e}")
             return False, str(e)
@@ -442,9 +429,14 @@ class WorldSimulatorService:
             db.session.commit()
         
         with self.lock:
+            # Only set the event if it exists in the dictionary
+            if seqnum in self.response_events:
                 if seqnum not in self.pending_responses or self.pending_responses[seqnum] is None:
                     self.pending_responses[seqnum] = "ACK"
                 self.response_events[seqnum].set()
+            else:
+                # Just log a message - this is expected for asynchronous commands
+                logger.debug(f"No event waiting for ack of seqnum {seqnum}")
     
     def process_arrived(self, package):
         logger.info(f"Products arrived for warehouse {package.whnum}")

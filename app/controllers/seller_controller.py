@@ -1,5 +1,3 @@
-# File: app/controllers/seller_controller.py
-
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify # Added jsonify
 from flask_login import login_required, current_user
 from functools import wraps
@@ -12,7 +10,8 @@ from flask_login import login_required, current_user
 from app.services.warehouse_service import WarehouseService
 from app.model import Product, Warehouse # Import Warehouse if needed for validation/display
 # Added Order, OrderProduct
-from app.model import db, User, Product, ProductCategory, Inventory, Order, OrderProduct
+from app.model import db, User, Product, ProductCategory, Inventory, Order, OrderProduct, WarehouseProduct
+from sqlalchemy.orm import joinedload
 
 # Helper function to check if user is logged in as a seller
 def seller_required(f):
@@ -115,48 +114,72 @@ def dashboard():
     )
 
 
-# --- Inventory Management ---
-# ... (keep existing inventory routes: inventory_list, add_inventory, create_product, edit_inventory, delete_inventory) ...
 @seller_bp.route('/inventory')
 @seller_required
 def inventory_list():
-    """Seller inventory management view"""
+    """Seller inventory management view with optimized warehouse stock fetching."""
     seller_id = current_user.user_id
     page = request.args.get('page', 1, type=int)
     search = request.args.get('search', '')
     category_id = request.args.get('category_id', type=int)
-    per_page = 10
+    per_page = 10 # Or your preferred number
 
-    query = Inventory.query.filter(Inventory.seller_id == seller_id)\
-                           .join(Product, Inventory.product_id == Product.product_id)
+    # Base query for seller's inventory items (Inventory records)
+    # Use joinedload to pre-fetch related Product and Category data
+    query = Inventory.query.options(
+        joinedload(Inventory.product).joinedload(Product.category)
+    ).filter(Inventory.seller_id == seller_id)\
+     .join(Product, Inventory.product_id == Product.product_id) # Explicit join might still be needed for filtering
 
+    # Apply search filter on Product name
     if search:
         query = query.filter(Product.product_name.ilike(f'%{search}%'))
 
+    # Apply category filter on Product category_id
     if category_id:
         query = query.filter(Product.category_id == category_id)
 
+    # Order and paginate the Inventory listings
     pagination = query.order_by(Product.product_name.asc())\
                       .paginate(page=page, per_page=per_page, error_out=False)
 
-    inventory_items = pagination.items
-    categories = ProductCategory.query.order_by(ProductCategory.category_name).all()
-    # Fetch warehouses for the modals in the inventory list
-    warehouses = Warehouse.query.filter_by(active=True).order_by(Warehouse.warehouse_id).all()
+    inventory_items = pagination.items # These are Inventory objects
 
-    # Pre-fetch warehouse inventory for displayed items to optimize modal
-    # (This is complex, consider if performance requires it later)
-    # Example: You might query WarehouseProduct for products in pagination.items
+    # --- Efficiently fetch warehouse stock for the products on the current page ---
+    product_ids_on_page = [item.product_id for item in inventory_items]
+    warehouse_stock_data = {} # {product_id: {warehouse_id: quantity}}
+
+    if product_ids_on_page:
+        # Query WarehouseProduct table for relevant products
+        stock_entries = WarehouseProduct.query.filter(
+            WarehouseProduct.product_id.in_(product_ids_on_page)
+        ).all()
+
+        # Structure the data for easy lookup in the template
+        for entry in stock_entries:
+            if entry.product_id not in warehouse_stock_data:
+                warehouse_stock_data[entry.product_id] = {}
+            warehouse_stock_data[entry.product_id][entry.warehouse_id] = entry.quantity
+
+    # Add the fetched stock data directly to each inventory item for template access
+    for item in inventory_items:
+        item.warehouse_stock_map = warehouse_stock_data.get(item.product_id, {}) # Attach the map
+
+    # --- Fetch other necessary data for template ---
+    categories = ProductCategory.query.order_by(ProductCategory.category_name).all()
+    # Fetch active warehouses for the modals in the inventory list
+    warehouses = Warehouse.query.filter_by(active=True).order_by(Warehouse.warehouse_id).all()
 
     return render_template(
         'seller/inventory.html',
-        inventory_items=inventory_items,
+        inventory_items=inventory_items, # Now items have .warehouse_stock_map
         categories=categories,
         current_category=category_id,
         search_query=search,
         pagination=pagination,
         warehouses=warehouses # Pass warehouses for modals
     )
+
 
 @seller_bp.route('/inventory/add', methods=['GET', 'POST'])
 @seller_required
@@ -515,66 +538,6 @@ def fulfill_item(order_item_id):
 from app.services.warehouse_service import WarehouseService
 from app.model import db, User, Product, ProductCategory, Inventory, Order, OrderProduct, Warehouse
 
-@seller_bp.route('/inventory/replenish', methods=['POST'])
-@seller_required
-def replenish_inventory():
-    """Handles request to replenish stock for a product."""
-    product_id = request.form.get('product_id', type=int)
-    quantity = request.form.get('quantity', type=int)
-    # Optional: Get warehouse_id from form if you added a selector
-    warehouse_id = request.form.get('warehouse_id', type=int)
-
-    # --- Basic Validation ---
-    if not product_id or not quantity or quantity <= 0:
-        flash('Invalid product ID or quantity specified.', 'danger')
-        return redirect(request.referrer or url_for('seller.inventory_list'))
-
-    # --- Check World Connection ---
-    # Ensure the app is connected to the world simulator
-    world_simulator = current_app.config.get('WORLD_SIMULATOR_SERVICE')
-    if not world_simulator or not world_simulator.connected:
-         flash('Cannot replenish stock: Not connected to the World Simulator. Please connect via Admin > Connect to World.', 'danger')
-         return redirect(request.referrer or url_for('seller.inventory_list'))
-
-    # --- Determine Warehouse ID ---
-    if not warehouse_id:
-        # If no specific warehouse selected, find the first active one
-        # Note: You might want more sophisticated logic (e.g., nearest, user preference)
-        first_active_warehouse = Warehouse.query.filter_by(active=True).first()
-        if not first_active_warehouse:
-            flash('Cannot replenish stock: No active warehouses found.', 'danger')
-            return redirect(request.referrer or url_for('seller.inventory_list'))
-        warehouse_id = first_active_warehouse.warehouse_id
-        flash(f'Replenishing at first active warehouse: ID #{warehouse_id}', 'info') # Inform user
-    else:
-        # Validate the selected warehouse_id exists and is active (optional but recommended)
-        target_warehouse = Warehouse.query.filter_by(warehouse_id=warehouse_id, active=True).first()
-        if not target_warehouse:
-             flash(f'Cannot replenish stock: Selected warehouse ID #{warehouse_id} is invalid or inactive.', 'danger')
-             return redirect(request.referrer or url_for('seller.inventory_list'))
-
-    # --- Call the Warehouse Service ---
-    # Instantiate the service (consider dependency injection for larger apps)
-    warehouse_service = WarehouseService()
-
-    # Note: The WarehouseService currently initializes WorldSimulatorService with app=None.
-    # This *might* cause issues if the service's background thread needs app context.
-    # A more robust approach would be to pass the app instance or get the simulator
-    # service from current_app.config within the WarehouseService.
-    # For now, we assume the current implementation works for the 'buy' command.
-
-    success, message = warehouse_service.replenish_product(
-        warehouse_id=warehouse_id,
-        product_id=product_id,
-        quantity=quantity
-    )
-
-    if success:
-        flash(f'Replenishment request for {quantity} of Product ID {product_id} sent to Warehouse ID {warehouse_id}. Status: {message}', 'success')
-    else:
-        flash(f'Failed to send replenishment request: {message}', 'danger')
-
-    return redirect(request.referrer or url_for('seller.inventory_list'))
 
 @seller_bp.route('/inventory/add-to-warehouse', methods=['POST'])
 @seller_required
@@ -627,3 +590,33 @@ def add_stock_to_warehouse():
         flash(f'An unexpected error occurred: {str(e)}', 'danger')
         # Redirect back to a safe page, maybe the main inventory list
         return redirect(url_for('seller.inventory_list'))
+    
+
+@seller_bp.route('/inventory/replenish', methods=['POST'])
+@seller_required
+def replenish_inventory():
+    """Handles request to replenish stock for a product."""
+    product_id = request.form.get('product_id', type=int)
+    quantity = request.form.get('quantity', type=int)
+    warehouse_id = request.form.get('warehouse_id', type=int)
+    referrer = request.form.get('referrer', url_for('seller.inventory_list'))
+
+    # Validation
+    if not product_id or not quantity or quantity <= 0 or not warehouse_id:
+        flash('Invalid parameters specified.', 'danger')
+        return redirect(referrer)
+
+    # Call the service
+    warehouse_service = WarehouseService()
+    success, message = warehouse_service.replenish_product(
+        warehouse_id=warehouse_id,
+        product_id=product_id,
+        quantity=quantity
+    )
+
+    if success:
+        flash(f'Replenishment request for {quantity} of Product ID {product_id} sent to Warehouse ID {warehouse_id}. Status: {message}', 'success')
+    else:
+        flash(f'Failed to send replenishment request: {message}', 'danger')
+
+    return redirect(referrer)

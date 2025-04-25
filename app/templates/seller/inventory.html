@@ -16,7 +16,7 @@
         </div>
     </div>
 
-    {# Search and Filter Form #}
+    <!-- Search and Filter Form -->
     <form method="GET" action="{{ url_for('seller.inventory_list') }}" class="mb-4 p-3 border rounded bg-light">
         <div class="row g-3 align-items-end">
             <div class="col-md-5">
@@ -51,138 +51,80 @@
                         <tr>
                             <th>Product</th>
                             <th>Category</th>
-                            <th>Your Price</th> {# Seller's list price #}
-                            <th>Your Quantity</th> {# Seller's total listed quantity #}
-                            <th>Warehouse Stock</th> {# New Column #}
-                            <th>Actions</th> {# Edit/Delete Seller Listing #}
+                            <th>Your Price</th>
+                            <th>Your Quantity</th>
+                            <th>Warehouse Distribution</th>
+                            <th>Actions</th>
                             <th>Replenish (World Sim)</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for item in inventory_items %} {# item is an Inventory object #}
+                        {% for item in inventory_items %}
                         <tr>
-                            {# Product Name #}
+                            <!-- Product Name -->
                             <td>
                                 <a href="{{ url_for('amazon.product_detail', product_id=item.product_id) }}">
                                     {{ item.product.product_name if item.product else 'Unknown' }}
                                 </a>
                                 <small class="d-block text-muted">ID: {{ item.product_id }}</small>
                             </td>
-                            {# Category #}
+                            <!-- Category -->
                             <td>
                                 {{ item.product.category.category_name if item.product and item.product.category else 'N/A' }}
                             </td>
-                            {# Seller's Listed Price #}
+                            <!-- Seller's Listed Price -->
                             <td>${{ "%.2f"|format(item.unit_price) }}</td>
-                            {# Seller's Listed Quantity (from Inventory table) #}
+                            <!-- Seller's Listed Quantity -->
                             <td>
-                                 <span class="badge {% if item.quantity < 5 %}bg-warning text-dark{% elif item.quantity == 0 %}bg-danger{% else %}bg-success{% endif %}">
+                                <span class="badge {% if item.quantity < 5 %}bg-warning text-dark{% elif item.quantity == 0 %}bg-danger{% else %}bg-success{% endif %}">
                                     {{ item.quantity }}
                                 </span>
-                                 <small class="d-block text-muted">(Your Listing)</small>
+                                <small class="d-block text-muted">(Your Listing)</small>
                             </td>
 
-                            {# --- Warehouse Stock Column --- #}
+                            <!-- Warehouse Distribution Summary -->
                             <td>
-                                {# Button to trigger modal #}
-                                <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#warehouseStockModal{{ item.product_id }}">
-                                    <i class="fas fa-warehouse"></i> Manage
-                                </button>
-
-                                {# --- MODAL DEFINITION (Modified Table) --- #}
-                                <div class="modal fade" id="warehouseStockModal{{ item.product_id }}" tabindex="-1" aria-labelledby="warehouseStockModalLabel{{ item.product_id }}" aria-hidden="true">
-                                    <div class="modal-dialog modal-lg"> {# Larger modal #}
-                                        <div class="modal-content">
-                                            <div class="modal-header">
-                                                <h5 class="modal-title" id="warehouseStockModalLabel{{ item.product_id }}">
-                                                    Manage Warehouse Stock for: {{ item.product.product_name }} (Product ID: {{ item.product_id }})
-                                                </h5>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                            </div>
-                                            <div class="modal-body">
-                                                <p>View current stock levels and add physical inventory to specific warehouses.</p>
-                                                <div class="table-responsive">
-                                                    <table class="table table-sm table-bordered">
-                                                        <thead class="table-light">
-                                                            <tr>
-                                                                {# MODIFIED HEADER #}
-                                                                <th>Warehouse</th>
-                                                                <th>Location</th>
-                                                                <th>Current Stock Qty</th>
-                                                                <th>Add Stock</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            {# Loop through ALL warehouses passed from controller #}
-                                                            {% for wh in warehouses %}
-                                                                {# Find the current stock for this product in this warehouse #}
-                                                                {% set current_stock = 0 %}
-                                                                {% if item.product and item.product.inventory_items %}
-                                                                    {% for whp in item.product.inventory_items if whp.warehouse_id == wh.warehouse_id %}
-                                                                        {% set current_stock = whp.quantity %}
-                                                                    {% endfor %}
-                                                                {% endif %}
-                                                                <tr>
-                                                                    {# MODIFIED CELL to clearly show Warehouse ID #}
-                                                                    <td><strong>#{{ wh.warehouse_id }}</strong></td>
-                                                                    <td>({{ wh.x }}, {{ wh.y }})</td>
-                                                                    <td>{{ current_stock }}</td>
-                                                                    <td>
-                                                                        {# Form to add stock to THIS specific warehouse #}
-                                                                        <form action="{{ url_for('seller.add_stock_to_warehouse') }}" method="POST" class="d-flex">
-                                                                            {# CORRECTED CSRF TOKEN IMPLEMENTATION #}
-                                                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                                            <input type="hidden" name="product_id" value="{{ item.product_id }}">
-                                                                            <input type="hidden" name="warehouse_id" value="{{ wh.warehouse_id }}">
-                                                                            <input type="hidden" name="referrer" value="{{ request.url }}">
-                                                                            <input type="number" name="quantity_to_add" class="form-control form-control-sm me-1" placeholder="Qty" min="1" required style="width: 70px;">
-                                                                            <button type="submit" class="btn btn-sm btn-success" title="Add {{ item.product.product_name }} to Warehouse #{{ wh.warehouse_id }}">
-                                                                                <i class="fas fa-plus"></i> Add
-                                                                            </button>
-                                                                        </form>
-                                                                    </td>
-                                                                </tr>
-                                                            {% else %}
-                                                                <tr>
-                                                                    <td colspan="4" class="text-center text-muted">No active warehouses found.</td>
-                                                                </tr>
-                                                            {% endfor %}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            </div>
-                                            <div class="modal-footer">
-                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                            </div>
-                                        </div>
-                                    </div>
+                                <!-- Quick summary of warehouse distribution -->
+                                <div class="mb-2">
+                                    {% set total_warehouses = namespace(count=0) %}
+                                    {% set total_stock = namespace(count=0) %}
+                                    
+                                    {% for wh_id, stock in item.warehouse_stock_map.items() %}
+                                        {% if stock > 0 %}
+                                            {% set total_warehouses.count = total_warehouses.count + 1 %}
+                                            {% set total_stock.count = total_stock.count + stock %}
+                                        {% endif %}
+                                    {% endfor %}
+                                    
+                                    {% if total_warehouses.count > 0 %}
+                                        <span class="badge bg-info">{{ total_warehouses.count }} warehouse{% if total_warehouses.count != 1 %}s{% endif %}</span>
+                                        <span class="badge bg-secondary">{{ total_stock.count }} units total</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">No warehouse stock</span>
+                                    {% endif %}
                                 </div>
-                                {# --- End Modal --- #}
+                                
+                                <!-- Button to trigger modal -->
+                                <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#warehouseModal{{ item.product_id }}">
+                                    <i class="fas fa-warehouse"></i> Manage Stock
+                                </button>
                             </td>
-                            {# --- End Warehouse Stock Column --- #}
 
-                            {# Seller Listing Actions #}
+
+                            
+                            <!-- Replenish (World Sim) Actions -->
                             <td>
-                                 <a href="{{ url_for('seller.edit_inventory', inventory_id=item.inventory_id) }}" class="btn btn-sm btn-outline-secondary" title="Edit Listing Price/Qty">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                                <form action="{{ url_for('seller.delete_inventory', inventory_id=item.inventory_id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to remove this item from your listing? This does not affect warehouse stock.');">
-                                    {# CORRECTED CSRF TOKEN IMPLEMENTATION #}
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Listing">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </form>
-                            </td>
-                            {# Replenish (World Sim) Actions #}
-                            <td>
-                                {# Form to request replenishment from World Simulator #}
+                                <!-- Form to request replenishment from World Simulator -->
                                 <form action="{{ url_for('seller.replenish_inventory') }}" method="POST" class="d-flex">
-                                    {# CORRECTED CSRF TOKEN IMPLEMENTATION #}
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="hidden" name="product_id" value="{{ item.product_id }}">
+                                    <select name="warehouse_id" class="form-select form-select-sm me-1" required style="width: 80px;">
+                                        {% for wh in warehouses %}
+                                        <option value="{{ wh.warehouse_id }}">#{{ wh.warehouse_id }}</option>
+                                        {% endfor %}
+                                    </select>
                                     <input type="number" name="quantity" class="form-control form-control-sm me-1" placeholder="Qty" min="1" required style="width: 70px;">
-                                    <button type="submit" class="btn btn-sm btn-primary" title="Request More Stock from World Simulator (choose warehouse in next step or uses default)">
+                                    <button type="submit" class="btn btn-sm btn-primary" title="Request More Stock from World Simulator">
                                         <i class="fas fa-plus"></i> Buy
                                     </button>
                                 </form>
@@ -192,35 +134,26 @@
                     </tbody>
                 </table>
             </div>
-        </div> {# End Card #}
+        </div>
 
-        {# Pagination controls #}
+        <!-- Pagination controls -->
         {% if pagination and pagination.pages > 1 %}
         <nav aria-label="Inventory Pagination" class="mt-4">
             <ul class="pagination justify-content-center">
-                {# Previous Page Link #}
                 <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
                     <a class="page-link" href="{{ url_for('seller.inventory_list', search=search_query, category_id=current_category, page=pagination.prev_num) if pagination.has_prev else '#' }}">Previous</a>
                 </li>
-
-                {# Page Number Links #}
                 {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
                     {% if page_num %}
                         {% if page_num == pagination.page %}
-                            <li class="page-item active" aria-current="page">
-                                <span class="page-link">{{ page_num }}</span>
-                            </li>
+                            <li class="page-item active" aria-current="page"><span class="page-link">{{ page_num }}</span></li>
                         {% else %}
-                            <li class="page-item">
-                                <a class="page-link" href="{{ url_for('seller.inventory_list', search=search_query, category_id=current_category, page=page_num) }}">{{ page_num }}</a>
-                            </li>
+                            <li class="page-item"><a class="page-link" href="{{ url_for('seller.inventory_list', search=search_query, category_id=current_category, page=page_num) }}">{{ page_num }}</a></li>
                         {% endif %}
                     {% else %}
                         <li class="page-item disabled"><span class="page-link">...</span></li>
                     {% endif %}
                 {% endfor %}
-
-                {# Next Page Link #}
                 <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
                     <a class="page-link" href="{{ url_for('seller.inventory_list', search=search_query, category_id=current_category, page=pagination.next_num) if pagination.has_next else '#' }}">Next</a>
                 </li>
@@ -237,8 +170,152 @@
         </div>
     {% endif %}
 </div>
+
+<!-- Warehouse Management Modals - Placed outside the main table to prevent flickering -->
+{% for item in inventory_items %}
+<div class="modal fade" id="warehouseModal{{ item.product_id }}" tabindex="-1" aria-labelledby="warehouseModalLabel{{ item.product_id }}" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="warehouseModalLabel{{ item.product_id }}">
+                    Manage Warehouse Stock for: {{ item.product.product_name }} (Product ID: {{ item.product_id }})
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Tab navigation -->
+                <ul class="nav nav-tabs mb-3" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="manage-tab{{ item.product_id }}" data-bs-toggle="tab" 
+                                data-bs-target="#manage{{ item.product_id }}" type="button" role="tab" aria-selected="true">
+                            Current Stock
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="replenish-tab{{ item.product_id }}" data-bs-toggle="tab" 
+                                data-bs-target="#replenish{{ item.product_id }}" type="button" role="tab" aria-selected="false">
+                            Order from World
+                        </button>
+                    </li>
+                </ul>
+                
+                <!-- Tab content -->
+                <div class="tab-content">
+                    <!-- Current Stock Tab -->
+                    <div class="tab-pane fade show active" id="manage{{ item.product_id }}" role="tabpanel">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Warehouse</th>
+                                        <th>Location</th>
+                                        <th>Current Stock</th>
+                                        <th>Add Stock</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for wh in warehouses %}
+                                        {% set current_stock = item.warehouse_stock_map.get(wh.warehouse_id, 0) %}
+                                        <tr>
+                                            <td><strong>#{{ wh.warehouse_id }}</strong></td>
+                                            <td>({{ wh.x }}, {{ wh.y }})</td>
+                                            <td>
+                                                <span class="badge {% if current_stock > 0 %}bg-success{% else %}bg-secondary{% endif %}">
+                                                    {{ current_stock }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <form action="{{ url_for('seller.add_stock_to_warehouse') }}" method="POST" class="d-flex">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                    <input type="hidden" name="product_id" value="{{ item.product_id }}">
+                                                    <input type="hidden" name="warehouse_id" value="{{ wh.warehouse_id }}">
+                                                    <input type="hidden" name="referrer" value="{{ request.url }}">
+                                                    <input type="number" name="quantity_to_add" class="form-control form-control-sm me-1" placeholder="Qty" min="1" required style="width: 70px;">
+                                                    <button type="submit" class="btn btn-sm btn-success">
+                                                        <i class="fas fa-plus"></i> Add
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    {% else %}
+                                        <tr>
+                                            <td colspan="4" class="text-center text-muted">No active warehouses found. Add a warehouse in the Admin section.</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Replenishment Tab -->
+                    <div class="tab-pane fade" id="replenish{{ item.product_id }}" role="tabpanel">
+                        <div class="p-3">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>How it works:</strong> When you order products from the World Simulator, they will be delivered to your warehouse after some time. The World will notify your system when they arrive.
+                            </div>
+                            
+                            <form action="{{ url_for('seller.replenish_inventory') }}" method="POST">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="product_id" value="{{ item.product_id }}">
+                                <input type="hidden" name="referrer" value="{{ request.url }}">
+                                
+                                <div class="mb-3">
+                                    <label for="selectWarehouse{{ item.product_id }}" class="form-label">Destination Warehouse:</label>
+                                    <select id="selectWarehouse{{ item.product_id }}" name="warehouse_id" class="form-select" required>
+                                        {% for wh in warehouses %}
+                                            <option value="{{ wh.warehouse_id }}">Warehouse #{{ wh.warehouse_id }} at ({{ wh.x }}, {{ wh.y }})</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="quantity{{ item.product_id }}" class="form-label">Quantity to Order:</label>
+                                    <input type="number" id="quantity{{ item.product_id }}" name="quantity" class="form-control" min="1" value="10" required>
+                                    <div class="form-text">Enter the number of units you want to order from the World.</div>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-truck-loading me-1"></i> Send Order to World
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
 {% endblock %}
 
 {% block extra_js %}
-{# Add any specific JS if needed #}
+<script>
+    // Bootstrap modal initialization with proper options to prevent flickering
+    document.addEventListener('DOMContentLoaded', function() {
+        const modalElements = document.querySelectorAll('.modal');
+        
+        // Configure Bootstrap modal options to prevent flickering/closing issues
+        modalElements.forEach(modalElement => {
+            const modal = new bootstrap.Modal(modalElement, {
+                backdrop: 'static',  // Prevent closing when clicking outside
+                keyboard: false      // Prevent closing with keyboard
+            });
+            
+            // Store the product_id and modal instance for later use
+            const productId = modalElement.id.replace('warehouseModal', '');
+            
+            // Add a special click handler for the modal content to prevent bubbling
+            const modalContent = modalElement.querySelector('.modal-content');
+            if (modalContent) {
+                modalContent.addEventListener('click', function(event) {
+                    event.stopPropagation();
+                });
+            }
+        });
+    });
+</script>
 {% endblock %}

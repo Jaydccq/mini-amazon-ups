@@ -323,7 +323,6 @@ def create_product():
             return redirect(url_for('seller.create_product'))
 
         # --- Image Upload Handling (Optional but recommended) ---
-        # ... (keep existing image handling logic) ...
         if 'product_image' in request.files:
             file = request.files['product_image']
             if file and file.filename:
@@ -365,23 +364,48 @@ def create_product():
                 product_id=new_product.product_id,
                 quantity=quantity, # Seller's listed quantity
                 unit_price=unit_price,
-                owner_id=seller_id, # Product owner is the seller
-                warehouse_id=warehouse_id # Optional: Store warehouse ID in Inventory if needed
+                 warehouse_id=warehouse_id,
+                owner_id=seller_id # Product owner is the seller
             )
             db.session.add(new_inventory_listing)
             db.session.commit() # Commit product and inventory listing
 
-            # Step 3: Add PHYSICAL stock to the selected warehouse
-            stock_success, stock_message = warehouse_service.add_product_to_warehouse(
-                warehouse_id=warehouse_id,
-                product_id=new_product.product_id,
-                quantity=quantity # Add the initial quantity
-            )
-
-            if stock_success:
-                flash(f'New product created, listed, and {quantity} units added to Warehouse #{warehouse_id}!', 'success')
+            # Step 3: First buy/register the product in the World Simulator
+            world_simulator = current_app.config.get('WORLD_SIMULATOR_SERVICE')
+            if world_simulator and world_simulator.connected:
+                buy_success, buy_message = world_simulator.buy_product(
+                    warehouse_id=warehouse_id,
+                    product_id=new_product.product_id,
+                    description=product_name,  # Use product name as description
+                    quantity=quantity
+                )
+                
+                if buy_success:
+                    # Only add to warehouse inventory if successfully purchased in world
+                    stock_success, stock_message = warehouse_service.add_product_to_warehouse(
+                        warehouse_id=warehouse_id,
+                        product_id=new_product.product_id,
+                        quantity=quantity
+                    )
+                    
+                    if stock_success:
+                        flash(f'New product created, listed, and {quantity} units added to Warehouse #{warehouse_id}!', 'success')
+                    else:
+                        flash(f'Product registered in World but failed to add to local inventory: {stock_message}', 'warning')
+                else:
+                    flash(f'Failed to register product with World Simulator: {buy_message}', 'warning')
             else:
-                flash(f'New product created and listed, but failed to add initial stock to Warehouse #{warehouse_id}: {stock_message}. Please add stock manually.', 'warning')
+                # Fallback if not connected to world simulator
+                stock_success, stock_message = warehouse_service.add_product_to_warehouse(
+                    warehouse_id=warehouse_id,
+                    product_id=new_product.product_id,
+                    quantity=quantity
+                )
+                
+                if stock_success:
+                    flash(f'New product created and {quantity} units added to Warehouse #{warehouse_id}, but not connected to World Simulator.', 'warning')
+                else:
+                    flash(f'Product created but failed to add stock to warehouse: {stock_message}', 'warning')
 
             return redirect(url_for('seller.inventory_list'))
 
@@ -391,7 +415,6 @@ def create_product():
             current_app.logger.error(f"Error in create_product for seller {seller_id}: {e}")
             # Redirect back to GET on generic error
             return redirect(url_for('seller.create_product'))
-
 
     # --- GET request ---
     categories = ProductCategory.query.order_by(ProductCategory.category_name).all()

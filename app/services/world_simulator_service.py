@@ -83,7 +83,7 @@ class WorldSimulatorService:
             default_speed_command = amazon_pb2.ACommands()
             default_speed_command.simspeed = 1000
             self.queue_command(default_speed_command)
-            # print(connect_msg)
+            print(connect_msg)
             if world_id:
                 connect_msg.worldid = world_id
             

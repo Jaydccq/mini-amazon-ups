@@ -364,6 +364,7 @@ def create_product():
                 product_id=new_product.product_id,
                 quantity=quantity, # Seller's listed quantity
                 unit_price=unit_price,
+                 warehouse_id=warehouse_id,
                 owner_id=seller_id # Product owner is the seller
             )
             db.session.add(new_inventory_listing)

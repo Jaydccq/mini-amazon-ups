@@ -117,6 +117,18 @@ class Cart(db.Model):
 
                 db.session.delete(cart_item)
 
+                # subtract from inventory
+                inventory_item = WarehouseProduct.query.filter_by(
+                    warehouse_id=warehouse_id,
+                    product_id=cart_item.product_id
+                ).first()
+
+                if inventory_item:
+                    inventory_item.quantity -= cart_item.quantity
+                    if inventory_item.quantity < 0:
+                        db.session.rollback()
+                        return False, checkout_count
+
                 shipment_success, shipment_id_or_error = shipment_service.create_shipment(
                     order_id=order.order_id,
                     warehouse_id=warehouse_id,

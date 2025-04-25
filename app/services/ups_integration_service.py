@@ -17,7 +17,7 @@ uri_map = {
 }
 
 class UPSIntegrationService:
-    def __init__(self, ups_url='http://ups-service:8080/api'):
+    def __init__(self, ups_url='http://ups-service:8081/api'):
         self.ups_url = ups_url
         self.session = requests.Session()
 

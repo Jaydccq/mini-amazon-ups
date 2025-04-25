@@ -5,20 +5,21 @@ services:
     build: .
     container_name: mini-amazon-web
     ports:
-      - "5001:5000" # 宿主机5001->容器5000
+      - "8080:8080" # 宿主机5001->容器5000
     volumes:
       - .:/app
     environment:
       FLASK_APP: app
       FLASK_ENV: development
+      FLASK_RUN_PORT: 8080
       DATABASE_URL: postgresql://postgres:abc123@db:5432/mini_amazon
       SECRET_KEY: dev
-      WORLD_HOST: server # 与另一个 compose 里的 container_name 一致
+      WORLD_HOST: server-1 # 与另一个 compose 里的 container_name 一致
       WORLD_PORT: "23456"
     depends_on:
       - db
     networks:
-      - project-network
+      - projectnet
 
   db:
     image: postgres:12-alpine3.15
@@ -30,12 +31,12 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_DB: mini_amazon
     ports:
-      - "5432:5432"
+      - "15432:5432"
     networks:
-      - project-network
+      - projectnet
 
 networks:
-  project-network:
+  projectnet:
     external: true
 
 volumes:

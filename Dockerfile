@@ -9,8 +9,9 @@ COPY . .
 
 ENV FLASK_APP=app
 ENV FLASK_ENV=development
+FLASK_RUN_PORT=8080
 ENV PYTHONUNBUFFERED=1
 
-EXPOSE 5000
+EXPOSE 8080
 
-CMD ["flask", "run", "--host=0.0.0.0"]
+ENTRYPOINT ["flask", "run", "--host=0.0.0.0","--port=8080"]

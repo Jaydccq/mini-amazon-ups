@@ -1,17 +1,15 @@
 from flask import Blueprint, request, jsonify
 
-from app.controllers.amazon_controller import shipment_service
 from app.model import db, Shipment, Order, Warehouse, Product, ShipmentItem
 from datetime import datetime
 import logging
-import ups_integration_service
 from app.services.shipment_service import ShipmentService
-from world_simulator_service import WorldSimulatorService
+from app.services.world_simulator_service import WorldSimulatorService
 
 logger = logging.getLogger(__name__)
 
 # Create a Blueprint for UPS webhook endpoints
-ups_webhooks = Blueprint('ups_webhooks', __name__, url_prefix='/api/ups/webhooks')
+ups_webhooks = Blueprint('ups_webhooks', __name__, url_prefix='')
 shipment_service_instance = ShipmentService();
 world_simulator_service_instance = WorldSimulatorService()
 
@@ -22,6 +20,8 @@ def set_worldid():
     """
     try:
         message = request.get_json()
+
+        print(message)
 
         # {world_id: 1234567890}
 

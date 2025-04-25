@@ -11,6 +11,7 @@ from app.controllers.amazon_controller import amazon_bp, api_bp, admin_bp
 from app.controllers.webhook_controller import world_bp, ups_bp
 from app.controllers.cart_controller import bp as cart_bp
 from app.controllers.review_controller import bp as review_bp
+from app.services.amazon_exposed_api import ups_webhooks
 from app.services.world_simulator_service import WorldSimulatorService
 
 def create_app(test_config=None):
@@ -29,7 +30,8 @@ def create_app(test_config=None):
             UPLOAD_FOLDER=os.path.join(app.instance_path, 'uploads'),
             MAX_CONTENT_LENGTH=16 * 1024 * 1024,
             WORLD_HOST=os.environ.get('WORLD_HOST', 'world-simulator'),
-            WORLD_PORT=int(os.environ.get('WORLD_PORT', '23456'))
+            WORLD_PORT=int(os.environ.get('WORLD_PORT', '23456')),
+            PORT=int(os.environ.get('PORT', 8080))
         )
     else:
         app.config.from_mapping(test_config)
@@ -50,9 +52,12 @@ def create_app(test_config=None):
     app.register_blueprint(cart_bp)
     app.register_blueprint(review_bp)
     app.register_blueprint(seller_bp)
+    app.register_blueprint(ups_webhooks)
 
     migrate = Migrate(app, db)
     csrf = CSRFProtect(app)
+
+    csrf.exempt(ups_webhooks)
 
     login_manager = LoginManager(app)
     login_manager.login_view = 'amazon.login'

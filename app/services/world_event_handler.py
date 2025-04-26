@@ -6,6 +6,7 @@ from flask import current_app
 from datetime import datetime, timezone
 from app import db
 logger = logging.getLogger(__name__)
+from app.model import db, Shipment, ShipmentItem, Order, OrderProduct, Product, Warehouse
 
 class WorldEventHandler:
     def __init__(self,app=None):
@@ -60,7 +61,7 @@ class WorldEventHandler:
             logger.info(f"Shipment {shipment_id} is waiting for products: {waiting_products}")
             truck_id = waiting_products[shipment_id]
             try:
-                shipment = self.shipment_service.get_shipment_by_id(shipment_id)
+                shipment = Shipment.query.filter_by(shipment_id=shipment_id).first()
                 if shipment:
                     shipment.status = 'loading'
                     shipment.truck_id = truck_id

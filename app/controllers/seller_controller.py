@@ -12,7 +12,8 @@ from app.model import Product, Warehouse # Import Warehouse if needed for valida
 # Added Order, OrderProduct
 from app.model import db, User, Product, ProductCategory, Inventory, Order, OrderProduct, WarehouseProduct
 from sqlalchemy.orm import joinedload
-
+import json
+from flask import abort
 
 
 
@@ -474,27 +475,27 @@ def edit_inventory(inventory_id):
         product=product # Pass product details
     )
 
-@seller_bp.route('/inventory/delete/<int:inventory_id>', methods=['POST'])
-@seller_required
-def delete_inventory(inventory_id):
-    """Remove an item from seller's inventory"""
-    seller_id = current_user.user_id
-    item = db.session.get_or_404(Inventory, inventory_id)
+# @seller_bp.route('/inventory/delete/<int:inventory_id>', methods=['POST'])
+# @seller_required
+# def delete_inventory(inventory_id):
+#     """Remove an item from seller's inventory"""
+#     seller_id = current_user.user_id
+#     item = db.session.get_or_404(Inventory, inventory_id)
 
-    if item.seller_id != seller_id:
-        flash('You do not have permission to delete this item.', 'danger')
-        return redirect(url_for('seller.inventory_list'))
+#     if item.seller_id != seller_id:
+#         flash('You do not have permission to delete this item.', 'danger')
+#         return redirect(url_for('seller.inventory_list'))
 
-    try:
-        db.session.delete(item)
-        db.session.commit()
-        flash('Inventory item removed.', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Error removing inventory item: {str(e)}', 'danger')
-        current_app.logger.error(f"Error deleting inventory {inventory_id}: {e}")
+#     try:
+#         db.session.delete(item)
+#         db.session.commit()
+#         flash('Inventory item removed.', 'success')
+#     except Exception as e:
+#         db.session.rollback()
+#         flash(f'Error removing inventory item: {str(e)}', 'danger')
+#         current_app.logger.error(f"Error deleting inventory {inventory_id}: {e}")
 
-    return redirect(url_for('seller.inventory_list'))
+#     return redirect(url_for('seller.inventory_list'))
 
 
 # --- Order Fulfillment ---
@@ -648,3 +649,31 @@ def replenish_inventory():
         flash(f'Failed to send replenishment request: {message}', 'danger')
 
     return redirect(referrer)
+
+@seller_bp.route('/inventory/delete/<int:inventory_id>', methods=['POST'])
+@seller_required
+def delete_inventory(inventory_id):
+    """Remove an item from seller's inventory"""
+    seller_id = current_user.user_id
+
+    # --- MODIFIED CODE ---
+    # Use db.session.get() and check for None, then abort(404) if not found.
+    item = db.session.get(Inventory, inventory_id)
+    if item is None:
+        abort(404, description=f"Inventory item with ID {inventory_id} not found.") # Use abort for 404
+    # --- END MODIFIED CODE ---
+
+    if item.seller_id != seller_id:
+        flash('You do not have permission to delete this item.', 'danger')
+        return redirect(url_for('seller.inventory_list'))
+
+    try:
+        db.session.delete(item)
+        db.session.commit()
+        flash('Inventory item removed.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error removing inventory item: {str(e)}', 'danger')
+        current_app.logger.error(f"Error deleting inventory {inventory_id}: {e}")
+
+    return redirect(url_for('seller.inventory_list'))

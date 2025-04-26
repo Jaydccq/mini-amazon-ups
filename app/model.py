@@ -161,8 +161,6 @@ class Cart(db.Model):
                     ups_account=ups_account
                 )
 
-                logger.info(f"Shipment creation result: {shipment_success}, ID/Error: {shipment_id_or_error}")
-
                 if not shipment_success:
                     db.session.rollback()
                     return False, checkout_count

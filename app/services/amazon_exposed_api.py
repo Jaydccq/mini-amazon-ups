@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 
+from app.controllers.amazon_controller import warehouses
 from app.model import db, Shipment, Order, Warehouse, Product, ShipmentItem
 from datetime import datetime
 import logging
@@ -85,7 +86,6 @@ def truck_dispatched():
         payload = message.get('payload', {})
         truck_id = payload.get('truck_id')
         shipment_id = payload.get('shipment_id')
-
         # Check if shipment exists
         shipment = Shipment.query.filter_by(shipment_id=shipment_id).first()
         if not shipment:
@@ -101,7 +101,6 @@ def truck_dispatched():
 
         # Update shipment with truck information
         shipment.truck_id = truck_id
-        shipment.status = 'truck_dispatched'
         shipment.updated_at = datetime.utcnow()
 
         db.session.commit()
@@ -185,22 +184,22 @@ def truck_arrived():
                 }
             }), 500
 
-        shipment.status = 'ready_for_loading'
+        shipment.truck_id = truck_id
         shipment.updated_at = datetime.utcnow().isoformat()
 
         db.session.commit()
 
         logger.info(f"Truck {truck_id} arrived at warehouse {warehouse_id} for shipment {shipment_id}")
 
-
-        # async call
-        # TODO: load pakages to truck (world)
-        shipment_service_instance = ShipmentService(current_app.config.get('WORLD_SIMULATOR_SERVICE'))
-
-        shipment_service_instance.handle_truck_arrived(
-            truck_id=truck_id,
-            warehouse_id=warehouse_id
-        )
+        if shipment.status == 'packed':
+            shipment.status = 'loading'
+            db.session.commit()
+            # load to truck
+            world_similator_service = current_app.config.get('WORLD_SIMULATOR_SERVICE')
+            world_similator_service.load_shipment(warehouse_id = warehouse_id,truck_id = truck_id, shipment_id = shipment_id)
+        else:
+            waiting_products_map = current_app.config.get('WAITING_PRODUCTS')
+            waiting_products_map['shipment_id'] = truck_id
 
         return jsonify({
             'message_type': 'TruckArrived',

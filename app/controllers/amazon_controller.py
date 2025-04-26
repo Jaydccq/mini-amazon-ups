@@ -8,6 +8,8 @@ from app.services.shipment_service import ShipmentService
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import os
+from app.utils.mapping import convert_sim_coords_to_latlon
+
 from sqlalchemy import func
 from app.model import db, Warehouse, WarehouseProduct 
 from datetime import datetime
@@ -359,24 +361,85 @@ def order_detail(order_id):
 @amazon_bp.route('/shipments/<int:shipment_id>')
 @login_required
 def shipment_detail(shipment_id):
-    shipment_service = ShipmentService() 
-    shipment_data = shipment_service.get_shipment_status(shipment_id)
+    # Fetch shipment details using the service or directly
+    shipment = Shipment.query.get(shipment_id)
 
-    if not shipment_data:
+    if not shipment:
         flash('Shipment not found', 'error')
-        return redirect(url_for('amazon.order_list'))
+        return redirect(url_for('amazon.order_list')) # Or maybe amazon.shipment_list
 
-    shipment = Shipment.query.get_or_404(shipment_id)
-    order = Order.query.get_or_404(shipment.order_id)
+    # Permission check: Ensure the current user owns the order or is an admin/seller
+    order = Order.query.get(shipment.order_id)
+    if not order:
+         flash('Associated order not found', 'error')
+         # Redirect appropriately, maybe to a general error page or order list
+         return redirect(url_for('amazon.order_list'))
 
-    if order.buyer_id != current_user.user_id:
+    # Adjust permission check as needed (e.g., allow sellers too)
+    if order.buyer_id != current_user.user_id and not current_user.is_seller:
         flash('You do not have permission to view this shipment', 'error')
         return redirect(url_for('amazon.order_list'))
 
-    return render_template('shipments/detail.html',
-                          shipment=shipment,
-                          shipment_data=shipment_data)
+    # Fetch warehouse details
+    warehouse = Warehouse.query.get(shipment.warehouse_id)
+    if not warehouse:
+         # Handle case where warehouse might not be found (optional, but good practice)
+         flash('Origin warehouse details not found for this shipment.', 'warning')
+         warehouse_lat, warehouse_lon = None, None
+         warehouse_x, warehouse_y = None, None
+    else:
+         warehouse_x, warehouse_y = warehouse.x, warehouse.y
+         # Convert warehouse coordinates
+         # Create a temporary object/dict structure expected by convert_sim_coords_to_latlon
+         temp_wh_for_mapping = type('obj', (object,), {'warehouse_id': warehouse.warehouse_id, 'x': warehouse.x, 'y': warehouse.y, 'active': warehouse.active})()
+         mapped_wh = convert_sim_coords_to_latlon([temp_wh_for_mapping])
+         if mapped_wh:
+             warehouse_lat = mapped_wh[0].get('lat')
+             warehouse_lon = mapped_wh[0].get('lon')
+         else:
+             warehouse_lat, warehouse_lon = None, None
+             logger.warning(f"Could not convert warehouse coordinates for WH ID {warehouse.warehouse_id}")
 
+
+    # Convert destination coordinates
+    # Create a temporary object/dict for the destination
+    temp_dest_for_mapping = type('obj', (object,), {'warehouse_id': 0, 'x': shipment.destination_x, 'y': shipment.destination_y, 'active': True})()
+    mapped_dest = convert_sim_coords_to_latlon([temp_dest_for_mapping])
+    if mapped_dest:
+        destination_lat = mapped_dest[0].get('lat')
+        destination_lon = mapped_dest[0].get('lon')
+    else:
+        destination_lat, destination_lon = None, None
+        logger.warning(f"Could not convert destination coordinates ({shipment.destination_x}, {shipment.destination_y}) for shipment {shipment_id}")
+
+
+    # Fetch other necessary details using the service if preferred
+    shipment_service = ShipmentService()
+    shipment_data = shipment_service.get_shipment_status(shipment_id)
+    if not shipment_data:
+         # This case might be redundant if shipment fetch above succeeded, but good safety check
+         flash('Could not retrieve detailed shipment status.', 'warning')
+         # Fallback or redirect
+         return redirect(url_for('amazon.order_detail', order_id=shipment.order_id))
+
+
+    # Prepare data for the template
+    template_data = {
+        'shipment': shipment,
+        'shipment_data': shipment_data, # Optional: pass detailed status if needed
+        'order': order,
+        'warehouse_x': warehouse_x,
+        'warehouse_y': warehouse_y,
+        'destination_x': shipment.destination_x,
+        'destination_y': shipment.destination_y,
+        'warehouse_lat': warehouse_lat,
+        'warehouse_lon': warehouse_lon,
+        'destination_lat': destination_lat,
+        'destination_lon': destination_lon,
+        'google_maps_api_key': current_app.config.get('GOOGLE_MAPS_API_KEY', 'YOUR_GOOGLE_MAPS_API_KEY') # Get API key from config
+    }
+
+    return render_template('shipments/detail.html', **template_data)
 
 @amazon_bp.route('/checkout', methods=['GET', 'POST'])
 @login_required

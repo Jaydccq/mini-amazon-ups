@@ -1,0 +1,407 @@
+{% extends "base.html" %} {% block title %}Shipment #{{ shipment.shipment_id }}
+Details | Mini-Amazon{% endblock %} {% block extra_css %}
+<style>
+  /* Basic styling for the map container */
+  #shipmentMap {
+    height: 450px; /* Adjust height as needed */
+    width: 100%;
+    border-radius: 8px;
+    border: 1px solid #dee2e6; /* Light border */
+    margin-top: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  /* Timeline Styles */
+  .timeline {
+    list-style: none;
+    padding: 0;
+    position: relative;
+  }
+  .timeline:before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 19px; /* Adjust based on icon size */
+    width: 2px;
+    background-color: #e9ecef;
+  }
+  .timeline-item {
+    margin-bottom: 20px;
+    position: relative;
+    padding-left: 50px; /* Space for icon */
+  }
+  .timeline-icon {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #e9ecef;
+    color: #6c757d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    z-index: 1;
+  }
+  .timeline-item.completed .timeline-icon {
+    background-color: var(--primary-color); /* Use your primary color */
+    color: white;
+  }
+  .timeline-item.current .timeline-icon {
+    background-color: var(--accent-color); /* Example: Use accent color */
+    color: white;
+  }
+  .timeline-content {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 6px;
+    position: relative;
+  }
+  .timeline-content::before {
+    /* Optional: Triangle pointer */
+    content: "";
+    position: absolute;
+    top: 10px;
+    left: -10px;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 10px 10px 10px 0;
+    border-color: transparent #f8f9fa transparent transparent;
+  }
+  .timeline-time {
+    font-size: 0.85em;
+    color: #6c757d;
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="container mt-4">
+  <nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item">
+        <a href="{{ url_for('amazon.index') }}">Home</a>
+      </li>
+      <li class="breadcrumb-item">
+        <a href="{{ url_for('amazon.order_list') }}">My Orders</a>
+      </li>
+      <li class="breadcrumb-item">
+        <a
+          href="{{ url_for('amazon.order_detail', order_id=shipment.order_id) }}"
+          >Order #{{ shipment.order_id }}</a
+        >
+      </li>
+      <li class="breadcrumb-item active" aria-current="page">
+        Shipment #{{ shipment.shipment_id }}
+      </li>
+    </ol>
+  </nav>
+
+  <div class="card shadow-sm mb-4">
+    <div
+      class="card-header bg-light d-flex justify-content-between align-items-center"
+    >
+      <h2 class="h4 mb-0">Shipment #{{ shipment.shipment_id }}</h2>
+      <div>
+        <span
+          class="badge p-2 {% if shipment.status == 'delivered' %} bg-success {% elif shipment.status == 'delivering' %} bg-info text-dark {% elif shipment.status in ['packing', 'packed', 'loading'] %} bg-warning text-dark {% elif shipment.status == 'loaded' %} bg-primary {% else %} bg-secondary {% endif %}"
+        >
+          Status: {{ shipment.status|title }}
+        </span>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          <h5>Details</h5>
+          <p>
+            <strong>Order ID:</strong>
+            <a
+              href="{{ url_for('amazon.order_detail', order_id=shipment.order_id) }}"
+              >#{{ shipment.order_id }}</a
+            >
+          </p>
+          <p>
+            <strong>Warehouse:</strong> #{{ shipment.warehouse_id }} {% if
+            warehouse_x is not none %}({{ warehouse_x }}, {{ warehouse_y }}){%
+            endif %}
+          </p>
+          <p>
+            <strong>Destination:</strong> ({{ shipment.destination_x }}, {{
+            shipment.destination_y }})
+          </p>
+
+          <p><strong>Truck ID:</strong> {{ shipment.truck_id or 'N/A' }}</p>
+          <p>
+            <strong>Created:</strong> {{ shipment.created_at.strftime('%Y-%m-%d
+            %H:%M') if shipment.created_at else 'N/A' }}
+          </p>
+          <p>
+            <strong>Last Updated:</strong> {{
+            shipment.updated_at.strftime('%Y-%m-%d %H:%M') if
+            shipment.updated_at else 'N/A' }}
+          </p>
+        </div>
+        <div class="col-md-6">
+          <h5>Items in Shipment</h5>
+          {% if shipment.items %}
+          <ul class="list-group list-group-flush">
+            {% for item in shipment.items %}
+            <li
+              class="list-group-item d-flex justify-content-between align-items-center ps-0"
+            >
+              <div>
+                <a
+                  href="{{ url_for('amazon.product_detail', product_id=item.product_id) }}"
+                >
+                  {{ item.product.product_name if item.product else 'Unknown
+                  Product' }}
+                </a>
+                <small class="d-block text-muted"
+                  >Product ID: {{ item.product_id }}</small
+                >
+              </div>
+              <span>Qty: {{ item.quantity }}</span>
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p class="text-muted">No item details available.</p>
+          {% endif %}
+        </div>
+      </div>
+
+      {# --- Map Section --- #} {% if warehouse_lat and warehouse_lon and
+      destination_lat and destination_lon %}
+      <hr class="my-4" />
+      <h5>Shipment Route</h5>
+      {# This div holds the data for JavaScript #}
+      <div
+        id="mapData"
+        data-wh-lat="{{ warehouse_lat }}"
+        data-wh-lon="{{ warehouse_lon }}"
+        data-dest-lat="{{ destination_lat }}"
+        data-dest-lon="{{ destination_lon }}"
+      ></div>
+      <div id="shipmentMap"></div>
+      {% else %}
+      <div class="alert alert-warning mt-4">
+        Map data is unavailable for this shipment (missing coordinates).
+      </div>
+      {% endif %} {# --- End Map Section --- #} {# --- Timeline Section
+      (Optional) --- #}
+      <hr class="my-4" />
+      <h5>Shipment History (Example)</h5>
+      <ul class="timeline">
+        {# Example statuses - you'd generate this dynamically based on shipment
+        history if available #}
+        <li
+          class="timeline-item {% if shipment.status in ['packing', 'packed', 'loading', 'loaded', 'delivering', 'delivered'] %}completed{% endif %}"
+        >
+          <div class="timeline-icon"><i class="fas fa-box"></i></div>
+          <div class="timeline-content">
+            <strong>Order Placed & Packing</strong>
+            <p class="mb-0 small">
+              Shipment created and items are being gathered.
+            </p>
+            <span class="timeline-time"
+              >{{ shipment.created_at.strftime('%Y-%m-%d %H:%M') if
+              shipment.created_at else '' }}</span
+            >
+          </div>
+        </li>
+        <li
+          class="timeline-item {% if shipment.status in ['loading', 'loaded', 'delivering', 'delivered'] %}completed{% endif %} {% if shipment.status == 'packed' %}current{% endif %}"
+        >
+          <div class="timeline-icon"><i class="fas fa-box-open"></i></div>
+          <div class="timeline-content">
+            <strong>Packed & Ready</strong>
+            <p class="mb-0 small">
+              Shipment is packed and awaiting truck arrival.
+            </p>
+            {# Add timestamp if available #}
+          </div>
+        </li>
+        <li
+          class="timeline-item {% if shipment.status in ['loaded', 'delivering', 'delivered'] %}completed{% endif %} {% if shipment.status == 'loading' %}current{% endif %}"
+        >
+          <div class="timeline-icon"><i class="fas fa-truck-loading"></i></div>
+          <div class="timeline-content">
+            <strong>Loading</strong>
+            <p class="mb-0 small">Shipment is being loaded onto the truck.</p>
+            {# Add timestamp if available #}
+          </div>
+        </li>
+        <li
+          class="timeline-item {% if shipment.status in ['delivering', 'delivered'] %}completed{% endif %} {% if shipment.status == 'loaded' %}current{% endif %}"
+        >
+          <div class="timeline-icon"><i class="fas fa-people-carry"></i></div>
+          <div class="timeline-content">
+            <strong>Loaded onto Truck</strong>
+            <p class="mb-0 small">Shipment loaded and ready for delivery.</p>
+            {# Add timestamp if available #}
+          </div>
+        </li>
+        <li
+          class="timeline-item {% if shipment.status == 'delivered' %}completed{% endif %} {% if shipment.status == 'delivering' %}current{% endif %}"
+        >
+          <div class="timeline-icon"><i class="fas fa-truck"></i></div>
+          <div class="timeline-content">
+            <strong>Out for Delivery</strong>
+            <p class="mb-0 small">
+              The shipment is currently en route to the destination.
+            </p>
+            {# Add timestamp if available #}
+          </div>
+        </li>
+        <li
+          class="timeline-item {% if shipment.status == 'delivered' %}completed current{% endif %}"
+        >
+          <div class="timeline-icon"><i class="fas fa-check-circle"></i></div>
+          <div class="timeline-content">
+            <strong>Delivered</strong>
+            <p class="mb-0 small">The shipment has reached its destination.</p>
+            {# Add timestamp if available #}
+          </div>
+        </li>
+      </ul>
+      {# --- End Timeline Section --- #}
+    </div>
+    <div class="card-footer text-center">
+      <a
+        href="{{ url_for('amazon.order_detail', order_id=shipment.order_id) }}"
+        class="btn btn-outline-secondary"
+      >
+        <i class="fas fa-arrow-left"></i> Back to Order #{{ shipment.order_id }}
+      </a>
+    </div>
+  </div>
+</div>
+
+{% endblock %} {% block extra_js %} {# Check if coordinates are available before
+including/running map script #} {% if warehouse_lat and warehouse_lon and
+destination_lat and destination_lon and google_maps_api_key %}
+<script>
+  function initMap() {
+    console.log("Initializing map...");
+    const mapData = document.getElementById("mapData");
+    if (!mapData) {
+      console.error("Map data element not found!");
+      return;
+    }
+
+    // Retrieve coordinates safely
+    const warehouseLat = parseFloat(mapData.dataset.whLat);
+    const warehouseLon = parseFloat(mapData.dataset.whLon);
+    const destinationLat = parseFloat(mapData.dataset.destLat);
+    const destinationLon = parseFloat(mapData.dataset.destLon);
+
+    // Validate coordinates
+    if (
+      isNaN(warehouseLat) ||
+      isNaN(warehouseLon) ||
+      isNaN(destinationLat) ||
+      isNaN(destinationLon)
+    ) {
+      console.error("Invalid coordinates received:", mapData.dataset);
+      // Display error on page?
+      document.getElementById("shipmentMap").innerHTML =
+        '<div class="alert alert-danger">Error: Invalid map coordinates provided.</div>';
+      return;
+    }
+
+    console.log(`Origin: ${warehouseLat}, ${warehouseLon}`);
+    console.log(`Destination: ${destinationLat}, ${destinationLon}`);
+
+    const originLatLng = new google.maps.LatLng(warehouseLat, warehouseLon);
+    const destinationLatLng = new google.maps.LatLng(
+      destinationLat,
+      destinationLon
+    );
+
+    // Calculate map bounds
+    const bounds = new google.maps.LatLngBounds();
+    bounds.extend(originLatLng);
+    bounds.extend(destinationLatLng);
+
+    const mapOptions = {
+      // zoom: 7, // Zoom will be set by fitBounds
+      // center: bounds.getCenter(), // Center will be set by fitBounds
+      mapTypeId: google.maps.MapTypeId.ROADMAP,
+    };
+    const map = new google.maps.Map(
+      document.getElementById("shipmentMap"),
+      mapOptions
+    );
+
+    // Fit map to bounds after adding markers/route
+    map.fitBounds(bounds);
+    // Add a listener to adjust zoom after bounds are fitted (prevents over-zooming on short routes)
+    google.maps.event.addListenerOnce(map, "bounds_changed", function (event) {
+      if (this.getZoom() > 14) {
+        // Max zoom level (adjust as needed)
+        this.setZoom(14);
+      }
+      // If bounds are very close, zoom out a bit more
+      if (bounds.getNorthEast().equals(bounds.getSouthWest())) {
+        this.setZoom(12); // Example zoom level for single point
+      }
+    });
+
+    const directionsService = new google.maps.DirectionsService();
+    const directionsRenderer = new google.maps.DirectionsRenderer({
+      suppressMarkers: true, // We'll add custom markers
+    });
+    directionsRenderer.setMap(map);
+
+    // Add markers for origin and destination
+    const originMarker = new google.maps.Marker({
+      position: originLatLng,
+      map: map,
+      title: "Warehouse (Origin)",
+      icon: {
+        // Optional: Custom icon
+        url: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png",
+      },
+    });
+
+    const destinationMarker = new google.maps.Marker({
+      position: destinationLatLng,
+      map: map,
+      title: "Destination",
+      icon: {
+        // Optional: Custom icon
+        url: "http://maps.google.com/mapfiles/ms/icons/red-dot.png",
+      },
+    });
+
+    const request = {
+      origin: originLatLng,
+      destination: destinationLatLng,
+      travelMode: google.maps.TravelMode.DRIVING, // Assuming driving
+    };
+
+    directionsService.route(request, function (result, status) {
+      if (status == google.maps.DirectionsStatus.OK) {
+        console.log("Directions received successfully.");
+        directionsRenderer.setDirections(result);
+      } else {
+        console.error("Directions request failed due to " + status);
+        // Provide user feedback within the map div
+        document.getElementById("shipmentMap").innerHTML =
+          '<div class="alert alert-warning">Could not calculate directions. Status: ' +
+          status +
+          "</div>";
+      }
+    });
+  }
+</script>
+{# IMPORTANT: Replace YOUR_GOOGLE_MAPS_API_KEY with your actual key or pass it
+from config #} {# Ensure the key is passed correctly from the controller #}
+<script
+  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBWp117L-LN37l9oQNzX02-izkvpU8MpbA&callback=initMap&libraries=marker&v=beta"
+  async
+  defer
+></script>
+{% endif %} {# End coordinate check #} {% endblock %}

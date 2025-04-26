@@ -17,6 +17,7 @@ uri_map = {
     'ShipmentCreated': 'shipment',
     'ShipmentLoaded': 'shipment_loaded',
     'ShipmentStatusRequest': 'shipment_status',
+    'AddressChange': 'address_change',
     # 'ShipmentStatusResponse': '/shipment_detail_response/',
 }
 
@@ -209,3 +210,27 @@ class UPSIntegrationService:
             db.session.rollback()
             logger.error(f"Failed to log UPS message ({message_type}, {status}): {log_e}", exc_info=True)
             return False
+        
+        
+    def notify_address_change(self, shipment_id, destination_x, destination_y):
+        message_payload = {
+            "shipment_id": shipment_id,
+            "destination_x": destination_x,
+            "destination_y": destination_y
+        }
+        
+        self._log_ups_message('AddressChange', message_payload, status='sent')
+        
+        message_to_send = {
+            "message_type": "AddressChange",
+            "timestamp": datetime.utcnow().isoformat(),
+            "payload": message_payload
+        }
+        
+        success, response = self.send_message('AddressChange', message_to_send)
+        
+        if success and response.get('payload', {}).get('status') == 'success':
+            return True, 'Address updated successfully'
+        else:
+            error_message = response.get('payload', {}).get('message', 'Unknown error') if isinstance(response, dict) else str(response)
+            return False, f'Address update failed: {error_message}'

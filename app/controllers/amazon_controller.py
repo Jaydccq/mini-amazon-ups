@@ -588,7 +588,7 @@ def connect_world():
         action = request.form.get('action')
         world_id_str = request.form.get('world_id') 
         warehouse_ids = request.form.getlist('warehouse_ids')
-        sim_speed = request.form.get('sim_speed', 3000, type=int)
+        sim_speed = request.form.get('sim_speed', 3000, type=int)  ##speed default 3000
 
 
         logger.info(f"Received action: {action}, world_id_str: {world_id_str}, warehouse_ids: {warehouse_ids}, sim_speed: {sim_speed}")
@@ -644,7 +644,7 @@ def connect_world():
                  flash(f'Error updating warehouse world IDs: {e}', 'warning')
 
 
-            if sim_speed != 3000: 
+            if sim_speed != 3000:  # Only set speed if different from default
                 speed_set = world_simulator.set_sim_speed(sim_speed)
                 if speed_set:
                      flash(f'Simulation speed set to {sim_speed}.', 'info')

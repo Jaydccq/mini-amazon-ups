@@ -27,7 +27,7 @@ class WorldSimulatorService:
         self.world_id = None
         self.seqnum = 0
         self.lock = threading.Lock()
-        self.acks = set()
+        # self.acks = set()
         self.pending_responses = {}
         self.response_events = {}
         self.message_queue = queue.Queue()
@@ -334,13 +334,27 @@ class WorldSimulatorService:
     
     def queue_command(self, command):
         # Add acks for received messages
-        with self.lock:
-            for ack in self.acks:
-                command.acks.append(ack)
-            self.acks.clear()
+        # with self.lock:
+        #     for ack in self.acks:
+        #         command.acks.append(ack)
+        #     self.acks.clear()
         
         # Queue the command
         self.message_queue.put(command)
+
+    def _queue_ack_immediately(self, seqnum_to_ack):
+        """Creates and queues an ACommands message containing only an ACK."""
+        if not self.connected:
+            logger.warning(f"Cannot queue ACK for {seqnum_to_ack}: Not connected.")
+            return
+
+        try:
+            ack_command = amazon_pb2.ACommands()
+            ack_command.acks.append(seqnum_to_ack)
+            self.message_queue.put(ack_command)
+            logger.debug(f"Queued immediate ACK for seqnum {seqnum_to_ack}")
+        except Exception as e:
+            logger.error(f"Error queueing immediate ACK for seqnum {seqnum_to_ack}: {e}", exc_info=True)
     
     def _send_loop(self):
         """Background thread for sending commands"""
@@ -415,36 +429,35 @@ class WorldSimulatorService:
 
     def process_response(self, response):
         try:
-            acks_to_send = []
 
             for ack_seqnum in response.acks:
                 logger.info(f"Processing ACK received from world for seqnum: {ack_seqnum}")
                 self.process_ack(ack_seqnum) 
 
             for package in response.arrived:
+                self._queue_ack_immediately(package.seqnum)
                 self.process_arrived(package) 
-                acks_to_send.append(package.seqnum) 
+
 
             for package in response.ready:
+                self._queue_ack_immediately(package.seqnum)
                 self.process_ready(package)
-                acks_to_send.append(package.seqnum) 
 
             for package in response.loaded:
                 logger.info("Receive Loaded Info, Processing package loaded...")
+                self._queue_ack_immediately(package.seqnum)
                 self.process_loaded(package) 
-                acks_to_send.append(package.seqnum)
 
             for package in response.packagestatus:
+                self._queue_ack_immediately(package.seqnum)
                 self.process_package_status(package) 
-                acks_to_send.append(package.seqnum) 
 
             for error in response.error:
-                self.process_error(error) 
-                acks_to_send.append(error.seqnum) 
+                self._queue_ack_immediately(error.seqnum)
+                self.process_error(error)
 
-
-            with self.lock:
-                 self.acks.update(acks_to_send)
+            # with self.lock:
+            #      self.acks.update(acks_to_send)
 
         except Exception as e:
             logger.error(f"Error processing response content: {e}", exc_info=True)
@@ -491,8 +504,8 @@ class WorldSimulatorService:
                 'quantity': product.count
             })
         
-        with self.lock:
-            self.acks.add(package.seqnum)
+        # with self.lock:
+        #     self.acks.add(package.seqnum)
     
     def process_ready(self, package):
         logger.info(f"Package {package.shipid} is ready")
@@ -502,8 +515,8 @@ class WorldSimulatorService:
         handler.handle_world_event('package_ready', {
             'shipment_id': package.shipid
         })
-        with self.lock:
-            self.acks.add(package.seqnum)
+        # with self.lock:
+        #     self.acks.add(package.seqnum)
     
     def process_loaded(self, package):
         logger.info(f"Package {package.shipid} is loaded")
@@ -519,8 +532,8 @@ class WorldSimulatorService:
                 'truck_id': shipment.truck_id
             })
         
-        with self.lock:
-            self.acks.add(package.seqnum)
+        # with self.lock:
+        #     self.acks.add(package.seqnum)
     
     def process_package_status(self, package):
         logger.info(f"Package {package.packageid} status: {package.status}")
@@ -530,8 +543,8 @@ class WorldSimulatorService:
                 self.pending_responses[package.seqnum] = package.status
                 self.response_events[package.seqnum].set()
         
-        with self.lock:
-            self.acks.add(package.seqnum)
+        # with self.lock:
+        #     self.acks.add(package.seqnum)
     
     def process_error(self, error):
         logger.error(f"Error from world simulator: {error.err} (seqnum: {error.originseqnum})")
@@ -542,8 +555,8 @@ class WorldSimulatorService:
                 self.pending_responses[error.originseqnum] = f"Error: {error.err}"
                 self.response_events[error.originseqnum].set()
         
-        with self.lock:
-            self.acks.add(error.seqnum)
+        # with self.lock:
+        #     self.acks.add(error.seqnum)
     
     def send_protobuf(self, message):
         # Add logging to track the message being sent

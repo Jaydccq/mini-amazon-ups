@@ -62,10 +62,10 @@ class WorldEventHandler:
                 logger.info(f"Shipment {shipment_id} is not in waiting products.")
                 return self.shipment_service.handle_package_packed(shipment_id)
             else:
-                warehouse_id = event_data.get('warehouse_id')
+                truck_id = waiting_products[shipment_id][0]
+                warehouse_id = waiting_products[shipment_id][1]
                 logger.info(f"Processing package ready event: {event_data}")
                 logger.info(f"Shipment {shipment_id} is waiting for products: {waiting_products}")
-                truck_id = waiting_products[shipment_id]
                 try:
                     shipment = Shipment.query.filter_by(shipment_id=shipment_id).first()
                     if shipment:
@@ -89,9 +89,10 @@ class WorldEventHandler:
                     db.session.rollback()
 
                 world_simulator_service = current_app.config.get('WORLD_SIMULATOR_SERVICE')
+                logger.info(f"Loading shipment {shipment_id} onto truck {truck_id} at warehouse {warehouse_id}")
                 world_simulator_service.load_shipment(
                         shipment_id=shipment_id,
-                        truck_id=waiting_products[shipment_id],
+                        truck_id=truck_id,
                         warehouse_id=warehouse_id
                     )
                 del waiting_products[shipment_id]

@@ -51,6 +51,7 @@ class WorldEventHandler:
 
     def handle_package_ready(self, event_data):
 
+
         lock  = current_app.config.get('ARRIVED_LOCK')
 
         with lock:
@@ -66,7 +67,7 @@ class WorldEventHandler:
                 logger.info(f"Shipment {shipment_id} is waiting for products: {waiting_products}")
                 truck_id = waiting_products[shipment_id]
                 try:
-                    shipment = Shipment.query.filter_by(id=shipment_id).first()
+                    shipment = Shipment.query.filter_by(shipment_id=shipment_id).first()
                     if shipment:
                         shipment.status = 'loading'
                         shipment.truck_id = truck_id
@@ -87,15 +88,15 @@ class WorldEventHandler:
                     logger.error(f"Error updating shipment status: {e}")
                     db.session.rollback()
 
-            # Use the world simulator service from the shipment_service
-            self.shipment_service.world_simulator_service.load_shipment(
-                    shipment_id=shipment_id,
-                    truck_id=waiting_products[shipment_id],
-                    warehouse_id=warehouse_id
-                )
-            del waiting_products[shipment_id]
-            current_app.config['WAITING_PRODUCTS'] = waiting_products
-            return True, f"Shipment {shipment_id} is being loaded onto truck {waiting_products[shipment_id]} at warehouse {warehouse_id}"
+                world_simulator_service = current_app.config.get('WORLD_SIMULATOR_SERVICE')
+                world_simulator_service.load_shipment(
+                        shipment_id=shipment_id,
+                        truck_id=waiting_products[shipment_id],
+                        warehouse_id=warehouse_id
+                    )
+                del waiting_products[shipment_id]
+                current_app.config['WAITING_PRODUCTS'] = waiting_products
+                return True, f"Shipment {shipment_id} is being loaded onto truck {waiting_products[shipment_id]} at warehouse {warehouse_id}"
 
     
     def handle_package_loaded(self, event_data):

@@ -210,7 +210,7 @@ def truck_arrived():
             else:
                 logger.info(f"The shipment {shipment_id} is not packed yet. Waiting for products to arrive. Add to map!")
                 waiting_products_map = current_app.config.get('WAITING_PRODUCTS')
-                waiting_products_map['shipment_id'] = truck_id
+                waiting_products_map[shipment_id] = truck_id
 
             return jsonify({
                 'message_type': 'TruckArrived',

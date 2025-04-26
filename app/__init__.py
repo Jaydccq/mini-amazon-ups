@@ -4,6 +4,7 @@ from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_wtf.csrf import CSRFProtect
 import logging
+import threading
 
 from app.model import db, User, ProductCategory
 from app.controllers.seller_controller import seller_bp
@@ -13,6 +14,7 @@ from app.controllers.cart_controller import bp as cart_bp
 from app.controllers.review_controller import bp as review_bp
 from app.services.amazon_exposed_api import ups_webhooks
 from app.services.world_simulator_service import WorldSimulatorService
+
 
 def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
@@ -112,7 +114,7 @@ def create_app(test_config=None):
             app.config['DEFAULT_SIM_SPEED'] = 3001
             app.config['WORLD_SIMULATOR_SERVICE'] = world_simulator_service
             app.logger.info(f"WorldSimulatorService initialized and stored (Host: {app.config.get('WORLD_HOST')}, Port: {app.config.get('WORLD_PORT')})")
-
+            app.config['ARRIVED_LOCK'] = threading.Lock()
             # Initialize the blocking queue for waiting trucks
             waiting_products = dict()
             app.config['WAITING_PRODUCTS'] = waiting_products

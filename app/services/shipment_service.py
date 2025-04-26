@@ -136,7 +136,7 @@ class ShipmentService:
             db.session.commit()
             
             # Notify UPS that the package is packed and ready for pickup
-            self.ups_integration.notify_package_packed(shipment_id)
+            # self.ups_integration.notify_package_packed(shipment_id)
             
             return True, "Shipment marked as packed"
         except Exception as e:

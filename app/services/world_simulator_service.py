@@ -269,6 +269,8 @@ class WorldSimulatorService:
             # db.session.commit()
             
             # ceate event sequence number
+
+            logger.info(f"Loading shipment {shipment_id} onto truck {truck_id} at warehouse {warehouse_id}")
             
 
             event = threading.Event()
@@ -428,6 +430,7 @@ class WorldSimulatorService:
                 acks_to_send.append(package.seqnum) 
 
             for package in response.loaded:
+                logger.info("Receive Loaded Info, Processing package loaded...")
                 self.process_loaded(package) 
                 acks_to_send.append(package.seqnum)
 

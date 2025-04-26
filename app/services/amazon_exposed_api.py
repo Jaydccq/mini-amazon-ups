@@ -171,45 +171,56 @@ def truck_arrived():
                 }
             }), 500
 
+
+        lock = current_app.config.get('ARRIVED_LOCK')
+
+        with lock:
+
         # Update shipment status
-        shipment = Shipment.query.filter_by(shipment_id=shipment_id).first()
-        if not shipment:
+            shipment = Shipment.query.filter_by(shipment_id=shipment_id).first()
+            if not shipment:
+                return jsonify({
+                    'message_type': 'Error',
+                    'timestamp': datetime.utcnow().isoformat(),
+                    'payload': {
+                        'status': 'fail',
+                        'code': 2000,
+                        'message': f'Shipment {shipment_id} not found'
+                    }
+                }), 500
+
+            shipment.truck_id = truck_id
+            shipment.updated_at = datetime.utcnow().isoformat()
+
+            db.session.commit()
+
+            logger.info(f"Truck {truck_id} arrived at warehouse {warehouse_id} for shipment {shipment_id}")
+
+            if shipment.status == 'packed':
+                logger.info(f"The shipment {shipment_id} has been packed and is ready to be loaded.")
+                shipment.status = 'loading'
+                db.session.commit()
+                # load to truck
+                world_similator_service = current_app.config.get('WORLD_SIMULATOR_SERVICE')
+                res,response  =  world_similator_service.load_shipment(warehouse_id = warehouse_id,truck_id = truck_id, shipment_id = shipment_id)
+
+                if res:
+                    logger.info(f"Shipment {shipment_id} Loading info are sent to world")
+
+            else:
+                logger.info(f"The shipment {shipment_id} is not packed yet. Waiting for products to arrive. Add to map!")
+                waiting_products_map = current_app.config.get('WAITING_PRODUCTS')
+                waiting_products_map['shipment_id'] = truck_id
+
             return jsonify({
-                'message_type': 'Error',
+                'message_type': 'TruckArrived',
                 'timestamp': datetime.utcnow().isoformat(),
                 'payload': {
-                    'status': 'fail',
-                    'code': 2000,
-                    'message': f'Shipment {shipment_id} not found'
+                    'status': 'success',
+                    'code': 200,
+                    'message': ''
                 }
-            }), 500
-
-        shipment.truck_id = truck_id
-        shipment.updated_at = datetime.utcnow().isoformat()
-
-        db.session.commit()
-
-        logger.info(f"Truck {truck_id} arrived at warehouse {warehouse_id} for shipment {shipment_id}")
-
-        if shipment.status == 'packed':
-            shipment.status = 'loading'
-            db.session.commit()
-            # load to truck
-            world_similator_service = current_app.config.get('WORLD_SIMULATOR_SERVICE')
-            world_similator_service.load_shipment(warehouse_id = warehouse_id,truck_id = truck_id, shipment_id = shipment_id)
-        else:
-            waiting_products_map = current_app.config.get('WAITING_PRODUCTS')
-            waiting_products_map['shipment_id'] = truck_id
-
-        return jsonify({
-            'message_type': 'TruckArrived',
-            'timestamp': datetime.utcnow().isoformat(),
-            'payload': {
-                'status': 'success',
-                'code': 200,
-                'message': ''
-            }
-        })
+            })
 
     except Exception as e:
         logger.error(f"Error processing truck arrival notification: {str(e)}")

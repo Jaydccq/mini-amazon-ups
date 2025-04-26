@@ -385,12 +385,13 @@
               <li class="nav-item me-2">
                 <a
                   class="nav-link position-relative"
-                  href="{{ url_for('amazon.cart') }}"
+                  href="{{ url_for('cart.view_cart') }}"
                 >
                   <i class="fas fa-shopping-cart"></i>
                   <span
-                    class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary"
+                    class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary {% if cart_item_count == 0 %}d-none{% endif %}"
                   >
+                    {{ cart_item_count }}
                     <span class="visually-hidden">items in cart</span>
                   </span>
                 </a>

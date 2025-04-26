@@ -5,7 +5,7 @@ from flask_migrate import Migrate
 from flask_wtf.csrf import CSRFProtect
 import logging
 import threading
-
+from sqlalchemy import func
 from app.model import db, User, ProductCategory
 from app.controllers.seller_controller import seller_bp
 from app.controllers.amazon_controller import amazon_bp, api_bp, admin_bp
@@ -14,6 +14,8 @@ from app.controllers.cart_controller import bp as cart_bp
 from app.controllers.review_controller import bp as review_bp
 from app.services.amazon_exposed_api import ups_webhooks
 from app.services.world_simulator_service import WorldSimulatorService
+from flask_login import LoginManager, current_user 
+from app.model import db, User, ProductCategory, Cart, CartProduct
 
 
 def create_app(test_config=None):
@@ -78,7 +80,17 @@ def create_app(test_config=None):
          # Although login_manager callbacks usually run within a request context
          with app.app_context():
               return User.query.get(int(user_id))
-
+    @app.context_processor
+    def inject_cart_count():
+        cart_item_count = 0
+        if current_user.is_authenticated:
+            cart = Cart.query.filter_by(user_id=current_user.user_id).first()
+            if cart:
+                count = db.session.query(func.sum(CartProduct.quantity))\
+                                  .filter_by(cart_id=cart.cart_id)\
+                                  .scalar()
+                cart_item_count = count if count is not None else 0
+        return dict(cart_item_count=cart_item_count)
     with app.app_context():
         db.create_all()
 

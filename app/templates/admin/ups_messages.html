@@ -5,7 +5,6 @@ endblock %} {% block content %}
     <h1>UPS System Messages</h1>
     {# Add status badge if applicable #}
   </div>
-
   <div class="card shadow-sm">
     <div class="card-body p-0">
       <div class="table-responsive">
@@ -40,7 +39,7 @@ endblock %} {% block content %}
               <td>
                 {# Add badges for status #}
                 <span
-                  class="badge {% if msg.status == 'sent' %}bg-secondary {% elif msg.status == 'received' %}bg-light text-dark border {% elif msg.status == 'acked' or msg.status == 'success' %}bg-success {% elif msg.status == 'failed' %}bg-danger {% else %}bg-secondary {% endif %}"
+                  class="badge {% if msg.status == 'sent' %}bg-secondary{% elif msg.status == 'received' %}bg-light text-dark border{% elif msg.status == 'acked' or msg.status == 'success' %}bg-success{% elif msg.status == 'failed' %}bg-danger{% else %}bg-secondary{% endif %}"
                 >
                   {{ msg.status }}
                 </span>

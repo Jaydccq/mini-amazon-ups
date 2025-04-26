@@ -9,7 +9,13 @@
         </div>
         <div class="card-body">
           <form method="POST" action="{{ url_for('cart.checkout') }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <input
+              type="hidden"
+              name="csrf_token"
+              min="0"
+              max="100"
+              value="{{ csrf_token() }}"
+            />
             <h4 class="mb-3">Delivery Location</h4>
             <div class="mb-4 pb-3 border-bottom">
               <div class="row">
@@ -25,7 +31,7 @@
                     required
                   />
                   <div class="form-text">
-                    X coordinate for delivery location
+                    X coordinate for delivery location (0-100)
                   </div>
                 </div>
                 <div class="col-md-6 mb-3">
@@ -37,10 +43,12 @@
                     class="form-control"
                     id="destination_y"
                     name="destination_y"
+                    min="0"
+                    max="100"
                     required
                   />
                   <div class="form-text">
-                    Y coordinate for delivery location
+                    Y coordinate for delivery location (0-100)
                   </div>
                 </div>
               </div>

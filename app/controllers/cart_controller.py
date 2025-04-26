@@ -16,16 +16,19 @@ logger = logging.getLogger(__name__)
 @login_required
 def view_cart():
     try:
-        cart_items = CartService.get_cart_items(current_user.user_id)
-        total_cart_value = sum(item[7] for item in cart_items) if cart_items else 0
+        user_cart = Cart.query.filter_by(user_id=current_user.user_id).first()
+
+        total_cart_value = 0
+        if user_cart and user_cart.items:
+           total_cart_value = sum(item.quantity * item.price_at_addition for item in user_cart.items)
 
         return render_template('cart.html',
-                              cart_items=cart_items,
-                              total_cart_value=total_cart_value)
+                              cart=user_cart, # Pass the Cart object
+                              total=total_cart_value)
     except Exception as e:
-        print(f"Error retrieving cart: {e}")
+        logger.error(f"Error retrieving/rendering cart: {e}") # Log the error
         flash("An error occurred while retrieving your cart", "danger")
-        return redirect(url_for('index.index'))
+        return redirect(url_for('amazon.index'))
 
 @bp.route("/add", methods=["POST"])
 @login_required

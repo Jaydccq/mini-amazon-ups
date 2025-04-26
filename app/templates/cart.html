@@ -1,156 +1,241 @@
-{% extends "layout.html" %}
-
-{% block title %}Shopping Cart | Mini-Amazon{% endblock %}
-
-{% block content %}
+{% extends "layout.html" %} {% block title %}Shopping Cart | Mini-Amazon{%
+endblock %} {% block content %}
 <div class="container mt-4">
-    <h1 class="mb-4">Your Shopping Cart</h1>
+  <h1 class="mb-4">Your Shopping Cart</h1>
 
-    {% if cart and cart.items %}
-        <div class="card shadow-sm mb-4">
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead class="table-light">
-                            <tr>
-                                <th scope="col">Product</th>
-                                <th scope="col" class="text-center">Price</th>
-                                <th scope="col" class="text-center">Quantity</th>
-                                <th scope="col" class="text-center">Subtotal</th>
-                                <th scope="col" class="text-center">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for item in cart.items %}
-                            <tr>
-                                <td>
-                                    <div class="d-flex align-items-center">
-                                        {% if item.product and item.product.image %}
-                                            <img src="{{ item.product.image }}" alt="{{ item.product.product_name }}" class="img-thumbnail me-3" style="max-width: 80px;">
-                                        {% else %}
-                                            <div class="bg-light text-center me-3 p-3" style="width: 80px; height: 80px;">
-                                                <i class="fas fa-box fa-2x text-secondary"></i>
-                                            </div>
-                                        {% endif %}
-                                        <div>
-                                            <h6 class="mb-0">{{ item.product.product_name if item.product else 'Unknown Product' }}</h6>
-                                            <small class="text-muted">Seller: {{ item.seller.first_name ~ ' ' ~ item.seller.last_name if item.seller else 'Unknown Seller' }}</small>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="text-center align-middle">${{ "%.2f"|format(item.price_at_addition) }}</td>
-                                <td class="text-center align-middle" style="width: 150px;">
-                                    <form action="{{ url_for('amazon.update_cart') }}" method="POST" class="d-flex justify-content-center">
-                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                        <input type="hidden" name="cart_id" value="{{ item.cart_id }}">
-                                        <input type="hidden" name="product_id" value="{{ item.product_id }}">
-                                        <input type="hidden" name="seller_id" value="{{ item.seller_id }}">
-                                        <div class="input-group input-group-sm" style="max-width: 120px;">
-                                            <button class="btn btn-outline-secondary" type="button" onclick="decrementQuantity(this)">
-                                                <i class="fas fa-minus"></i>
-                                            </button>
-                                            <input type="number" name="quantity" value="{{ item.quantity }}" min="1" class="form-control text-center"
-                                                   onchange="this.form.submit()">
-                                            <button class="btn btn-outline-secondary" type="button" onclick="incrementQuantity(this)">
-                                                <i class="fas fa-plus"></i>
-                                            </button>
-                                        </div>
-                                    </form>
-                                </td>
-                                <td class="text-center align-middle"><strong>${{ "%.2f"|format(item.quantity * item.price_at_addition) }}</strong></td>
-                                <td class="text-center align-middle">
-                                    <form action="{{ url_for('amazon.remove_from_cart') }}" method="POST">
-                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                        <input type="hidden" name="cart_id" value="{{ item.cart_id }}">
-                                        <input type="hidden" name="product_id" value="{{ item.product_id }}">
-                                        <input type="hidden" name="seller_id" value="{{ item.seller_id }}">
-                                        <button type="submit" class="btn btn-sm btn-outline-danger">
-                                            <i class="fas fa-trash"></i> Remove
-                                        </button>
-                                    </form>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            <div class="card-footer bg-light border-top">
-                <div class="row">
-                    <div class="col-md-6 offset-md-6">
-                        <div class="d-flex justify-content-between mb-2">
-                            <span>Subtotal:</span>
-                            <span>${{ "%.2f"|format(total) }}</span>
-                        </div>
-                        <div class="d-flex justify-content-between mb-2">
-                            <span>Shipping:</span>
-                            <span>Free</span>
-                        </div>
-                        <div class="d-flex justify-content-between mb-3">
-                            <span>Estimated Tax(Trump new policy):</span>
-                            <span>${{ "%.2f"|format(total|float * 1.45) }}</span> 
-                        </div>
-                        <div class="d-flex justify-content-between mb-2">
-                            <span class="h5">Total:</span>
-                            <span class="h5 text-primary">${{ "%.2f"|format(total|float * 2.45) }}</span> 
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="d-flex justify-content-between mt-4">
-            <a href="{{ url_for('amazon.index') }}" class="btn btn-outline-secondary">
-                <i class="fas fa-arrow-left"></i> Continue Shopping
-            </a>
-            <a href="{{ url_for('amazon.checkout') }}" class="btn btn-primary">
-                 <i class="fas fa-credit-card"></i> Proceed to Checkout
-             </a>
-        </div>
-    {% else %}
-        <div class="card shadow-sm">
-            <div class="card-body text-center p-5">
-                <i class="fas fa-shopping-cart fa-4x mb-3 text-muted"></i>
-                <h3>Your cart is empty</h3>
-                <p class="mb-4">Looks like you haven't added any products to your cart yet.</p>
-                <a href="{{ url_for('amazon.index') }}" class="btn btn-primary">
-                    <i class="fas fa-shopping-bag"></i> Start Shopping
+  {% if cart and cart.items %}
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead class="table-light">
+            <tr>
+              <th scope="col">Product</th>
+              <th scope="col" class="text-center">Price</th>
+              <th scope="col" class="text-center">Quantity</th>
+              <th scope="col" class="text-center">Subtotal</th>
+              <th scope="col" class="text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in cart.items %}
+            <tr>
+              <td>
+                <a
+                  href="{{ url_for('amazon.product_detail', product_id=item.product_id) }}"
+                  class="d-flex align-items-center text-decoration-none text-dark"
+                >
+                  {% if item.product and item.product.image %}
+                  <img
+                    src="{{ item.product.image }}"
+                    alt="{{ item.product.product_name }}"
+                    class="img-thumbnail me-3"
+                    style="max-width: 80px"
+                  />
+                  {% else %}
+                  <div
+                    class="bg-light text-center me-3 p-3 d-flex align-items-center justify-content-center"
+                    style="width: 80px; height: 80px"
+                  >
+                    <i class="fas fa-box fa-2x text-secondary"></i>
+                  </div>
+                  {% endif %}
+                  <div>
+                    {# Product name is now part of the link #}
+                    <h6 class="mb-0">
+                      {{ item.product.product_name if item.product else 'Unknown
+                      Product' }}
+                    </h6>
+                    <small class="text-muted"
+                      >Seller: {{ item.seller.first_name ~ ' ' ~
+                      item.seller.last_name if item.seller else 'Unknown Seller'
+                      }}</small
+                    >
+                  </div>
                 </a>
-            </div>
+              </td>
+              <td class="text-center align-middle">
+                ${{ "%.2f"|format(item.price_at_addition) }}
+              </td>
+              <td class="text-center align-middle" style="width: 150px">
+                <form
+                  action="{{ url_for('amazon.update_cart') }}"
+                  method="POST"
+                  class="d-flex justify-content-center"
+                >
+                  <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="{{ csrf_token() }}"
+                  />
+                  <input
+                    type="hidden"
+                    name="cart_id"
+                    value="{{ item.cart_id }}"
+                  />
+                  <input
+                    type="hidden"
+                    name="product_id"
+                    value="{{ item.product_id }}"
+                  />
+                  <input
+                    type="hidden"
+                    name="seller_id"
+                    value="{{ item.seller_id }}"
+                  />
+                  <div
+                    class="input-group input-group-sm"
+                    style="max-width: 120px"
+                  >
+                    <button
+                      class="btn btn-outline-secondary"
+                      type="button"
+                      onclick="decrementQuantity(this)"
+                    >
+                      <i class="fas fa-minus"></i>
+                    </button>
+                    <input
+                      type="number"
+                      name="quantity"
+                      value="{{ item.quantity }}"
+                      min="1"
+                      class="form-control text-center"
+                      onchange="this.form.submit()"
+                    />
+                    <button
+                      class="btn btn-outline-secondary"
+                      type="button"
+                      onclick="incrementQuantity(this)"
+                    >
+                      <i class="fas fa-plus"></i>
+                    </button>
+                  </div>
+                </form>
+              </td>
+              <td class="text-center align-middle">
+                <strong
+                  >${{ "%.2f"|format(item.quantity * item.price_at_addition)
+                  }}</strong
+                >
+              </td>
+              <td class="text-center align-middle">
+                <form
+                  action="{{ url_for('amazon.remove_from_cart') }}"
+                  method="POST"
+                >
+                  <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="{{ csrf_token() }}"
+                  />
+                  <input
+                    type="hidden"
+                    name="cart_id"
+                    value="{{ item.cart_id }}"
+                  />
+                  <input
+                    type="hidden"
+                    name="product_id"
+                    value="{{ item.product_id }}"
+                  />
+                  <input
+                    type="hidden"
+                    name="seller_id"
+                    value="{{ item.seller_id }}"
+                  />
+                  <button type="submit" class="btn btn-sm btn-outline-danger">
+                    <i class="fas fa-trash"></i> Remove
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card-footer bg-light border-top">
+      <div class="row">
+        <div class="col-md-6 offset-md-6">
+          <div class="d-flex justify-content-between mb-2">
+            <span>Subtotal:</span>
+            <span>${{ "%.2f"|format(total) }}</span>
+          </div>
+          <div class="d-flex justify-content-between mb-2">
+            <span>Shipping:</span>
+            <span>Free</span>
+          </div>
+          <div class="d-flex justify-content-between mb-3">
+            <span>Estimated Tax(Trump new policy):</span>
+            <span>${{ "%.2f"|format(total|float * 1.45) }}</span>
+          </div>
+          <div class="d-flex justify-content-between mb-2">
+            <span class="h5">Total:</span>
+            <span class="h5 text-primary"
+              >${{ "%.2f"|format(total|float * 2.45) }}</span
+            >
+          </div>
         </div>
-    {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex justify-content-between mt-4">
+    <a href="{{ url_for('amazon.index') }}" class="btn btn-outline-secondary">
+      <i class="fas fa-arrow-left"></i> Continue Shopping
+    </a>
+    <a href="{{ url_for('amazon.checkout') }}" class="btn btn-primary">
+      <i class="fas fa-credit-card"></i> Proceed to Checkout
+    </a>
+  </div>
+  {% else %}
+  <div class="card shadow-sm">
+    <div class="card-body text-center p-5">
+      <i class="fas fa-shopping-cart fa-4x mb-3 text-muted"></i>
+      <h3>Your cart is empty</h3>
+      <p class="mb-4">
+        Looks like you haven't added any products to your cart yet.
+      </p>
+      <a href="{{ url_for('amazon.index') }}" class="btn btn-primary">
+        <i class="fas fa-shopping-bag"></i> Start Shopping
+      </a>
+    </div>
+  </div>
+  {% endif %}
 </div>
-{% endblock %}
-
-{% block extra_js %}
+{% endblock %} {% block extra_js %}
 <script>
-    function incrementQuantity(button) {
-        const input = button.closest('.input-group').querySelector('input[type=number]');
-        const max = parseInt(input.getAttribute('max')) || 999;
-        if (parseInt(input.value) < max) {
-            input.value = parseInt(input.value) + 1;
-            input.form.submit();
-        } else {
-            console.log("Maximum quantity reached");
-        }
+  function incrementQuantity(button) {
+    const input = button
+      .closest(".input-group")
+      .querySelector("input[type=number]");
+    const max = parseInt(input.getAttribute("max")) || 999;
+    if (parseInt(input.value) < max) {
+      input.value = parseInt(input.value) + 1;
+      input.form.submit();
+    } else {
+      console.log("Maximum quantity reached");
     }
+  }
 
-    function decrementQuantity(button) {
-        const input = button.closest('.input-group').querySelector('input[type=number]');
-        if (parseInt(input.value) > 1) {
-            input.value = parseInt(input.value) - 1;
-            input.form.submit();
-        }
+  function decrementQuantity(button) {
+    const input = button
+      .closest(".input-group")
+      .querySelector("input[type=number]");
+    if (parseInt(input.value) > 1) {
+      input.value = parseInt(input.value) - 1;
+      input.form.submit();
     }
-    
-    document.querySelectorAll('input[name="quantity"]').forEach(input => {
-        input.addEventListener('change', function() {
-            if (parseInt(this.value) >= 1) {
-                 this.form.submit();
-            } else {
-                this.value = 1;
-            }
-        });
+  }
+
+  document.querySelectorAll('input[name="quantity"]').forEach((input) => {
+    input.addEventListener("change", function () {
+      if (parseInt(this.value) >= 1) {
+        this.form.submit();
+      } else {
+        this.value = 1;
+      }
     });
+  });
 </script>
 {% endblock %}

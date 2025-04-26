@@ -59,15 +59,19 @@ class WorldEventHandler:
             logger.info(f"Processing package ready event: {event_data}")
             logger.info(f"Shipment {shipment_id} is waiting for products: {waiting_products}")
             truck_id = waiting_products[shipment_id]
-            shipment = self.shipment_service.get_shipment_by_id(shipment_id)
-            if shipment:
-                shipment.status = 'loading'
-                shipment.truck_id = truck_id
-                shipment.updated_at = datetime.now(timezone.utc)
-                db.session.commit()
-                logger.info(f"Updated shipment {shipment_id} status to 'loading'")
-            else:
-                logger.warning(f"Shipment {shipment_id} not found in database")
+            try:
+                shipment = Shipment.query.filter_by(shipment_id=shipment_id).first()
+                if shipment:
+                    shipment.status = 'loading'
+                    shipment.truck_id = truck_id
+                    shipment.updated_at = datetime.now(timezone.utc)
+                    db.session.commit()
+                    logger.info(f"Updated shipment {shipment_id} status to 'loading'")
+                else:
+                    logger.warning(f"Shipment {shipment_id} not found in database")
+            except Exception as e:
+                logger.error(f"Error updating shipment status: {e}")
+                db.session.rollback()
 
             # Use the world simulator service from the shipment_service
             self.shipment_service.world_simulator_service.load_shipment(

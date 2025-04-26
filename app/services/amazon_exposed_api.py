@@ -10,7 +10,6 @@ from flask import current_app
 
 logger = logging.getLogger(__name__)
 
-# Create a Blueprint for UPS webhook endpoints
 ups_webhooks = Blueprint('ups_webhooks', __name__, url_prefix='')
 
 
@@ -26,7 +25,6 @@ def set_worldid():
 
         # {world_id: 1234567890}
 
-        # Extract data
         world_id = message.get('worldid')
 
         # Connect to world
@@ -238,9 +236,6 @@ def truck_arrived():
 
 @ups_webhooks.route('/api/webhooks/shipment-delivered', methods=['POST'])
 def shipment_delivered():
-    """
-    UPS notifies Amazon that a shipment has been delivered
-    """
     try:
         message = request.get_json()
 
@@ -318,9 +313,6 @@ def shipment_delivered():
 
 @ups_webhooks.route('/api/webhooks/shipment-detail-request', methods=['POST'])
 def shipment_detail_request():
-    """
-    UPS requests details of a shipment
-    """
     try:
         message = request.get_json()
 
@@ -393,26 +385,18 @@ def shipment_detail_request():
 
 
 def validate_message_structure(message, expected_type):
-    """
-    Validate that the message has the expected structure and type
-    """
-    # Check basic structure
     if not isinstance(message, dict):
         return False
 
-    # Check required fields
     if 'message_type' not in message or 'timestamp' not in message or 'payload' not in message:
         return False
 
-    # Check message type
     if message.get('message_type') != expected_type:
         return False
 
-    # Check payload is a dictionary
     if not isinstance(message.get('payload'), dict):
         return False
 
-    # Specific validation for each message type
     payload = message.get('payload', {})
 
     if expected_type == 'TruckDispatched':
@@ -432,4 +416,3 @@ def validate_message_structure(message, expected_type):
 
     return True
 
-# You would register this blueprint in your Flask app

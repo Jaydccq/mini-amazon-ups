@@ -6,6 +6,9 @@ from flask_wtf.csrf import CSRFProtect
 import logging
 import threading
 from sqlalchemy import func
+from app.controllers.seller_controller import seller_bp 
+from app.controllers.amazon_controller import update_address
+
 from app.model import db, User, ProductCategory
 from app.controllers.seller_controller import seller_bp
 from app.controllers.amazon_controller import amazon_bp, api_bp, admin_bp
@@ -70,6 +73,7 @@ def create_app(test_config=None):
     csrf = CSRFProtect(app)
 
     csrf.exempt(ups_webhooks)
+    csrf.exempt(update_address)
 
     login_manager = LoginManager(app)
     login_manager.login_view = 'amazon.login'

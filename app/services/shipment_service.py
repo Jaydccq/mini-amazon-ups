@@ -298,14 +298,48 @@ class ShipmentService:
             shipment.destination_y = destination_y
             
             # Notify UPS about address change
-            self.ups_integration.notify_address_change(
-                shipment_id=shipment_id,
-                destination_x=destination_x,
-                destination_y=destination_y
-            )
+            # self.ups_integration.notify_address_change(
+            #     shipment_id=shipment_id,
+            #     destination_x=destination_x,
+            #     destination_y=destination_y
+            # )
             
             db.session.commit()
             return True, "Address updated successfully"
         except Exception as e:
             db.session.rollback()
             return False, str(e)
+        
+    def query_package_status(self, shipment_id):
+        try:
+            shipment = db.session.get(Shipment, shipment_id)
+            if not shipment:
+                logger.warning(f"query_package_status: Shipment ID {shipment_id} not found.")
+                return False, "Shipment not found"
+
+            if self.world_simulator and self.world_simulator.connected:
+                logger.info(f"Querying simulator for status of shipment {shipment_id}...")
+                success, result = self.world_simulator.query_package(shipment_id)
+
+                if success:
+                    valid_statuses = ['packing', 'packed', 'loading', 'loaded', 'delivering', 'delivered']
+                    if result in valid_statuses:
+                        logger.info(f"Live query successful for shipment {shipment_id}. Simulator status: '{result}'. Updating DB.")
+                        shipment.status = result
+                        shipment.updated_at = datetime.now(timezone.utc)
+                        db.session.commit()
+                        return True, result
+                    else:
+                        logger.warning(f"Live query for shipment {shipment_id} returned non-status result: '{result}'. DB not updated.")
+                        return False, f"Query succeeded but returned invalid status: {result}"
+                else:
+                    logger.error(f"Live query failed for shipment {shipment_id}: {result}")
+                    return False, f"Failed to query package status: {result}"
+            else:
+                logger.warning(f"Cannot query package status for shipment {shipment_id}: Not connected to World Simulator.")
+                return False, "Not connected to World Simulator"
+
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error querying package status (Shipment ID: {shipment_id}): {str(e)}", exc_info=True)
+            return False, f"Internal error during query: {str(e)}"

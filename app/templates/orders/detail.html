@@ -1,5 +1,16 @@
 {% extends "layout.html" %} {% block title %}Order Details | Mini-Amazon{%
-endblock %} {% block content %}
+endblock %} {% block extra_css %}
+<style>
+  .status-badge {
+    font-size: 0.9rem;
+    padding: 0.4em 0.7em;
+    vertical-align: middle;
+  }
+  .refresh-button {
+    margin-left: 10px;
+  }
+</style>
+{% endblock %} {% block content %}
 <div class="container mt-4">
   <nav aria-label="breadcrumb" class="mb-4">
     <ol class="breadcrumb">
@@ -46,23 +57,27 @@ endblock %} {% block content %}
                 </tr>
               </thead>
               <tbody>
-                {# Assuming 'items' is a list of OrderProduct objects with
-                relationships #} {% for item in items %}
+                {% for item in items %}
                 <tr>
                   <td>
                     <div class="d-flex align-items-center">
+                      {% if item.product and item.product.image %}
+                      <img
+                        src="{{ item.product.image }}"
+                        alt="{{ item.product.product_name }}"
+                        class="img-thumbnail me-3"
+                        style="max-width: 50px"
+                      />
+                      {% endif %}
                       <div>
-                        {# Assuming item has 'product' relationship/attribute
-                        with 'product_name' #}
                         <h6 class="mb-0">
                           {{ item.product.product_name if item.product else
                           'Unknown Product' }}
                         </h6>
-                        {# Assuming item has 'seller' relationship/attribute #}
-                        <small class="text-muted"
-                          >Seller: {{ item.seller.first_name }} {{
-                          item.seller.last_name }}</small
-                        >
+                        <small class="text-muted">
+                          Seller: {{ item.seller.first_name }} {{
+                          item.seller.last_name }}
+                        </small>
                       </div>
                     </div>
                   </td>
@@ -91,8 +106,9 @@ endblock %} {% block content %}
 
           {% if order.order_status == 'Unfulfilled' %}
           <div class="alert alert-info mt-3">
-            <i class="fas fa-info-circle"></i> Your order is currently being
-            processed. You'll receive updates as your items are shipped.
+            <i class="fas fa-info-circle"></i>
+            Your order is currently being processed. You'll receive updates as
+            your items are shipped.
           </div>
           {% endif %}
         </div>
@@ -133,29 +149,33 @@ endblock %} {% block content %}
                 class="mb-3 {% if not loop.last %}border-bottom pb-3{% endif %}"
               >
                 <h6>Shipment #{{ shipment.shipment_id }}</h6>
-                <div class="d-flex justify-content-between mb-2">
+                <div
+                  class="d-flex justify-content-between align-items-center mb-2"
+                >
                   <span>Status:</span>
                   <span>
-                    {% if shipment.status == 'packing' %}
-                    <span class="badge bg-info text-dark">Packing</span> {# Made
-                    consistent with other badge styles #} {% elif
-                    shipment.status == 'packed' %}
-                    <span class="badge bg-info text-dark">Packed</span> {# Made
-                    consistent with other badge styles #} {% elif
-                    shipment.status == 'loading' %}
-                    <span class="badge bg-warning text-dark">Loading</span> {#
-                    Made consistent with other badge styles #} {% elif
-                    shipment.status == 'loaded' %}
-                    <span class="badge bg-primary">Loaded</span>
-                    {% elif shipment.status == 'delivering' %}
-                    <span class="badge bg-primary">Delivering</span>
-                    {% elif shipment.status == 'delivered' %}
-                    <span class="badge bg-success">Delivered</span>
-                    {% else %}
-                    <span class="badge bg-secondary"
-                      >{{ shipment.status|title }}</span
+                    <span
+                      id="package-status-badge-{{ shipment.shipment_id }}"
+                      class="badge status-badge {% if shipment.status == 'delivered' %}bg-success {% elif shipment.status == 'delivering' %}bg-info text-dark {% elif shipment.status in ['packing','packed','loading'] %}bg-warning text-dark {% elif shipment.status == 'loaded' %}bg-primary {% else %}bg-secondary{% endif %}"
                     >
-                    {# Default/unknown status #} {% endif %}
+                      <span id="package-status-{{ shipment.shipment_id }}">
+                        {{ shipment.status|title }}
+                      </span>
+                    </span>
+                    <button
+                      id="refresh-status-btn-{{ shipment.shipment_id }}"
+                      class="btn btn-sm btn-outline-secondary refresh-status-btn refresh-button"
+                      data-shipment-id="{{ shipment.shipment_id }}"
+                      title="Refresh Status"
+                    >
+                      <i class="fas fa-sync-alt"></i>
+                    </button>
+                  </span>
+                </div>
+                <div class="text-muted small text-end mb-2">
+                  <span id="last-updated-{{ shipment.shipment_id }}">
+                    Last updated: {{ shipment.updated_at.strftime('%Y-%m-%d
+                    %H:%M:%S') if shipment.updated_at else 'N/A' }}
                   </span>
                 </div>
 
@@ -174,12 +194,11 @@ endblock %} {% block content %}
                   >
                 </div>
 
-                {% if shipment.status != 'delivered' and shipment.status !=
-                'delivering' %}
-                <div class="mt-2">
+                {% if shipment.status not in ['delivering','delivered'] %}
+                <div class="mt-2 mb-2">
                   <button
                     type="button"
-                    class="btn btn-outline-primary btn-sm"
+                    class="btn btn-outline-primary btn-sm w-100"
                     data-bs-toggle="modal"
                     data-bs-target="#updateAddressModal{{ shipment.shipment_id }}"
                   >
@@ -208,12 +227,21 @@ endblock %} {% block content %}
                           aria-label="Close"
                         ></button>
                       </div>
-                      {# IMPORTANT: Ensure you have a route defined for
-                      'amazon.update_address' that handles POST #}
                       <form
-                        action="{{ url_for('amazon.update_address', shipment_id=shipment.shipment_id) }}"
+                        action="{{ url_for('amazon.update_address', order_id=order.order_id, shipment_id=shipment.shipment_id) }}"
                         method="POST"
                       >
+                        <input
+                          type="hidden"
+                          name="csrf_token"
+                          value="{{ csrf_token() }}"
+                        />
+                        <input
+                          type="hidden"
+                          name="csrf_token"
+                          value="{{ csrf_token() }}"
+                        />
+
                         <div class="modal-body">
                           <div class="row">
                             <div class="col-md-6 mb-3">
@@ -248,9 +276,9 @@ endblock %} {% block content %}
                             </div>
                           </div>
                           <p class="text-muted">
-                            <i class="fas fa-info-circle"></i> You can only
-                            update the delivery address before the package goes
-                            out for delivery.
+                            <i class="fas fa-info-circle"></i>
+                            You can only update the delivery address before the
+                            package goes out for delivery.
                           </p>
                         </div>
                         <div class="modal-footer">
@@ -287,6 +315,7 @@ endblock %} {% block content %}
         </div>
       </div>
     </div>
+
     <div class="card-footer text-center">
       <a
         href="{{ url_for('amazon.order_list') }}"
@@ -300,4 +329,83 @@ endblock %} {% block content %}
     </div>
   </div>
 </div>
+{% endblock %} {% block extra_js %}
+<script>
+  function getStatusColorInfo(status) {
+    switch (status.toLowerCase()) {
+      case "delivered":
+        return { bg: "bg-success", text: "" };
+      case "delivering":
+        return { bg: "bg-info", text: "text-dark" };
+      case "loaded":
+        return { bg: "bg-primary", text: "" };
+      case "packing":
+      case "packed":
+      case "loading":
+        return { bg: "bg-warning", text: "text-dark" };
+      default:
+        return { bg: "bg-secondary", text: "" };
+    }
+  }
+
+  function refreshPackageStatus(shipmentId) {
+    const statusTextElement = document.getElementById(
+      `package-status-${shipmentId}`
+    );
+    const statusBadgeElement = document.getElementById(
+      `package-status-badge-${shipmentId}`
+    );
+    const buttonElement = document.getElementById(
+      `refresh-status-btn-${shipmentId}`
+    );
+    const updatedElement = document.getElementById(
+      `last-updated-${shipmentId}`
+    );
+    const originalButtonHtml = buttonElement.innerHTML;
+
+    buttonElement.disabled = true;
+    buttonElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+    fetch(`/api/packages/${shipmentId}/refresh`)
+      .then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      })
+      .then((data) => {
+        if (data.success) {
+          const newStatus =
+            data.status.charAt(0).toUpperCase() + data.status.slice(1);
+          const colorInfo = getStatusColorInfo(data.status);
+          statusTextElement.textContent = newStatus;
+          statusBadgeElement.className = `badge status-badge ${colorInfo.bg} ${colorInfo.text}`;
+          updatedElement.textContent = `Last refreshed: ${new Date(
+            data.updated_at
+          ).toLocaleString()}`;
+          buttonElement.innerHTML = '<i class="fas fa-check"></i>';
+        } else {
+          throw new Error(data.error);
+        }
+      })
+      .catch((err) => {
+        console.error("Refresh error:", err);
+        alert(`Error refreshing status: ${err.message}`);
+        buttonElement.innerHTML = originalButtonHtml;
+      })
+      .finally(() => {
+        setTimeout(() => {
+          buttonElement.innerHTML = originalButtonHtml;
+          buttonElement.disabled = false;
+        }, 1500);
+      });
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll(".refresh-status-btn").forEach((btn) =>
+      btn.addEventListener("click", () => {
+        const id = btn.dataset.shipmentId;
+        if (id) refreshPackageStatus(id);
+      })
+    );
+  });
+</script>
 {% endblock %}

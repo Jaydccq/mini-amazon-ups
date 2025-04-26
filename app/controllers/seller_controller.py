@@ -3,13 +3,12 @@ from flask_login import login_required, current_user
 from functools import wraps
 from werkzeug.utils import secure_filename
 import os
-from datetime import datetime, timedelta # Added timedelta
-from sqlalchemy import func, cast, Date # Added cast, Date
+from datetime import datetime, timedelta 
+from sqlalchemy import func, cast, Date 
 from flask import request, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
 from app.services.warehouse_service import WarehouseService
-from app.model import Product, Warehouse # Import Warehouse if needed for validation/display
-# Added Order, OrderProduct
+from app.model import Product, Warehouse 
 from app.model import db, User, Product, ProductCategory, Inventory, Order, OrderProduct, WarehouseProduct
 from sqlalchemy.orm import joinedload
 import json
@@ -36,17 +35,14 @@ seller_bp = Blueprint('seller', __name__, url_prefix='/seller')
 @seller_bp.route('/dashboard')
 @seller_required
 def dashboard():
-    """Seller dashboard overview with sales reports"""
     seller_id = current_user.user_id
 
-    # --- Existing Inventory Stats ---
     inventory_items_query = Inventory.query.filter_by(seller_id=seller_id)
     inventory_items = inventory_items_query.all()
     total_value = sum(item.quantity * float(item.unit_price) for item in inventory_items)
     low_stock_count = sum(1 for item in inventory_items if item.quantity < 5)
     inventory_count = len(inventory_items)
 
-    # --- Order Item Stats ---
     fulfilled_items_count = db.session.query(func.sum(OrderProduct.quantity))\
         .filter(OrderProduct.seller_id == seller_id, OrderProduct.status == 'Fulfilled').scalar() or 0
     unfulfilled_items_count = db.session.query(func.sum(OrderProduct.quantity))\
@@ -59,7 +55,6 @@ def dashboard():
         .order_by(Order.order_date.desc())\
         .limit(5).all()
 
-    # --- NEW: Sales Report Data ---
 
     # 1. Total Sales Value (Last 30 days)
     thirty_days_ago = datetime.utcnow() - timedelta(days=30)
@@ -79,7 +74,6 @@ def dashboard():
         .order_by(cast(Order.order_date, Date))\
         .all()
 
-    # Format for Chart.js
     sales_chart_labels = [d.sale_date.strftime('%Y-%m-%d') for d in sales_over_time]
     sales_chart_data = [float(d.daily_total) for d in sales_over_time]
 
@@ -95,13 +89,12 @@ def dashboard():
         .limit(5)\
         .all()
 
-    # Format for Chart.js
     top_products_labels = [p.product_name for p in top_products_query]
     top_products_data = [int(p.total_quantity) for p in top_products_query]
 
 
     return render_template(
-        'seller/dashboard.html', # Ensure this template exists
+        'seller/dashboard.html', 
         recent_order_items=recent_order_items,
         inventory_items=inventory_items[:5], # Display first 5 inventory items
         total_value=total_value,
@@ -109,7 +102,6 @@ def dashboard():
         inventory_count=inventory_count,
         fulfilled_items_count=fulfilled_items_count,
         unfulfilled_items_count=unfulfilled_items_count,
-        # --- NEW DATA FOR REPORTS ---
         total_sales_last_30d=total_sales_last_30d,
         sales_chart_labels=sales_chart_labels,
         sales_chart_data=sales_chart_data,
@@ -128,60 +120,48 @@ def inventory_list():
     category_id = request.args.get('category_id', type=int)
     per_page = 10 # Or your preferred number
 
-    # Base query for seller's inventory items (Inventory records)
-    # Use joinedload to pre-fetch related Product and Category data
     query = Inventory.query.options(
         joinedload(Inventory.product).joinedload(Product.category)
     ).filter(Inventory.seller_id == seller_id)\
-     .join(Product, Inventory.product_id == Product.product_id) # Explicit join might still be needed for filtering
-
-    # Apply search filter on Product name
+     .join(Product, Inventory.product_id == Product.product_id)
     if search:
         query = query.filter(Product.product_name.ilike(f'%{search}%'))
 
-    # Apply category filter on Product category_id
     if category_id:
         query = query.filter(Product.category_id == category_id)
 
-    # Order and paginate the Inventory listings
     pagination = query.order_by(Product.product_name.asc())\
                       .paginate(page=page, per_page=per_page, error_out=False)
 
     inventory_items = pagination.items # These are Inventory objects
 
-    # --- Efficiently fetch warehouse stock for the products on the current page ---
     product_ids_on_page = [item.product_id for item in inventory_items]
     warehouse_stock_data = {} # {product_id: {warehouse_id: quantity}}
 
     if product_ids_on_page:
-        # Query WarehouseProduct table for relevant products
         stock_entries = WarehouseProduct.query.filter(
             WarehouseProduct.product_id.in_(product_ids_on_page)
         ).all()
 
-        # Structure the data for easy lookup in the template
         for entry in stock_entries:
             if entry.product_id not in warehouse_stock_data:
                 warehouse_stock_data[entry.product_id] = {}
             warehouse_stock_data[entry.product_id][entry.warehouse_id] = entry.quantity
 
-    # Add the fetched stock data directly to each inventory item for template access
     for item in inventory_items:
         item.warehouse_stock_map = warehouse_stock_data.get(item.product_id, {}) # Attach the map
 
-    # --- Fetch other necessary data for template ---
     categories = ProductCategory.query.order_by(ProductCategory.category_name).all()
-    # Fetch active warehouses for the modals in the inventory list
     warehouses = Warehouse.query.filter_by(active=True).order_by(Warehouse.warehouse_id).all()
 
     return render_template(
         'seller/inventory.html',
-        inventory_items=inventory_items, # Now items have .warehouse_stock_map
+        inventory_items=inventory_items, 
         categories=categories,
         current_category=category_id,
         search_query=search,
         pagination=pagination,
-        warehouses=warehouses # Pass warehouses for modals
+        warehouses=warehouses 
     )
 
 
@@ -200,10 +180,8 @@ def add_inventory():
         quantity = request.form.get('quantity', type=int)
         unit_price = request.form.get('unit_price', type=float)
 
-        # --- Validation ---
         if not all([product_id, warehouse_id, quantity is not None, unit_price is not None]):
             flash('Product, Warehouse, quantity, and price are required.', 'danger')
-            # Fetch data again for GET part of template rendering
             subquery = db.session.query(Inventory.product_id).filter(Inventory.seller_id == seller_id)
             available_products = Product.query.filter(Product.product_id.notin_(subquery)).order_by(Product.product_name).all()
             categories = ProductCategory.query.order_by(ProductCategory.category_name).all()
@@ -223,20 +201,17 @@ def add_inventory():
             flash('Selected product does not exist.', 'danger')
             return redirect(url_for('seller.add_inventory'))
 
-        # Check if warehouse exists and is active
         warehouse = Warehouse.query.filter_by(warehouse_id=warehouse_id, active=True).first()
         if not warehouse:
             flash('Selected warehouse is invalid or inactive.', 'danger')
             return redirect(url_for('seller.add_inventory'))
 
-        # Check if already in seller's Inventory listing
         existing = Inventory.query.filter_by(seller_id=seller_id, product_id=product_id).first()
         if existing:
             flash('This product is already in your inventory listing. Use "Manage Stock" on the inventory page to add stock to warehouses.', 'warning')
             return redirect(url_for('seller.inventory_list'))
 
         try:
-            # Step 1: Create the seller's Inventory LISTING
             new_inventory_listing = Inventory(
                 seller_id=seller_id,
                 product_id=product_id,
@@ -247,7 +222,6 @@ def add_inventory():
             db.session.add(new_inventory_listing)
             db.session.commit() # Commit the listing first
 
-            # Step 2: Add the PHYSICAL stock to the selected warehouse
             stock_success, stock_message = warehouse_service.add_product_to_warehouse(
                 warehouse_id=warehouse_id,
                 product_id=product_id,
@@ -257,7 +231,6 @@ def add_inventory():
             if stock_success:
                 flash(f'Product listed in your inventory and {quantity} units added to Warehouse #{warehouse_id}.', 'success')
             else:
-                # Listing was created, but adding stock failed - inform the user
                 flash(f'Product listed in your inventory, but failed to add stock to Warehouse #{warehouse_id}: {stock_message}. Please add stock manually.', 'warning')
 
             return redirect(url_for('seller.inventory_list'))
@@ -269,8 +242,6 @@ def add_inventory():
             return redirect(url_for('seller.add_inventory')) # Redirect back to GET on generic error
 
 
-    # --- GET request ---
-    # Fetch available products NOT already in seller's Inventory listing
     subquery = db.session.query(Inventory.product_id).filter(Inventory.seller_id == seller_id)
     available_products = Product.query.filter(Product.product_id.notin_(subquery)).order_by(Product.product_name).all()
     categories = ProductCategory.query.order_by(ProductCategory.category_name).all()
@@ -302,10 +273,8 @@ def create_product():
         unit_price = request.form.get('unit_price', type=float)
         image_url = None # Placeholder for image handling
 
-        # --- Basic Validation ---
         if not all([product_name, category_id, description, warehouse_id, quantity is not None, unit_price is not None]):
             flash('Please fill in all required fields, including the warehouse.', 'danger')
-             # Fetch categories and warehouses again for re-rendering the form
             categories = ProductCategory.query.order_by(ProductCategory.category_name).all()
             warehouses = Warehouse.query.filter_by(active=True).order_by(Warehouse.warehouse_id).all()
             return render_template('seller/create_product.html', categories=categories, warehouses=warehouses)
@@ -323,7 +292,6 @@ def create_product():
             flash('Selected warehouse is invalid or inactive.', 'danger')
             return redirect(url_for('seller.create_product'))
 
-        # --- Image Upload Handling (Optional but recommended) ---
         if 'product_image' in request.files:
             file = request.files['product_image']
             if file and file.filename:
@@ -337,7 +305,6 @@ def create_product():
                     file_path = os.path.join(upload_folder, unique_filename)
                     try:
                         file.save(file_path)
-                        # Adjust this URL based on how you serve static files/uploads
                         image_url = url_for('static', filename=f"uploads/{unique_filename}", _external=False) # Use relative URL if possible
                         flash(f"Image '{filename}' uploaded.", 'info')
                     except Exception as e:
@@ -347,7 +314,6 @@ def create_product():
                      flash('Invalid image file type.', 'warning')
 
         try:
-            # Step 1: Create Product first
             new_product = Product(
                 product_name=product_name,
                 category_id=category_id,
@@ -357,13 +323,12 @@ def create_product():
                 image=image_url
             )
             db.session.add(new_product)
-            db.session.flush() # Get the new product_id
+            db.session.flush() 
 
-            # Step 2: Add to Seller's Inventory LISTING
             new_inventory_listing = Inventory(
                 seller_id=seller_id,
                 product_id=new_product.product_id,
-                quantity=quantity, # Seller's listed quantity
+                quantity=quantity, 
                 unit_price=unit_price,
                  warehouse_id=warehouse_id,
                 owner_id=seller_id # Product owner is the seller
@@ -371,7 +336,7 @@ def create_product():
             db.session.add(new_inventory_listing)
             db.session.commit() # Commit product and inventory listing
 
-            # Step 3: First buy/register the product in the World Simulator
+            #  First buy/register the product in the World Simulator
             world_simulator = current_app.config.get('WORLD_SIMULATOR_SERVICE')
             if world_simulator and world_simulator.connected:
                 buy_success, buy_message = world_simulator.buy_product(
@@ -414,12 +379,9 @@ def create_product():
             db.session.rollback()
             flash(f'Error creating product or adding stock: {str(e)}', 'danger')
             current_app.logger.error(f"Error in create_product for seller {seller_id}: {e}")
-            # Redirect back to GET on generic error
             return redirect(url_for('seller.create_product'))
 
-    # --- GET request ---
     categories = ProductCategory.query.order_by(ProductCategory.category_name).all()
-    # Fetch active warehouses for the dropdown
     warehouses = Warehouse.query.filter_by(active=True).order_by(Warehouse.warehouse_id).all()
     return render_template(
         'seller/create_product.html',
@@ -467,10 +429,9 @@ def edit_inventory(inventory_id):
             current_app.logger.error(f"Error updating inventory {inventory_id}: {e}")
 
     # GET request
-    # Fetch product details for display
     product = db.session.get(Product, item.product_id)
     return render_template(
-        'seller/edit_inventory.html', # You will need to create this template
+        'seller/edit_inventory.html', 
         item=item,
         product=product # Pass product details
     )
@@ -571,12 +532,10 @@ from app.model import db, User, Product, ProductCategory, Inventory, Order, Orde
 @seller_bp.route('/inventory/add-to-warehouse', methods=['POST'])
 @seller_required
 def add_stock_to_warehouse():
-    """Handles adding stock to a specific warehouse for a product."""
     try:
         product_id = request.form.get('product_id', type=int)
         warehouse_id = request.form.get('warehouse_id', type=int)
         quantity_to_add = request.form.get('quantity_to_add', type=int)
-        # Get the referring page to redirect back later
         referrer = request.form.get('referrer', url_for('seller.inventory_list'))
 
         # --- Validation ---
@@ -588,20 +547,11 @@ def add_stock_to_warehouse():
             flash('Quantity to add must be positive.', 'danger')
             return redirect(referrer)
 
-        # Optional: Add permission check - does the seller actually list this product?
-        # inventory_item = Inventory.query.filter_by(seller_id=current_user.user_id, product_id=product_id).first()
-        # if not inventory_item:
-        #     flash('You do not have this product listed in your inventory.', 'danger')
-        #     return redirect(referrer)
-
-        # --- Call Service ---
-        # Assuming WarehouseService can be instantiated directly or fetched from app context
         warehouse_service = WarehouseService(current_app.config.get('WORLD_SIMULATOR_SERVICE'))
-        # Use the existing add_product_to_warehouse function
         success, message = warehouse_service.add_product_to_warehouse(
             warehouse_id=warehouse_id,
             product_id=product_id,
-            quantity=quantity_to_add # Pass the quantity *to add*
+            quantity=quantity_to_add # Pass the quantity 
         )
 
         if success:
@@ -611,13 +561,11 @@ def add_stock_to_warehouse():
         else:
             flash(f'Failed to add stock: {message}', 'danger')
 
-        return redirect(referrer) # Redirect back to the inventory page or where the request came from
+        return redirect(referrer)
 
     except Exception as e:
-        # Log the error properly in a real application
         current_app.logger.error(f"Error adding stock to warehouse: {e}", exc_info=True)
         flash(f'An unexpected error occurred: {str(e)}', 'danger')
-        # Redirect back to a safe page, maybe the main inventory list
         return redirect(url_for('seller.inventory_list'))
     
 
@@ -656,12 +604,9 @@ def delete_inventory(inventory_id):
     """Remove an item from seller's inventory"""
     seller_id = current_user.user_id
 
-    # --- MODIFIED CODE ---
-    # Use db.session.get() and check for None, then abort(404) if not found.
     item = db.session.get(Inventory, inventory_id)
     if item is None:
         abort(404, description=f"Inventory item with ID {inventory_id} not found.") # Use abort for 404
-    # --- END MODIFIED CODE ---
 
     if item.seller_id != seller_id:
         flash('You do not have permission to delete this item.', 'danger')

@@ -1,16 +1,14 @@
 {% extends "base.html" %} {% block title %}Shipment #{{ shipment.shipment_id }}
 Details | Mini-Amazon{% endblock %} {% block extra_css %}
 <style>
-  /* Basic styling for the map container */
   #shipmentMap {
-    height: 450px; /* Adjust height as needed */
+    height: 450px;
     width: 100%;
     border-radius: 8px;
-    border: 1px solid #dee2e6; /* Light border */
+    border: 1px solid #dee2e6;
     margin-top: 1.5rem;
     margin-bottom: 1.5rem;
   }
-  /* Timeline Styles */
   .timeline {
     list-style: none;
     padding: 0;
@@ -21,14 +19,14 @@ Details | Mini-Amazon{% endblock %} {% block extra_css %}
     position: absolute;
     top: 0;
     bottom: 0;
-    left: 19px; /* Adjust based on icon size */
+    left: 19px;
     width: 2px;
     background-color: #e9ecef;
   }
   .timeline-item {
     margin-bottom: 20px;
     position: relative;
-    padding-left: 50px; /* Space for icon */
+    padding-left: 50px;
   }
   .timeline-icon {
     position: absolute;
@@ -46,11 +44,11 @@ Details | Mini-Amazon{% endblock %} {% block extra_css %}
     z-index: 1;
   }
   .timeline-item.completed .timeline-icon {
-    background-color: var(--primary-color); /* Use your primary color */
+    background-color: var(--primary-color);
     color: white;
   }
   .timeline-item.current .timeline-icon {
-    background-color: var(--accent-color); /* Example: Use accent color */
+    background-color: var(--accent-color);
     color: white;
   }
   .timeline-content {
@@ -60,7 +58,6 @@ Details | Mini-Amazon{% endblock %} {% block extra_css %}
     position: relative;
   }
   .timeline-content::before {
-    /* Optional: Triangle pointer */
     content: "";
     position: absolute;
     top: 10px;
@@ -74,6 +71,14 @@ Details | Mini-Amazon{% endblock %} {% block extra_css %}
   .timeline-time {
     font-size: 0.85em;
     color: #6c757d;
+  }
+  .status-badge {
+    font-size: 0.9rem;
+    padding: 0.4em 0.7em;
+    vertical-align: middle;
+  }
+  .refresh-button {
+    margin-left: 10px;
   }
 </style>
 {% endblock %} {% block content %}
@@ -105,13 +110,31 @@ Details | Mini-Amazon{% endblock %} {% block extra_css %}
       <h2 class="h4 mb-0">Shipment #{{ shipment.shipment_id }}</h2>
       <div>
         <span
-          class="badge p-2 {% if shipment.status == 'delivered' %} bg-success {% elif shipment.status == 'delivering' %} bg-info text-dark {% elif shipment.status in ['packing', 'packed', 'loading'] %} bg-warning text-dark {% elif shipment.status == 'loaded' %} bg-primary {% else %} bg-secondary {% endif %}"
+          id="package-status-badge-{{ shipment.shipment_id }}"
+          class="badge status-badge p-2 {% if shipment.status == 'delivered' %} bg-success {% elif shipment.status == 'delivering' %} bg-info text-dark {% elif shipment.status in ['packing', 'packed', 'loading'] %} bg-warning text-dark {% elif shipment.status == 'loaded' %} bg-primary {% else %} bg-secondary {% endif %}"
         >
-          Status: {{ shipment.status|title }}
+          Status:
+          <span id="package-status-{{ shipment.shipment_id }}"
+            >{{ shipment.status|title }}</span
+          >
         </span>
+        <button
+          id="refresh-status-btn-{{ shipment.shipment_id }}"
+          class="btn btn-sm btn-outline-secondary refresh-status-btn refresh-button"
+          data-shipment-id="{{ shipment.shipment_id }}"
+          title="Refresh Status"
+        >
+          <i class="fas fa-sync-alt"></i>
+        </button>
       </div>
     </div>
     <div class="card-body">
+      <div class="text-muted small mb-3 text-end">
+        <span id="last-updated-{{ shipment.shipment_id }}">
+          Last updated: {{ shipment.updated_at.strftime('%Y-%m-%d %H:%M:%S') if
+          shipment.updated_at else 'N/A' }}
+        </span>
+      </div>
       <div class="row">
         <div class="col-md-6">
           <h5>Details</h5>
@@ -131,16 +154,13 @@ Details | Mini-Amazon{% endblock %} {% block extra_css %}
             <strong>Destination:</strong> ({{ shipment.destination_x }}, {{
             shipment.destination_y }})
           </p>
-
+          <p>
+            <strong>UPS Account:</strong> {{ shipment.ups_account or 'N/A' }}
+          </p>
           <p><strong>Truck ID:</strong> {{ shipment.truck_id or 'N/A' }}</p>
           <p>
             <strong>Created:</strong> {{ shipment.created_at.strftime('%Y-%m-%d
             %H:%M') if shipment.created_at else 'N/A' }}
-          </p>
-          <p>
-            <strong>Last Updated:</strong> {{
-            shipment.updated_at.strftime('%Y-%m-%d %H:%M') if
-            shipment.updated_at else 'N/A' }}
           </p>
         </div>
         <div class="col-md-6">
@@ -172,11 +192,10 @@ Details | Mini-Amazon{% endblock %} {% block extra_css %}
         </div>
       </div>
 
-      {# --- Map Section --- #} {% if warehouse_lat and warehouse_lon and
-      destination_lat and destination_lon %}
+      {% if warehouse_lat and warehouse_lon and destination_lat and
+      destination_lon %}
       <hr class="my-4" />
       <h5>Shipment Route</h5>
-      {# This div holds the data for JavaScript #}
       <div
         id="mapData"
         data-wh-lat="{{ warehouse_lat }}"
@@ -189,13 +208,11 @@ Details | Mini-Amazon{% endblock %} {% block extra_css %}
       <div class="alert alert-warning mt-4">
         Map data is unavailable for this shipment (missing coordinates).
       </div>
-      {% endif %} {# --- End Map Section --- #} {# --- Timeline Section
-      (Optional) --- #}
+      {% endif %}
+
       <hr class="my-4" />
       <h5>Shipment History (Example)</h5>
       <ul class="timeline">
-        {# Example statuses - you'd generate this dynamically based on shipment
-        history if available #}
         <li
           class="timeline-item {% if shipment.status in ['packing', 'packed', 'loading', 'loaded', 'delivering', 'delivered'] %}completed{% endif %}"
         >
@@ -220,7 +237,6 @@ Details | Mini-Amazon{% endblock %} {% block extra_css %}
             <p class="mb-0 small">
               Shipment is packed and awaiting truck arrival.
             </p>
-            {# Add timestamp if available #}
           </div>
         </li>
         <li
@@ -230,7 +246,6 @@ Details | Mini-Amazon{% endblock %} {% block extra_css %}
           <div class="timeline-content">
             <strong>Loading</strong>
             <p class="mb-0 small">Shipment is being loaded onto the truck.</p>
-            {# Add timestamp if available #}
           </div>
         </li>
         <li
@@ -240,7 +255,6 @@ Details | Mini-Amazon{% endblock %} {% block extra_css %}
           <div class="timeline-content">
             <strong>Loaded onto Truck</strong>
             <p class="mb-0 small">Shipment loaded and ready for delivery.</p>
-            {# Add timestamp if available #}
           </div>
         </li>
         <li
@@ -252,7 +266,6 @@ Details | Mini-Amazon{% endblock %} {% block extra_css %}
             <p class="mb-0 small">
               The shipment is currently en route to the destination.
             </p>
-            {# Add timestamp if available #}
           </div>
         </li>
         <li
@@ -262,11 +275,9 @@ Details | Mini-Amazon{% endblock %} {% block extra_css %}
           <div class="timeline-content">
             <strong>Delivered</strong>
             <p class="mb-0 small">The shipment has reached its destination.</p>
-            {# Add timestamp if available #}
           </div>
         </li>
       </ul>
-      {# --- End Timeline Section --- #}
     </div>
     <div class="card-footer text-center">
       <a
@@ -278,117 +289,68 @@ Details | Mini-Amazon{% endblock %} {% block extra_css %}
     </div>
   </div>
 </div>
-
-{% endblock %} {% block extra_js %} {# Check if coordinates are available before
-including/running map script #} {% if warehouse_lat and warehouse_lon and
+{% endblock %} {% block extra_js %} {% if warehouse_lat and warehouse_lon and
 destination_lat and destination_lon and google_maps_api_key %}
 <script>
   function initMap() {
-    console.log("Initializing map...");
     const mapData = document.getElementById("mapData");
-    if (!mapData) {
-      console.error("Map data element not found!");
-      return;
-    }
-
-    // Retrieve coordinates safely
+    if (!mapData) return;
     const warehouseLat = parseFloat(mapData.dataset.whLat);
     const warehouseLon = parseFloat(mapData.dataset.whLon);
     const destinationLat = parseFloat(mapData.dataset.destLat);
     const destinationLon = parseFloat(mapData.dataset.destLon);
-
-    // Validate coordinates
     if (
       isNaN(warehouseLat) ||
       isNaN(warehouseLon) ||
       isNaN(destinationLat) ||
       isNaN(destinationLon)
     ) {
-      console.error("Invalid coordinates received:", mapData.dataset);
-      // Display error on page?
       document.getElementById("shipmentMap").innerHTML =
         '<div class="alert alert-danger">Error: Invalid map coordinates provided.</div>';
       return;
     }
-
-    console.log(`Origin: ${warehouseLat}, ${warehouseLon}`);
-    console.log(`Destination: ${destinationLat}, ${destinationLon}`);
-
     const originLatLng = new google.maps.LatLng(warehouseLat, warehouseLon);
     const destinationLatLng = new google.maps.LatLng(
       destinationLat,
       destinationLon
     );
-
-    // Calculate map bounds
     const bounds = new google.maps.LatLngBounds();
     bounds.extend(originLatLng);
     bounds.extend(destinationLatLng);
-
-    const mapOptions = {
-      // zoom: 7, // Zoom will be set by fitBounds
-      // center: bounds.getCenter(), // Center will be set by fitBounds
-      mapTypeId: google.maps.MapTypeId.ROADMAP,
-    };
+    const mapOptions = { mapTypeId: google.maps.MapTypeId.ROADMAP };
     const map = new google.maps.Map(
       document.getElementById("shipmentMap"),
       mapOptions
     );
-
-    // Fit map to bounds after adding markers/route
     map.fitBounds(bounds);
-    // Add a listener to adjust zoom after bounds are fitted (prevents over-zooming on short routes)
     google.maps.event.addListenerOnce(map, "bounds_changed", function (event) {
-      if (this.getZoom() > 14) {
-        // Max zoom level (adjust as needed)
-        this.setZoom(14);
-      }
-      // If bounds are very close, zoom out a bit more
-      if (bounds.getNorthEast().equals(bounds.getSouthWest())) {
-        this.setZoom(12); // Example zoom level for single point
-      }
+      if (this.getZoom() > 14) this.setZoom(14);
+      if (bounds.getNorthEast().equals(bounds.getSouthWest())) this.setZoom(12);
     });
-
     const directionsService = new google.maps.DirectionsService();
     const directionsRenderer = new google.maps.DirectionsRenderer({
-      suppressMarkers: true, // We'll add custom markers
+      suppressMarkers: true,
     });
     directionsRenderer.setMap(map);
-
-    // Add markers for origin and destination
     const originMarker = new google.maps.Marker({
       position: originLatLng,
       map: map,
       title: "Warehouse (Origin)",
-      icon: {
-        // Optional: Custom icon
-        url: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png",
-      },
     });
-
     const destinationMarker = new google.maps.Marker({
       position: destinationLatLng,
       map: map,
       title: "Destination",
-      icon: {
-        // Optional: Custom icon
-        url: "http://maps.google.com/mapfiles/ms/icons/red-dot.png",
-      },
     });
-
     const request = {
       origin: originLatLng,
       destination: destinationLatLng,
-      travelMode: google.maps.TravelMode.DRIVING, // Assuming driving
+      travelMode: google.maps.TravelMode.DRIVING,
     };
-
     directionsService.route(request, function (result, status) {
       if (status == google.maps.DirectionsStatus.OK) {
-        console.log("Directions received successfully.");
         directionsRenderer.setDirections(result);
       } else {
-        console.error("Directions request failed due to " + status);
-        // Provide user feedback within the map div
         document.getElementById("shipmentMap").innerHTML =
           '<div class="alert alert-warning">Could not calculate directions. Status: ' +
           status +
@@ -397,11 +359,118 @@ destination_lat and destination_lon and google_maps_api_key %}
     });
   }
 </script>
-{# IMPORTANT: Replace YOUR_GOOGLE_MAPS_API_KEY with your actual key or pass it
-from config #} {# Ensure the key is passed correctly from the controller #}
 <script
   src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBWp117L-LN37l9oQNzX02-izkvpU8MpbA&callback=initMap&libraries=marker&v=beta"
   async
   defer
 ></script>
-{% endif %} {# End coordinate check #} {% endblock %}
+{% endif %}
+
+<script>
+  function getStatusColorInfo(status) {
+    switch (status.toLowerCase()) {
+      case "delivered":
+        return { bg: "bg-success", text: "" };
+      case "delivering":
+        return { bg: "bg-info", text: "text-dark" };
+      case "loaded":
+        return { bg: "bg-primary", text: "" };
+      case "packing":
+      case "packed":
+      case "loading":
+        return { bg: "bg-warning", text: "text-dark" };
+      default:
+        return { bg: "bg-secondary", text: "" };
+    }
+  }
+
+  function refreshPackageStatus(shipmentId) {
+    const statusTextElement = document.getElementById(
+      `package-status-${shipmentId}`
+    );
+    const statusBadgeElement = document.getElementById(
+      `package-status-badge-${shipmentId}`
+    );
+    const buttonElement = document.getElementById(
+      `refresh-status-btn-${shipmentId}`
+    );
+    const updatedElement = document.getElementById(
+      `last-updated-${shipmentId}`
+    );
+    const originalButtonHtml = buttonElement ? buttonElement.innerHTML : "";
+
+    if (buttonElement) {
+      buttonElement.disabled = true;
+      buttonElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    }
+
+    fetch(`/api/packages/${shipmentId}/refresh`)
+      .then((response) => {
+        if (!response.ok) {
+          return response.json().then((errData) => {
+            throw new Error(errData.error || `HTTP error ${response.status}`);
+          });
+        }
+        return response.json();
+      })
+      .then((data) => {
+        if (data.success) {
+          const newStatus =
+            data.status.charAt(0).toUpperCase() + data.status.slice(1);
+          const colorInfo = getStatusColorInfo(data.status);
+
+          if (statusTextElement) statusTextElement.textContent = newStatus;
+          if (statusBadgeElement)
+            statusBadgeElement.className = `badge status-badge p-2 ${colorInfo.bg} ${colorInfo.text}`;
+          if (updatedElement) {
+            const formattedDate = new Date(data.updated_at).toLocaleString();
+            updatedElement.textContent = `Last refreshed: ${formattedDate}`;
+          }
+          if (buttonElement) {
+            buttonElement.innerHTML = '<i class="fas fa-check"></i>';
+            setTimeout(() => {
+              buttonElement.innerHTML = originalButtonHtml;
+              buttonElement.disabled = false;
+            }, 1500);
+          }
+        } else {
+          console.error(
+            `Failed to refresh status for ${shipmentId}:`,
+            data.error
+          );
+          alert(`Error refreshing status: ${data.error}`);
+          if (buttonElement) {
+            buttonElement.innerHTML = '<i class="fas fa-times"></i>';
+            setTimeout(() => {
+              buttonElement.innerHTML = originalButtonHtml;
+              buttonElement.disabled = false;
+            }, 2000);
+          }
+        }
+      })
+      .catch((error) => {
+        console.error("API request error:", error);
+        alert(`Failed to contact server: ${error.message}`);
+        if (buttonElement) {
+          buttonElement.innerHTML = originalButtonHtml;
+          buttonElement.disabled = false;
+        }
+      });
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const refreshButtons = document.querySelectorAll(".refresh-status-btn");
+    refreshButtons.forEach((button) => {
+      button.addEventListener("click", function () {
+        const shipmentId = this.dataset.shipmentId;
+        if (shipmentId) {
+          refreshPackageStatus(shipmentId);
+        } else {
+          console.error("Missing data-shipment-id attribute on button");
+        }
+      });
+    });
+  });
+</script>
+
+{% endblock %}

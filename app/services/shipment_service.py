@@ -157,6 +157,8 @@ class ShipmentService:
                 logger.info(f"No packed shipments found at warehouse {warehouse_id} for truck {truck_id}")
                 return True
             
+            waiting_products = current_app.config.get('WAITING_PRODUCTS')
+
             # update loading
             for shipment in shipments:
                 shipment.truck_id = truck_id

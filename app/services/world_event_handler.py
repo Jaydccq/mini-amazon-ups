@@ -3,7 +3,8 @@ import logging
 from app.services.warehouse_service import WarehouseService
 from app.services.shipment_service import ShipmentService
 from flask import current_app
-
+from datetime import datetime, timezone
+from app import db
 logger = logging.getLogger(__name__)
 
 class WorldEventHandler:
@@ -47,14 +48,37 @@ class WorldEventHandler:
             quantity=quantity
         )
     
+
     def handle_package_ready(self, event_data):
         shipment_id = event_data.get('shipment_id')
-        
-        if not shipment_id:
-            return False, "Missing shipment_id"
-        
-        # Use shipment service to handle the package being ready
-        return self.shipment_service.handle_package_packed(shipment_id)
+        waiting_products = current_app.config.get('WAITING_PRODUCTS', {})
+        if shipment_id not in waiting_products:
+            return self.shipment_service.handle_package_packed(shipment_id)
+        else:
+            warehouse_id = event_data.get('warehouse_id')
+            logger.info(f"Processing package ready event: {event_data}")
+            logger.info(f"Shipment {shipment_id} is waiting for products: {waiting_products}")
+            truck_id = waiting_products[shipment_id]
+            shipment = self.shipment_service.get_shipment_by_id(shipment_id)
+            if shipment:
+                shipment.status = 'loading'
+                shipment.truck_id = truck_id
+                shipment.updated_at = datetime.now(timezone.utc)
+                db.session.commit()
+                logger.info(f"Updated shipment {shipment_id} status to 'loading'")
+            else:
+                logger.warning(f"Shipment {shipment_id} not found in database")
+
+            # Use the world simulator service from the shipment_service
+            self.shipment_service.world_simulator_service.load_shipment(
+                    shipment_id=shipment_id,
+                    truck_id=waiting_products[shipment_id],
+                    warehouse_id=warehouse_id
+                )
+            del waiting_products[shipment_id]
+            current_app.config['WAITING_PRODUCTS'] = waiting_products
+            return True, f"Shipment {shipment_id} is being loaded onto truck {waiting_products[shipment_id]} at warehouse {warehouse_id}"
+
     
     def handle_package_loaded(self, event_data):
         shipment_id = event_data.get('shipment_id')

@@ -259,16 +259,18 @@ class WorldSimulatorService:
             load.seqnum = self._get_next_seqnum()
             
             # Save command to database
-            db_message = WorldMessage(
-                seqnum=load.seqnum,
-                message_type='load',
-                message_content=f"Warehouse: {warehouse_id}, Truck: {truck_id}, Shipment: {shipment_id}",
-                status='sent'
-            )
-            db.session.add(db_message)
-            db.session.commit()
+            # db_message = WorldMessage(
+            #     seqnum=load.seqnum,
+            #     message_type='load',
+            #     message_content=f"Warehouse: {warehouse_id}, Truck: {truck_id}, Shipment: {shipment_id}",
+            #     status='sent'
+            # )
+            # db.session.add(db_message)
+            # db.session.commit()
             
             # ceate event sequence number
+            
+
             event = threading.Event()
             with self.lock:
                 self.response_events[load.seqnum] = event

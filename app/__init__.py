@@ -4,6 +4,7 @@ from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_wtf.csrf import CSRFProtect
 import logging
+import queue
 
 from app.model import db, User, ProductCategory
 from app.controllers.seller_controller import seller_bp
@@ -112,6 +113,10 @@ def create_app(test_config=None):
             app.config['DEFAULT_SIM_SPEED'] = 3001
             app.config['WORLD_SIMULATOR_SERVICE'] = world_simulator_service
             app.logger.info(f"WorldSimulatorService initialized and stored (Host: {app.config.get('WORLD_HOST')}, Port: {app.config.get('WORLD_PORT')})")
+
+            # Initialize the blocking queue for waiting trucks
+            waiting_trucks = queue.Queue()
+            app.config['WAITING_TRUCKS'] = waiting_trucks
         except Exception as e:
             app.logger.error(f"Failed to initialize WorldSimulatorService: {e}", exc_info=True)
             app.config['WORLD_SIMULATOR_SERVICE'] = None # Ensure it's None if failed

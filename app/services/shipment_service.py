@@ -191,7 +191,7 @@ class ShipmentService:
             db.session.commit()
             
             # notify UPS that the package is loaded
-            self.ups_integration.notify_package_loaded(shipment_id, truck_id)
+            self.ups_integration.notify_package_loaded(shipment_id)
             
             return True, "Shipment marked as loaded"
         except Exception as e:

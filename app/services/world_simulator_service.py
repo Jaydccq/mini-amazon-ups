@@ -298,6 +298,27 @@ class WorldSimulatorService:
             return False, "Not connected to World Simulator"
         
         try:
+            from app.model import Package
+            
+            package = None
+            if self.world_id:
+                package = Package.query.filter_by(package_id=package_id, world_id=self.world_id).first()
+            
+            # If package doesn't exist, create a placeholder entry
+            if not package and self.world_id:
+                try:
+                    package = Package(
+                        package_id=package_id, 
+                        world_id=self.world_id, 
+                        status='unknown'
+                    )
+                    db.session.add(package)
+                    db.session.commit()
+                    logger.info(f"Created placeholder package record for ID {package_id} in world {self.world_id}")
+                except Exception as e:
+                    db.session.rollback()
+                    logger.warning(f"Could not create placeholder package: {e}")
+            
             command = amazon_pb2.ACommands()
             query = command.queries.add()
             query.packageid = package_id
@@ -312,7 +333,6 @@ class WorldSimulatorService:
             db.session.add(db_message)
             db.session.commit()
             
-            # create event sequence number
             event = threading.Event()
             with self.lock:
                 self.response_events[query.seqnum] = event
@@ -329,7 +349,7 @@ class WorldSimulatorService:
             
             return False, "Timeout waiting for response"
         except Exception as e:
-            logger.error(f"Error querying package: {e}")
+            logger.error(f"Error querying package: {e}", exc_info=True)
             return False, str(e)
     
     def queue_command(self, command):
@@ -478,17 +498,28 @@ class WorldSimulatorService:
                 db.session.rollback()
                 logger.error(f"Failed to commit status update for seqnum {seqnum}: {commit_err}", exc_info=True)
         else:
-            logger.warning(f"Could not find WorldMessage in DB for acked seqnum {seqnum}.")
-        
+            # Create a new WorldMessage record for this ack
+            try:
+                new_message = WorldMessage(
+                    seqnum=seqnum,
+                    message_type='auto_created',
+                    message_content=f"Auto-created record for ack {seqnum}",
+                    status='acked'
+                )
+                db.session.add(new_message)
+                db.session.commit()
+                logger.info(f"Created new WorldMessage record for previously unknown seqnum {seqnum}")
+            except Exception as create_err:
+                db.session.rollback()
+                logger.error(f"Failed to create WorldMessage for seqnum {seqnum}: {create_err}", exc_info=True)
+                
         with self.lock:
-            # Only set the event if it exists in the dictionary
             if seqnum in self.response_events:
                 if seqnum not in self.pending_responses or self.pending_responses[seqnum] is None:
                     self.pending_responses[seqnum] = "ACK"
                 self.response_events[seqnum].set()
                 logger.info(f"Set event for seqnum {seqnum}")
             else:
-                # Just log a message - this is expected for asynchronous commands
                 logger.debug(f"No event waiting for ack of seqnum {seqnum}")
     
     def process_arrived(self, package):

@@ -81,11 +81,27 @@ endblock %} {% block extra_css %}
                       </div>
                     </div>
                   </td>
-                  <td>${{ "%.2f"|format(item.price) }}</td>
+                  <td>
+                    ${{ "%.2f"|format(item.price) }}
+                    <br />
+                    {# FIX Applied: Cast item.price to float #}
+                    <small class="text-muted"
+                      >After tax: ${{ "%.2f"|format(item.price|float * 2.45)
+                      }}</small
+                    >
+                  </td>
                   <td>{{ item.quantity }}</td>
                   <td>
+                    {# FIX Applied: Cast item.price to float #}
                     <strong
-                      >${{ "%.2f"|format(item.price * item.quantity) }}</strong
+                      >${{ "%.2f"|format(item.price|float * item.quantity)
+                      }}</strong
+                    >
+                    <br />
+                    {# FIX Applied: Cast item.price to float #}
+                    <small class="text-muted"
+                      >After tax: ${{ "%.2f"|format(item.price|float *
+                      item.quantity * 2.45) }}</small
                     >
                   </td>
                 </tr>
@@ -94,10 +110,34 @@ endblock %} {% block extra_css %}
               <tfoot>
                 <tr>
                   <td colspan="3" class="text-end">
-                    <strong>Order Total:</strong>
+                    <strong>Subtotal:</strong>
                   </td>
                   <td>
                     <strong>${{ "%.2f"|format(order.total_amount) }}</strong>
+                  </td>
+                </tr>
+                <tr>
+                  <td colspan="3" class="text-end">
+                    <strong>Tax (145%):</strong>
+                  </td>
+                  <td>
+                    {# FIX Applied: Cast order.total_amount to float #}
+                    <strong
+                      >${{ "%.2f"|format(order.total_amount|float * 1.45)
+                      }}</strong
+                    >
+                  </td>
+                </tr>
+                <tr>
+                  <td colspan="3" class="text-end">
+                    <strong>Order Total (with tax):</strong>
+                  </td>
+                  <td>
+                    {# FIX Applied: Cast order.total_amount to float #}
+                    <strong
+                      >${{ "%.2f"|format(order.total_amount|float * 2.45)
+                      }}</strong
+                    >
                   </td>
                 </tr>
               </tfoot>
@@ -132,8 +172,22 @@ endblock %} {% block extra_css %}
                 <span>{{ order.num_products }}</span>
               </div>
               <div class="d-flex justify-content-between mb-2">
-                <span>Total Amount:</span>
+                <span>Subtotal:</span>
                 <span>${{ "%.2f"|format(order.total_amount) }}</span>
+              </div>
+              <div class="d-flex justify-content-between mb-2">
+                <span>Tax (145%):</span>
+                {# FIX Applied: Cast order.total_amount to float #}
+                <span
+                  >${{ "%.2f"|format(order.total_amount|float * 1.45) }}</span
+                >
+              </div>
+              <div class="d-flex justify-content-between mb-2">
+                <span>Total (with tax):</span>
+                {# FIX Applied: Cast order.total_amount to float #}
+                <span
+                  >${{ "%.2f"|format(order.total_amount|float * 2.45) }}</span
+                >
               </div>
             </div>
           </div>

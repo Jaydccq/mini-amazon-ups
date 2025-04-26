@@ -960,14 +960,25 @@ def refresh_package_status(shipment_id):
 
     shipment = Shipment.query.get(shipment_id)
     if not shipment:
-        abort(404, description="Shipment not found")
+        return jsonify({
+            'success': False,
+            'error': 'Shipment not found'
+        }), 404
+        
     order = Order.query.get(shipment.order_id)
     if not order:
-         logger.error(f"Data integrity issue: Order ID {shipment.order_id} not found for Shipment ID {shipment_id}")
-         abort(500, description="Associated order not found")
+        logger.error(f"Data integrity issue: Order ID {shipment.order_id} not found for Shipment ID {shipment_id}")
+        return jsonify({
+            'success': False,
+            'error': 'Associated order not found',
+            'current_status': shipment.status  # Return current status anyway
+        }), 500
 
     if order.buyer_id != current_user.user_id and not current_user.is_seller:
-        abort(403, description="Permission denied")
+        return jsonify({
+            'success': False,
+            'error': 'Permission denied'
+        }), 403
 
     logger.info(f"API request to refresh status for shipment {shipment_id}")
     success, result = shipment_service.query_package_status(shipment_id)
@@ -977,26 +988,25 @@ def refresh_package_status(shipment_id):
             'success': True,
             'shipment_id': shipment_id,
             'status': result,
-            'updated_at': datetime.now().isoformat()
+            'updated_at': datetime.now().isoformat(),
+            'delivered': result.lower() == 'delivered',
+            'in_transit': result.lower() in ['loaded', 'delivering'],
+            'order_id': shipment.order_id,
+            'warehouse_id': shipment.warehouse_id
         })
     else:
-        status_code = 500
-        if result == "Shipment not found":
-            status_code = 404
-        elif result == "Not connected to World Simulator":
-            status_code = 503
-        elif "Failed to query package status" in result:
-             status_code = 502
-
+        # Even if the refresh fails, return the current status
         return jsonify({
             'success': False,
             'shipment_id': shipment_id,
-            'error': result
-        }), status_code
+            'error': result,
+            'current_status': shipment.status,
+            'updated_at': shipment.updated_at.isoformat() if shipment.updated_at else None
+        }), 500
+    
 
 @amazon_bp.route('/orders/<int:order_id>/update_address/<int:shipment_id>', methods=['POST'])
 @login_required
-
 def update_address(order_id, shipment_id):
     shipment_service = ShipmentService() 
     
@@ -1022,3 +1032,26 @@ def update_address(order_id, shipment_id):
         flash(f'Failed to update address: {message}', 'danger')
 
     return redirect(url_for('amazon.order_detail', order_id=order_id))
+
+
+@amazon_bp.route('/become-seller', methods=['POST'])
+@login_required
+def become_seller():
+    user = db.session.get(User, current_user.user_id)
+    if not user:
+        flash('User not found.', 'error')
+        return redirect(url_for('amazon.profile'))
+
+    if user.is_seller:
+        flash('You are already registered as a seller.', 'info')
+    else:
+        try:
+            user.is_seller = True
+            db.session.commit()
+            flash('Congratulations! You are now registered as a seller.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'An error occurred: {str(e)}', 'danger')
+            current_app.logger.error(f"Error making user {user.user_id} a seller: {e}")
+
+    return redirect(url_for('amazon.profile'))

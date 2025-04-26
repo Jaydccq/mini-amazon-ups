@@ -59,7 +59,11 @@
                                             <h6 class="my-0">{{ item.product.product_name if item.product else 'Unknown Product' }}</h6>
                                             <small class="text-muted">Quantity: {{ item.quantity }}</small>
                                         </div>
-                                        <span>${{ "%.2f"|format(item.price) }} each</span>
+                                        <div class="text-end">
+                                            <span class="d-block">${{ "%.2f"|format(item.price) }} each</span>
+                                            {# FIX: Cast item.price to float #}
+                                            <small class="text-muted">After tax: ${{ "%.2f"|format(item.price|float * 2.45) }}</small>
+                                        </div>
                                     </li>
                                     {% endfor %}
                                 </ul>
@@ -72,9 +76,19 @@
                                             <span>Total Items:</span>
                                             <strong>{{ order.num_products }}</strong>
                                         </div>
-                                        <div class="d-flex justify-content-between">
-                                            <span>Total Amount:</span>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span>Subtotal:</span>
                                             <strong>${{ "%.2f"|format(order.total_amount) }}</strong>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span>Tax (145%):</span>
+                                            {# FIX: Cast order.total_amount to float #}
+                                            <strong>${{ "%.2f"|format(order.total_amount|float * 1.45) }}</strong>
+                                        </div>
+                                        <div class="d-flex justify-content-between">
+                                            <span>Total (with tax):</span>
+                                            {# FIX: Cast order.total_amount to float #}
+                                            <strong>${{ "%.2f"|format(order.total_amount|float * 2.45) }}</strong>
                                         </div>
                                     </div>
                                 </div>

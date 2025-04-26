@@ -7,7 +7,7 @@ import logging
 import threading
 from sqlalchemy import func
 from app.controllers.seller_controller import seller_bp 
-from app.controllers.amazon_controller import update_address
+from app.controllers.amazon_controller import update_address,become_seller
 
 from app.model import db, User, ProductCategory
 from app.controllers.seller_controller import seller_bp
@@ -74,6 +74,7 @@ def create_app(test_config=None):
 
     csrf.exempt(ups_webhooks)
     csrf.exempt(update_address)
+    csrf.exempt(become_seller)
 
     login_manager = LoginManager(app)
     login_manager.login_view = 'amazon.login'

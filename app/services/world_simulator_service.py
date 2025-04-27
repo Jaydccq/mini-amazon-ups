@@ -659,11 +659,9 @@ class WorldSimulatorService:
 
             if world_id:
                 connect_msg.worldid = world_id
-
-
             
             default_init_warehouses = []
-            for i in range(1, 5):
+            for i in range(1, 50):
                 one_warehouse = Warehouse()
                 one_warehouse.warehouse_id = i
                 one_warehouse.x = random.randint(10, 100)
@@ -674,7 +672,9 @@ class WorldSimulatorService:
                 new_wh.x = one_warehouse.x
                 new_wh.y = one_warehouse.y
             
-            if init_warehouses:
+            if not init_warehouses:
+                init_warehouses = default_init_warehouses
+            else:
                 for wh in init_warehouses:
                     new_wh = connect_msg.initwh.add()
                     new_wh.id = wh.warehouse_id
@@ -698,8 +698,9 @@ class WorldSimulatorService:
 
             if init_warehouses:
                 with self.app.app_context():
-                    db.session.query(Warehouse).filter_by(world_id=self.world_id).delete()
-                    db.session.commit()
+                    # db.session.query(Warehouse).filter_by(world_id=self.world_id).delete()
+                    # db.session.commit()
+                    logger.info(f"Skipping deletion of warehouses for world {self.world_id} during connect/init.")
                     for wh_data in init_warehouses:
                         existing_wh = db.session.get(Warehouse, wh_data.warehouse_id)
                         if existing_wh and existing_wh.world_id != self.world_id:
@@ -787,7 +788,7 @@ class WorldSimulatorService:
                                 )
                                 products_initialized += 1
                             else:
-                                 logger.debug(f"Skipping buy command for Product ID {product.product_id} as local quantity is 0 or less.")
+                                logger.debug(f"Skipping buy command for Product ID {product.product_id} as local quantity is 0 or less.")
                             # time.sleep(0.05) # Optional delay
 
                         logger.info(f"Sent initial buy commands for {products_initialized} products (with qty > 0) to warehouse {target_warehouse_id}.")
@@ -812,9 +813,9 @@ class WorldSimulatorService:
             self.socket = None
             return None, "Connection refused"
         except socket.timeout:
-             logger.error(f"Connection timed out to World Simulator at {self.host}:{self.port}.")
-             self.socket = None
-             return None, "Connection timed out"
+            logger.error(f"Connection timed out to World Simulator at {self.host}:{self.port}.")
+            self.socket = None
+            return None, "Connection timed out"
         except Exception as e:
             logger.error(f"Error connecting to World Simulator: {e}", exc_info=True)
             if self.socket:
@@ -825,7 +826,6 @@ class WorldSimulatorService:
             self.socket = None
             self.connected = False
             return None, str(e)
-        
 
     def query_package(self, package_id):
         if not self.connected:

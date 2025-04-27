@@ -5,3 +5,7 @@ http://127.0.0.1:5001
 密码 (Password): admin
 
 docker compose exec web python
+
+docker exec -it docker_deploy-mydb-1 bash
+psql -U postgres
+\c worldSim

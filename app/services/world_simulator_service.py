@@ -8,7 +8,8 @@ from datetime import datetime
 from google.protobuf.message import Message
 from flask import current_app
 import random
-
+from sqlalchemy import func
+from app.model import db, User, ProductCategory, Cart, CartProduct,WarehouseProduct
 from app.model import db, WorldMessage, Warehouse
 from google.protobuf.internal.encoder import _VarintBytes
 from google.protobuf.internal.decoder import _DecodeVarint32
@@ -59,81 +60,81 @@ class WorldSimulatorService:
             return self.seqnum
     
     # Connect to the world simulator
-    def connect(self, world_id=None, init_warehouses=None):
+    # def connect(self, world_id=None, init_warehouses=None):
         
-        try:
-            self.cleanup_old_world_messages()
-            logger.info(f"Connecting to World Simulator at {self.host}:{self.port}...")
-            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.socket.connect(('docker_deploy-server-1', self.port))
-            logger.info("Connected to World Simulator")
-            # Create connection message
-            connect_msg = amazon_pb2.AConnect()
-            connect_msg.isAmazon = True
+    #     try:
+    #         self.cleanup_old_world_messages()
+    #         logger.info(f"Connecting to World Simulator at {self.host}:{self.port}...")
+    #         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    #         self.socket.connect(('docker_deploy-server-1', self.port))
+    #         logger.info("Connected to World Simulator")
+    #         # Create connection message
+    #         connect_msg = amazon_pb2.AConnect()
+    #         connect_msg.isAmazon = True
 
-            default_init_warehouses = []
-            for i in range(1, 51):
-                one_warehouse = Warehouse()
-                one_warehouse.warehouse_id = i
-                one_warehouse.x = random.randint(10, 100)
-                one_warehouse.y = random.randint(10, 100)
-                default_init_warehouses.append(one_warehouse)
+    #         default_init_warehouses = []
+    #         for i in range(1, 51):
+    #             one_warehouse = Warehouse()
+    #             one_warehouse.warehouse_id = i
+    #             one_warehouse.x = random.randint(10, 100)
+    #             one_warehouse.y = random.randint(10, 100)
+    #             default_init_warehouses.append(one_warehouse)
 
-            init_warehouses =  default_init_warehouses
-            default_speed_command = amazon_pb2.ACommands()
-            default_speed_command.simspeed = 1000
-            self.queue_command(default_speed_command)
-            print(connect_msg)
-            if world_id:
-                connect_msg.worldid = world_id
+    #         init_warehouses =  default_init_warehouses
+    #         default_speed_command = amazon_pb2.ACommands()
+    #         default_speed_command.simspeed = 1000
+    #         self.queue_command(default_speed_command)
+    #         print(connect_msg)
+    #         if world_id:
+    #             connect_msg.worldid = world_id
             
-            if init_warehouses:
-                for wh in init_warehouses:
-                    new_wh = connect_msg.initwh.add()
-                    new_wh.id = wh.warehouse_id
-                    new_wh.x = wh.x
-                    new_wh.y = wh.y
+    #         if init_warehouses:
+    #             for wh in init_warehouses:
+    #                 new_wh = connect_msg.initwh.add()
+    #                 new_wh.id = wh.warehouse_id
+    #                 new_wh.x = wh.x
+    #                 new_wh.y = wh.y
             
-            # Send connection message
-            self.send_protobuf(connect_msg)
+    #         # Send connection message
+    #         self.send_protobuf(connect_msg)
             
-            # Receive 
-            data = self.receive_message()
-            # connect response
-            response = amazon_pb2.AConnected()
-            response.ParseFromString(data)
+    #         # Receive 
+    #         data = self.receive_message()
+    #         # connect response
+    #         response = amazon_pb2.AConnected()
+    #         response.ParseFromString(data)
             
-            self.world_id = response.worldid
-            self.connected = response.result == "connected!"
+    #         self.world_id = response.worldid
+    #         self.connected = response.result == "connected!"
             
-            if not self.connected:
-                logger.error(f"Failed to connect to World Simulator: {response.result}")
-                return None, response.result
+    #         if not self.connected:
+    #             logger.error(f"Failed to connect to World Simulator: {response.result}")
+    #             return None, response.result
 
-            # Initialize the database with the initial warehouses
-            if init_warehouses:
-                # Clear existing warehouses
-                db.session.query(Warehouse).delete()
-                for wh in init_warehouses:
-                    wh.world_id = self.world_id
-                    db.session.add(wh)
-                db.session.commit()
+    #         # Initialize the database with the initial warehouses
+    #         if init_warehouses:
+    #             # Clear existing warehouses
+    #             db.session.query(Warehouse).delete()
+    #             for wh in init_warehouses:
+    #                 wh.world_id = self.world_id
+    #                 db.session.add(wh)
+    #             db.session.commit()
             
-            # receiver_thread
-            self.receiver_thread = threading.Thread(target=self.receive_loop)
-            self.receiver_thread.daemon = True
-            self.receiver_thread.start()
-            # sender_thread
-            self.sender_thread = threading.Thread(target=self._send_loop)
-            self.sender_thread.daemon = True
-            self.sender_thread.start()
+    #         # receiver_thread
+    #         self.receiver_thread = threading.Thread(target=self.receive_loop)
+    #         self.receiver_thread.daemon = True
+    #         self.receiver_thread.start()
+    #         # sender_thread
+    #         self.sender_thread = threading.Thread(target=self._send_loop)
+    #         self.sender_thread.daemon = True
+    #         self.sender_thread.start()
             
-            logger.info(f"Connected to World Simulator with world_id {self.world_id}")
+    #         logger.info(f"Connected to World Simulator with world_id {self.world_id}")
             
-            return self.world_id, response.result
-        except Exception as e:
-            logger.error(f"Error connecting to World Simulator: {e}")
-            return None, str(e)
+    #         return self.world_id, response.result
+    #     except Exception as e:
+    #         logger.error(f"Error connecting to World Simulator: {e}")
+    #         return None, str(e)
     
     def disconnect(self):
         try:
@@ -298,7 +299,7 @@ class WorldSimulatorService:
             return False, "Not connected to World Simulator"
         
         try:
-            from app.model import Package
+            
             
             package = None
             if self.world_id:
@@ -695,13 +696,188 @@ class WorldSimulatorService:
             # Option 1: Delete all existing WorldMessage records
             deleted_count = db.session.query(WorldMessage).delete()
             
-            # Option 2: Delete messages older than a certain threshold (optional alternative)
-            # from datetime import datetime, timedelta
-            # threshold = datetime.utcnow() - timedelta(hours=24)
-            # deleted_count = db.session.query(WorldMessage).filter(WorldMessage.created_at < threshold).delete()
             
             db.session.commit()
             logger.info(f"Cleaned up {deleted_count} old world messages")
         except Exception as e:
             db.session.rollback()
             logger.error(f"Error cleaning up world messages: {e}")
+
+    def connect(self, world_id=None, init_warehouses=None):
+        try:
+            self.cleanup_old_world_messages()
+            logger.info(f"Connecting to World Simulator at {self.host}:{self.port}...")
+            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.socket.connect(('docker_deploy-server-1', self.port))
+            logger.info("Connected to World Simulator")
+
+            connect_msg = amazon_pb2.AConnect()
+            connect_msg.isAmazon = True
+
+            if world_id:
+                connect_msg.worldid = world_id
+
+            if init_warehouses:
+                for wh in init_warehouses:
+                    new_wh = connect_msg.initwh.add()
+                    new_wh.id = wh.warehouse_id
+                    new_wh.x = wh.x
+                    new_wh.y = wh.y
+            else:
+                default_init_warehouses = []
+                for i in range(1, 5):
+                    one_warehouse = Warehouse()
+                    one_warehouse.warehouse_id = i
+                    one_warehouse.x = random.randint(10, 100)
+                    one_warehouse.y = random.randint(10, 100)
+                    default_init_warehouses.append(one_warehouse)
+                    new_wh = connect_msg.initwh.add()
+                    new_wh.id = one_warehouse.warehouse_id
+                    new_wh.x = one_warehouse.x
+                    new_wh.y = one_warehouse.y
+
+            self.send_protobuf(connect_msg)
+
+            data = self.receive_message()
+            response = amazon_pb2.AConnected()
+            response.ParseFromString(data)
+
+            self.world_id = response.worldid
+            self.connected = response.result == "connected!"
+
+            if not self.connected:
+                logger.error(f"Failed to connect to World Simulator: {response.result}")
+                self.socket.close()
+                self.socket = None
+                return None, response.result
+
+            if init_warehouses:
+                with self.app.app_context():
+                    db.session.query(Warehouse).filter_by(world_id=self.world_id).delete()
+                    db.session.commit()
+                    for wh_data in init_warehouses:
+                        existing_wh = db.session.get(Warehouse, wh_data.warehouse_id)
+                        if existing_wh and existing_wh.world_id != self.world_id:
+                            logger.warning(f"Warehouse ID {wh_data.warehouse_id} exists with a different world ID. Overwriting.")
+                            db.session.delete(existing_wh)
+                            db.session.commit()
+
+                        new_db_wh = Warehouse(
+                            warehouse_id=wh_data.warehouse_id,
+                            x=wh_data.x,
+                            y=wh_data.y,
+                            world_id=self.world_id,
+                            active=True
+                        )
+                        db.session.merge(new_db_wh)
+                    try:
+                        db.session.commit()
+                        logger.info(f"Initialized/Updated {len(init_warehouses)} warehouses in DB for world {self.world_id}.")
+                    except Exception as db_err:
+                        db.session.rollback()
+                        logger.error(f"Database error initializing warehouses: {db_err}", exc_info=True)
+                        self.disconnect()
+                        return None, f"DB init error: {db_err}"
+
+            self.receiver_thread = threading.Thread(target=self.receive_loop)
+            self.receiver_thread.daemon = True
+            self.receiver_thread.start()
+
+            self.sender_thread = threading.Thread(target=self._send_loop)
+            self.sender_thread.daemon = True
+            self.sender_thread.start()
+
+            logger.info(f"Connected to World Simulator with world_id {self.world_id}. Starting product initialization...")
+
+            try:
+                with self.app.app_context():
+                    target_warehouse_id = None
+                    warehouse_list_for_init = init_warehouses if init_warehouses else []
+
+                    if warehouse_list_for_init:
+                        target_warehouse_id = warehouse_list_for_init[0].warehouse_id
+                        logger.info(f"Using first initialized warehouse ({target_warehouse_id}) for product stocking.")
+                    else:
+                        first_warehouse = db.session.query(Warehouse).filter_by(world_id=self.world_id, active=True).first()
+                        if first_warehouse:
+                            target_warehouse_id = first_warehouse.warehouse_id
+                            logger.info(f"Using first available warehouse ({target_warehouse_id}) from DB for product stocking.")
+                        else:
+                            logger.warning(f"Could not find an active warehouse for world {self.world_id} in DB. Trying default WH ID 1.")
+                            default_wh = db.session.get(Warehouse, 1)
+                            if default_wh and default_wh.active:
+                                target_warehouse_id = 1
+                                if default_wh.world_id != self.world_id:
+                                    logger.info(f"Assigning world ID {self.world_id} to default warehouse 1.")
+                                    default_wh.world_id = self.world_id
+                                    db.session.commit()
+                            else:
+                                logger.error("Default warehouse ID 1 not found or inactive. Cannot initialize products.")
+                    from app.model import Product
+                    if target_warehouse_id is not None:
+                        local_products = Product.query.all()
+                        logger.info(f"Found {len(local_products)} products in local DB to potentially initialize in warehouse {target_warehouse_id}.")
+
+                        products_initialized = 0
+                        for product in local_products:
+                            warehouse_stock = db.session.query(WarehouseProduct).filter_by(
+                                warehouse_id=target_warehouse_id,
+                                product_id=product.product_id
+                            ).first()
+
+                            initial_buy_quantity = 0
+                            if warehouse_stock:
+                                initial_buy_quantity = warehouse_stock.quantity
+                                logger.debug(f"Product ID {product.product_id}: Found stock {initial_buy_quantity} in local DB for WH {target_warehouse_id}.")
+                            else:
+                                logger.warning(f"Product ID {product.product_id}: No stock record found in local DB for WH {target_warehouse_id}. Buying quantity 0.")
+
+                            if initial_buy_quantity > 0:
+                                logger.debug(f"Initializing product ID {product.product_id} ('{product.product_name}') with quantity {initial_buy_quantity} in WH {target_warehouse_id}")
+                                self.buy_product(
+                                    warehouse_id=target_warehouse_id,
+                                    product_id=product.product_id,
+                                    description=product.product_name,
+                                    quantity=initial_buy_quantity
+                                )
+                                products_initialized += 1
+                            else:
+                                 logger.debug(f"Skipping buy command for Product ID {product.product_id} as local quantity is 0 or less.")
+                            # time.sleep(0.05) # Optional delay
+
+                        logger.info(f"Sent initial buy commands for {products_initialized} products (with qty > 0) to warehouse {target_warehouse_id}.")
+                    else:
+                        logger.error("No target warehouse ID determined. Skipping product initialization.")
+
+            except Exception as init_err:
+                logger.error(f"Error during product initialization after connecting: {init_err}", exc_info=True)
+                # self.disconnect()
+                # return None, f"Product init error: {init_err}"
+
+            default_speed_command = amazon_pb2.ACommands()
+            default_speed_command.simspeed = self.app.config.get('DEFAULT_SIM_SPEED', 1000)
+            self.queue_command(default_speed_command)
+            logger.info(f"Queued command to set sim speed to {default_speed_command.simspeed}")
+
+            logger.info(f"Connection process complete for world_id {self.world_id}")
+            return self.world_id, response.result
+
+        except ConnectionRefusedError:
+            logger.error(f"Connection refused by World Simulator at {self.host}:{self.port}.")
+            self.socket = None
+            return None, "Connection refused"
+        except socket.timeout:
+             logger.error(f"Connection timed out to World Simulator at {self.host}:{self.port}.")
+             self.socket = None
+             return None, "Connection timed out"
+        except Exception as e:
+            logger.error(f"Error connecting to World Simulator: {e}", exc_info=True)
+            if self.socket:
+                try:
+                    self.socket.close()
+                except Exception:
+                    pass
+            self.socket = None
+            self.connected = False
+            return None, str(e)
+        

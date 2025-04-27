@@ -1,0 +1,25 @@
+differentiation.txt
+---------------------
+
+Project: Mini-Amazon
+
+This document outlines the features implemented in our Mini-Amazon project that extend beyond the base requirements defined in the specification, aiming to differentiate our product as per Section 5[cite: 111].
+
+1.  Multi-Seller Marketplace & Seller Portal:
+    Feature: We implemented a multi-seller system allowing registered sellers (`is_seller=True` users) to manage their own inventory listings (`Inventory` table) for products, potentially setting different prices and quantities than the original product owner or other sellers. The product detail page (`product_detail.html`) displays options from multiple available sellers, sorted by price. Sellers have a dedicated portal (`/seller/...`) including a dashboard (`seller/dashboard.html`) with sales/inventory statistics, inventory management tools (`seller/inventory.html`), and order fulfillment capabilities (`seller/orders.html`).
+
+2.  Comprehensive Review System (Products & Sellers):
+    Feature: A full review system (`Review` model, `review_controller.py`, `review.py` service, review templates) allows authenticated users to submit ratings (1-5 stars) and comments for both products and the specific sellers they purchased from. Product detail pages display average ratings and counts, linking to dedicated review pages (`product_reviews.html`, `seller_reviews.html`) that show individual reviews and rating distributions. Users can also edit or delete their own reviews.
+
+3.  Advanced Admin/Warehouse Management UI with Mapping:
+    Feature: A dedicated admin section (`/admin/...`) allows users (specifically sellers in this implementation) to manage warehouses (`admin/warehouses.html`, `admin/add_warehouse.html`). This includes adding new warehouses by specifying coordinates (with a visual map preview) and viewing existing ones. The system also provides views for monitoring communication logs with the World Simulator (`admin/world_messages.html`) and the simulated UPS system (`admin/ups_messages.html`). Warehouse locations are visually approximated on a Google Map using latitude/longitude conversion (`mapping.py`).
+
+4.  Direct Stock Replenishment for Sellers via World Sim:
+    Feature: Sellers can directly request stock replenishment for products they list via their inventory management page (`seller/inventory.html`). This triggers a "buy" command (`APurchaseMore`) to the World Simulator through the `WarehouseService` and `WorldSimulatorService`. The UI allows selecting the target warehouse and quantity.
+
+5.  Robust API for UPS Integration & Webhooks:
+    Feature: Defined specific API endpoints (`amazon_exposed_api.py`, `webhook_controller.py`) for the external UPS system to call *into* our Amazon application. This includes webhooks for UPS to notify Amazon about truck dispatch (`/truck-dispatched`), arrival at a warehouse (`/truck-arrived`), and final shipment delivery (`/shipment-delivered`). An endpoint also allows UPS to request package details (`/shipment-detail-request`). Amazon also proactively notifies UPS upon package creation and loading (`ups_integration_service.py`).
+
+6.  Shipment Address Modification:
+    Feature: Users can modify the destination coordinates (X, Y) for their shipments via the order details page (`orders/detail.html`) or shipment details page (`shipments/detail.html`), as long as the shipment has not yet entered the 'delivering' or 'delivered' state. This interacts with the `ShipmentService` which can notify the UPS system (though the notification part in `ups_integration_service.py` seems commented out, the capability exists in the service layer).
+    

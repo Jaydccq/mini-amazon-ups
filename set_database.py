@@ -12,7 +12,7 @@ DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres:abc123@loca
 NUM_USERS = 100        
 NUM_SELLERS =30        
 NUM_CATEGORIES = 8      
-NUM_PRODUCTS_PER_CATEGORY = 15
+NUM_PRODUCTS_PER_CATEGORY = 15 #
 NUM_WAREHOUSES = 5       
 MAX_INITIAL_INVENTORY = 100 
 NUM_ORDERS_PER_USER = 3    
@@ -20,7 +20,7 @@ MAX_ITEMS_PER_ORDER = 5
 TOTAL_ORDERS_ESTIMATE = NUM_USERS * NUM_ORDERS_PER_USER
 NUM_SHIPMENTS_TO_CREATE = int(TOTAL_ORDERS_ESTIMATE * 0.85)
 NUM_REVIEWS_TO_CREATE = int(TOTAL_ORDERS_ESTIMATE * 1.2) 
-MIN_SELLERS_PER_PRODUCT = 2
+MIN_SELLERS_PER_PRODUCT = 2 # Reduced from 3
 NUM_ORDERS_ESTIMATE = NUM_USERS * NUM_ORDERS_PER_USER
 project_root = os.path.dirname(os.path.abspath(__file__))
 app_dir = os.path.join(project_root, 'app')
@@ -32,14 +32,14 @@ try:
     from app.model import (
         db as imported_db, User, ProductCategory, Product, Warehouse,
         WarehouseProduct, Cart, CartProduct, Order, OrderProduct, Shipment,
-        ShipmentItem, Review, Inventory
+        ShipmentItem, Review, Inventory # Added Inventory model
     )
     db_models = {
         'User': User, 'ProductCategory': ProductCategory, 'Product': Product,
         'Warehouse': Warehouse, 'WarehouseProduct': WarehouseProduct, 'Cart': Cart,
         'CartProduct': CartProduct, 'Order': Order, 'OrderProduct': OrderProduct,
         'Shipment': Shipment, 'ShipmentItem': ShipmentItem, 'Review': Review,
-        'Inventory': Inventory
+        'Inventory': Inventory # Added Inventory model
     }
 except ImportError as e:
     print(f"Error: Could not import application models (including Inventory). Ensure the script's location is correct and dependencies/models exist.")
@@ -47,8 +47,10 @@ except ImportError as e:
     print(f"Current Python Path: {sys.path}")
     sys.exit(1)
 
+# Initialize Faker
 fake = Faker()
 
+# --- Database Connection ---
 try:
     engine = create_engine(DATABASE_URL)
     connection = engine.connect()
@@ -65,10 +67,11 @@ except Exception as e:
 Session = sessionmaker(bind=engine)
 session = Session()
 
+
 def create_users(n_users, n_sellers):
     User = db_models['User']
     users_to_add = []
-    existing_emails = {u.email for u in session.query(User.email).all()}
+    existing_emails = {u.email for u in session.query(User.email).all()} # More efficient check
 
     admin_email = 'admin@example.com'
     if admin_email not in existing_emails:
@@ -88,25 +91,27 @@ def create_users(n_users, n_sellers):
              users_to_add.append(admin)
              existing_emails.add(admin_email)
 
+
     print(f"Attempting to create {n_sellers} sellers...")
     sellers_created = 0
     while sellers_created < n_sellers:
+        # Ensure we don't try to create more sellers than required if some already exist
         current_seller_count = session.query(func.count(User.user_id)).filter(User.is_seller == True).scalar()
-        if current_seller_count >= n_sellers + 1:
+        if current_seller_count >= n_sellers + 1: # +1 for admin
              print("Required number of sellers already exist.")
              break
 
         email = fake.unique.email()
         if email in existing_emails:
-            fake.unique.clear()
+            fake.unique.clear() # Clear uniqueness cache for email
             continue
         user = User(
             email=email,
             first_name=fake.first_name(),
             last_name=fake.last_name(),
-            address=fake.address().replace('\n', ', '),
+            address=fake.address().replace('\n', ', '), # Format address
             is_seller=True,
-            current_balance=round(random.uniform(500.0, 10000.0), 2)
+            current_balance=round(random.uniform(500.0, 10000.0), 2) # Add balance
         )
         user.set_password(fake.password(length=12))
         users_to_add.append(user)
@@ -120,15 +125,15 @@ def create_users(n_users, n_sellers):
     while buyers_created < n_users:
         email = fake.unique.email()
         if email in existing_emails:
-            fake.unique.clear()
+            fake.unique.clear() # Clear uniqueness cache for email
             continue
         user = User(
             email=email,
             first_name=fake.first_name(),
             last_name=fake.last_name(),
-            address=fake.address().replace('\n', ', '),
+            address=fake.address().replace('\n', ', '), # Format address
             is_seller=False,
-            current_balance=round(random.uniform(50.0, 2000.0), 2)
+            current_balance=round(random.uniform(50.0, 2000.0), 2) # Add balance
         )
         user.set_password(fake.password(length=12))
         users_to_add.append(user)
@@ -136,6 +141,7 @@ def create_users(n_users, n_sellers):
         buyers_created += 1
         if buyers_created % 50 == 0:
             print(f"  Created {buyers_created}/{n_users} buyers...")
+
 
     try:
         session.add_all([u for u in users_to_add if u not in session])
@@ -145,13 +151,15 @@ def create_users(n_users, n_sellers):
     except SQLAlchemyError as e:
         session.rollback()
         print(f"Error creating users: {e}")
-        return []
+        return [] # Return empty list on error
 
 def create_categories(n):
+    """Creates product categories with more variety."""
     ProductCategory = db_models['ProductCategory']
     categories_to_add = []
     existing_names = {c.category_name for c in session.query(ProductCategory.category_name).all()}
 
+    # Ensure default category exists
     default_cat_name = 'General'
     if default_cat_name not in existing_names:
         print("Creating default 'General' category...")
@@ -172,11 +180,13 @@ def create_categories(n):
     ]
     categories_created = 0
     while categories_created < n:
-        cat_name = fake.unique.catch_phrase().title()
+        cat_name = fake.unique.catch_phrase().title() # Use catchphrases for more variety
+        # Optional: combine with a base category sometimes
         if random.random() < 0.3:
              base = random.choice(base_categories)
+             # Avoid overly long names if combined
              combined_name = f"{base} - {cat_name}"
-             cat_name = combined_name[:99]
+             cat_name = combined_name[:99] # Ensure length constraint
 
         if cat_name in existing_names:
              fake.unique.clear()
@@ -190,6 +200,7 @@ def create_categories(n):
         if categories_created % 5 == 0 and categories_created > 0:
              print(f"  Created {categories_created}/{n} categories...")
 
+
     try:
         session.add_all(categories_to_add)
         session.commit()
@@ -201,6 +212,7 @@ def create_categories(n):
         return []
 
 def create_products(categories, sellers, n_per_category):
+    """Creates products with more descriptive text and varied pricing."""
     Product = db_models['Product']
     products_to_add = []
     existing_names = {p.product_name for p in session.query(Product.product_name).all()}
@@ -216,7 +228,7 @@ def create_products(categories, sellers, n_per_category):
     total_products_added = 0
     for category in categories:
         products_in_category = 0
-        attempt_limit = n_per_category * 3
+        attempt_limit = n_per_category * 3 # Limit attempts per category
         attempts = 0
         while products_in_category < n_per_category and attempts < attempt_limit:
             attempts += 1
@@ -230,13 +242,13 @@ def create_products(categories, sellers, n_per_category):
                 continue
 
             price = round(random.paretovariate(1.5) * random.uniform(5, 50), 2)
-            price = max(0.99, min(price, 5000.0))
+            price = max(0.99, min(price, 5000.0)) # Clamp price between $0.99 and $5000
             image=f"https://picsum.photos/seed/{prod_name.replace(' ', '_')}/400/300"
 
             product = Product(
                 category_id=category.category_id,
                 product_name=prod_name,
-                description=fake.paragraph(nb_sentences=random.randint(3, 7)),
+                description=fake.paragraph(nb_sentences=random.randint(3, 7)), # Longer descriptions
                 price=price,
                 owner_id=seller.user_id,
                 image=image,
@@ -252,6 +264,7 @@ def create_products(categories, sellers, n_per_category):
         if attempts >= attempt_limit:
              print(f"Warning: Reached attempt limit for category '{category.category_name}', created {products_in_category}/{n_per_category} products.")
 
+
     try:
         session.add_all(products_to_add)
         session.commit()
@@ -265,6 +278,7 @@ def create_products(categories, sellers, n_per_category):
         return []
 
 def create_warehouses(n):
+    """Creates warehouses."""
     Warehouse = db_models['Warehouse']
     warehouses_to_add = []
     print(f"Creating {n} warehouses...")
@@ -288,10 +302,135 @@ def create_warehouses(n):
         print(f"Error creating warehouses: {e}")
         return []
 
+def create_seller_inventory(products, sellers, min_sellers_per_prod):
+    Inventory = db_models['Inventory']
+    inventory_items_to_add = []
+
+    if not products or not sellers:
+        print("Error: Products and sellers are required to create seller inventory.")
+        return
+
+    if len(sellers) < min_sellers_per_prod:
+        print(f"Warning: Not enough sellers ({len(sellers)}) to meet the minimum requirement ({min_sellers_per_prod}). Adjusting target.")
+        min_sellers_per_prod = len(sellers)
+
+    if min_sellers_per_prod <= 0:
+        print("Minimum sellers per product is 0 or less. Skipping seller inventory creation.")
+        return
+
+    print(f"Ensuring at least {min_sellers_per_prod} sellers per product in Inventory table...")
+
+    existing_seller_map = {} # product_id -> set of seller_ids
+    for inv in session.query(Inventory.product_id, Inventory.seller_id).all():
+        if inv.product_id not in existing_seller_map:
+            existing_seller_map[inv.product_id] = set()
+        existing_seller_map[inv.product_id].add(inv.seller_id)
+
+    try:
+        test_product = None
+        if products:
+            test_product = products[0]
+        
+        if test_product:
+            product_id = test_product.product_id
+            for seller in sellers:
+                if seller.user_id == test_product.owner_id:
+                    continue  # Skip the product owner
+                
+                if product_id in existing_seller_map and seller.user_id in existing_seller_map[product_id]:
+                    existing_inventory = session.query(Inventory).filter_by(
+                        product_id=product_id, 
+                        seller_id=seller.user_id
+                    ).first()
+                    if existing_inventory:
+                        existing_inventory.quantity = 100  # Set a high quantity
+                        existing_inventory.unit_price = round(float(test_product.price) * 0.95, 2)  # Competitive price
+                else:
+                    # Create new listing with high quantity
+                    inventory_item = Inventory(
+                        seller_id=seller.user_id,
+                        product_id=product_id,
+                        quantity=100,  # High quantity
+                        unit_price=round(float(test_product.price) * 0.95, 2),  # Slightly below product price
+                        owner_id=test_product.owner_id
+                    )
+                    inventory_items_to_add.append(inventory_item)
+                    # Update local map
+                    if product_id not in existing_seller_map:
+                        existing_seller_map[product_id] = set()
+                    existing_seller_map[product_id].add(seller.user_id)
+            
+            if inventory_items_to_add:
+                try:
+                    session.add_all(inventory_items_to_add)
+                    session.commit()
+                    print(f"Created guaranteed high-inventory listings for test product ID {product_id}")
+                    inventory_items_to_add = []  # Reset for regular products
+                except SQLAlchemyError as e:
+                    session.rollback()
+                    print(f"Error adding test product inventory: {e}")
+    except Exception as e:
+        print(f"Error creating test product inventory: {e}")
+        session.rollback()
+
+    product_count = 0
+    added_count_total = 0
+    for product in products:
+        product_count += 1
+        if product_count % 100 == 0:
+            print(f"  Processing seller inventory for product {product_count}/{len(products)}...")
+
+        current_sellers = existing_seller_map.get(product.product_id, set())
+        sellers_needed = min_sellers_per_prod - len(current_sellers)
+
+        if sellers_needed > 0:
+            potential_sellers = [s for s in sellers if s.user_id != product.owner_id and s.user_id not in current_sellers]
+
+            if len(potential_sellers) < sellers_needed:
+                 additional_potential = [s for s in sellers if s.user_id not in current_sellers]
+                 # Select unique sellers from the combined list
+                 combined_potential = list(dict.fromkeys(potential_sellers + additional_potential)) # Keep order, unique
+                 potential_sellers = combined_potential
+
+            num_to_add = min(sellers_needed, len(potential_sellers))
+            if num_to_add > 0:
+                sellers_to_add = random.sample(potential_sellers, num_to_add)
+
+                for seller in sellers_to_add:
+                    quantity = random.randint(20, MAX_INITIAL_INVENTORY) # Increased from 5 to 20
+                    unit_price = round(float(product.price) * random.uniform(0.90, 1.25), 2) # Price variation +/- 15%
+                    unit_price = max(0.01, unit_price)
+
+                    inventory_item = Inventory(
+                        seller_id=seller.user_id,
+                        product_id=product.product_id,
+                        quantity=quantity,
+                        unit_price=unit_price,
+                        owner_id=product.owner_id
+                    )
+                    inventory_items_to_add.append(inventory_item)
+                    added_count_total += 1
+                    if product.product_id not in existing_seller_map:
+                         existing_seller_map[product.product_id] = set()
+                    existing_seller_map[product.product_id].add(seller.user_id)
+
+    # Commit all new inventory items at the end
+    if inventory_items_to_add:
+        try:
+            session.add_all(inventory_items_to_add)
+            session.commit()
+            print(f"Successfully added {added_count_total} new seller inventory listings.")
+        except SQLAlchemyError as e:
+            session.rollback()
+            print(f"Error adding seller inventory listings: {e}")
+
+# --- MODIFIED: Updated Warehouse Inventory Function ---
 def create_warehouse_inventory(products, warehouses, default_max_qty):
+    """Adds or updates product inventory IN WAREHOUSES."""
     WarehouseProduct = db_models['WarehouseProduct']
     inventory_items_to_add = []
     inventory_items_to_update = 0
+    Inventory = db_models['Inventory']
 
     if not warehouses or not products:
         print("Error: Warehouses and products are required to create warehouse inventory.")
@@ -299,26 +438,30 @@ def create_warehouse_inventory(products, warehouses, default_max_qty):
 
     print(f"Populating/updating WAREHOUSE inventory for {len(products)} products...")
 
+    seller_inventory = {}
+    for inv in session.query(Inventory).all():
+        if inv.product_id not in seller_inventory:
+            seller_inventory[inv.product_id] = 0
+        seller_inventory[inv.product_id] += inv.quantity
+
     existing_inventory = {}
     for item in session.query(WarehouseProduct).all():
          existing_inventory[(item.warehouse_id, item.product_id)] = item
 
     product_count = 0
-    product_warehouse_map = {}  # To track which warehouses have which products
-    
     for product in products:
         product_count += 1
+        
+        total_seller_quantity = seller_inventory.get(product.product_id, 0)
         
         if len(warehouses) > 1:
             num_warehouse_assignments = random.randint(max(1, len(warehouses)//2), len(warehouses))
             assigned_warehouses = random.sample(warehouses, num_warehouse_assignments)
         else:
             assigned_warehouses = warehouses.copy()
-        
-        product_warehouse_map[product.product_id] = [w.warehouse_id for w in assigned_warehouses]
-        
-        total_qty_needed = max(100, 50 * len(assigned_warehouses))
-        qty_per_warehouse = max(20, int(total_qty_needed / len(assigned_warehouses)))
+
+        total_wh_quantity_needed = max(total_seller_quantity * 1.5, 100)  # 50% more than seller inventory, min 100
+        qty_per_warehouse = max(20, int(total_wh_quantity_needed / len(assigned_warehouses)))
         
         for warehouse in assigned_warehouses:
             key = (warehouse.warehouse_id, product.product_id)
@@ -350,16 +493,11 @@ def create_warehouse_inventory(products, warehouses, default_max_qty):
                     inventory_item = WarehouseProduct(
                         warehouse_id=warehouse.warehouse_id,
                         product_id=test_product.product_id,
-                        quantity=200
+                        quantity=200  # Very high quantity
                     )
                     inventory_items_to_add.append(inventory_item)
-                    product_warehouse_map.setdefault(test_product.product_id, []).append(warehouse.warehouse_id)
                 else:
-                    existing_inventory[key].quantity = 200
-                    if test_product.product_id not in product_warehouse_map:
-                        product_warehouse_map[test_product.product_id] = []
-                    if warehouse.warehouse_id not in product_warehouse_map[test_product.product_id]:
-                        product_warehouse_map[test_product.product_id].append(warehouse.warehouse_id)
+                    existing_inventory[key].quantity = 200  # Update to high quantity
     except Exception as e:
         print(f"Error setting high warehouse inventory for test product: {e}")
 
@@ -368,117 +506,14 @@ def create_warehouse_inventory(products, warehouses, default_max_qty):
              session.add_all(inventory_items_to_add)
         session.commit()
         print(f"Successfully created {len(inventory_items_to_add)} new WAREHOUSE inventory records and updated {inventory_items_to_update} existing records.")
-        return product_warehouse_map
+        return session.query(WarehouseProduct).all()
     except SQLAlchemyError as e:
         session.rollback()
         print(f"Error creating/updating warehouse inventory: {e}")
-        return {}
-
-def create_seller_inventory(products, sellers, min_sellers_per_prod, product_warehouse_map, warehouses):
-    Inventory = db_models['Inventory']
-    inventory_items_to_add = []
-
-    if not products or not sellers:
-        print("Error: Products and sellers are required to create seller inventory.")
-        return
-
-    if len(sellers) < min_sellers_per_prod:
-        print(f"Warning: Not enough sellers ({len(sellers)}) to meet the minimum requirement ({min_sellers_per_prod}). Adjusting target.")
-        min_sellers_per_prod = len(sellers)
-
-    if min_sellers_per_prod <= 0:
-        print("Minimum sellers per product is 0 or less. Skipping seller inventory creation.")
-        return
-
-    print(f"Ensuring at least {min_sellers_per_prod} sellers per product in Inventory table...")
-
-    existing_seller_map = {}
-    for inv in session.query(Inventory.product_id, Inventory.seller_id).all():
-        if inv.product_id not in existing_seller_map:
-            existing_seller_map[inv.product_id] = set()
-        existing_seller_map[inv.product_id].add(inv.seller_id)
-
-    try:
-        test_product = None
-        if products:
-            test_product = products[0]
-        
-        if test_product and test_product.product_id in product_warehouse_map:
-            product_id = test_product.product_id
-            assigned_warehouses = product_warehouse_map[product_id]
-            
-            if not assigned_warehouses:
-                print(f"Warning: Test product {product_id} has no warehouses assigned.")
-                if len(warehouses) > 0:
-                    assigned_warehouses = [warehouses[0].warehouse_id]
-            
-            for seller in sellers:
-                if seller.user_id == test_product.owner_id:
-                    continue  # Skip the product owner
-                
-                warehouse_id = random.choice(assigned_warehouses) if assigned_warehouses else None
-                # ...existing code continues...
-
-    except Exception as e:
-        print(f"Error creating test product inventory: {e}")
-        session.rollback()
-
-    product_count = 0
-    added_count_total = 0
-    for product in products:
-        product_count += 1
-        if product_count % 100 == 0:
-            print(f"  Processing seller inventory for product {product_count}/{len(products)}...")
-
-        current_sellers = existing_seller_map.get(product.product_id, set())
-        sellers_needed = min_sellers_per_prod - len(current_sellers)
-        
-        assigned_warehouses = product_warehouse_map.get(product.product_id, [])
-        if not assigned_warehouses:
-            continue  # Skip products without warehouse assignments
-
-        if sellers_needed > 0:
-            potential_sellers = [s for s in sellers if s.user_id != product.owner_id and s.user_id not in current_sellers]
-
-            if len(potential_sellers) < sellers_needed:
-                 additional_potential = [s for s in sellers if s.user_id not in current_sellers]
-                 combined_potential = list(dict.fromkeys(potential_sellers + additional_potential))
-                 potential_sellers = combined_potential
-
-            num_to_add = min(sellers_needed, len(potential_sellers))
-            if num_to_add > 0:
-                sellers_to_add = random.sample(potential_sellers, num_to_add)
-
-                for seller in sellers_to_add:
-                    quantity = random.randint(20, MAX_INITIAL_INVENTORY)
-                    unit_price = round(float(product.price) * random.uniform(0.90, 1.25), 2)
-                    unit_price = max(0.01, unit_price)
-                    warehouse_id = random.choice(assigned_warehouses)
-
-                    inventory_item = Inventory(
-                        seller_id=seller.user_id,
-                        product_id=product.product_id,
-                        quantity=quantity,
-                        unit_price=unit_price,
-                        owner_id=product.owner_id,
-                        warehouse_id=warehouse_id
-                    )
-                    inventory_items_to_add.append(inventory_item)
-                    added_count_total += 1
-                    if product.product_id not in existing_seller_map:
-                         existing_seller_map[product.product_id] = set()
-                    existing_seller_map[product.product_id].add(seller.user_id)
-
-    if inventory_items_to_add:
-        try:
-            session.add_all(inventory_items_to_add)
-            session.commit()
-            print(f"Successfully added {added_count_total} new seller inventory listings.")
-        except SQLAlchemyError as e:
-            session.rollback()
-            print(f"Error adding seller inventory listings: {e}")
+        return []
 
 def create_carts_and_orders(users, products, n_orders_per_user, max_items):
+    """Simulates users adding items to cart and creating orders with varied dates."""
     Order = db_models['Order']
     OrderProduct = db_models['OrderProduct']
     Cart = db_models['Cart']
@@ -493,6 +528,7 @@ def create_carts_and_orders(users, products, n_orders_per_user, max_items):
     total_order_count = 0
     buyer_count = 0
 
+    # Pre-fetch carts to reduce queries
     existing_carts = {cart.user_id: cart for cart in session.query(Cart).filter(Cart.user_id.in_([b.user_id for b in buyers])).all()}
 
     for buyer in buyers:
@@ -500,17 +536,18 @@ def create_carts_and_orders(users, products, n_orders_per_user, max_items):
         if buyer_count % 50 == 0:
              print(f"  Processing orders for buyer {buyer_count}/{len(buyers)}...")
 
+        # Get or create cart
         cart = existing_carts.get(buyer.user_id)
         if not cart:
             cart = Cart(user_id=buyer.user_id)
             session.add(cart)
             try:
-                session.flush()
+                session.flush() # Need cart_id before commit for potential use
                 existing_carts[buyer.user_id] = cart
             except SQLAlchemyError as e:
                  session.rollback()
                  print(f"Failed to create cart for user {buyer.user_id}: {e}")
-                 continue
+                 continue # Skip this user
 
         orders_for_this_user = 0
         num_orders_to_create_for_user = random.randint(0, n_orders_per_user)
@@ -523,11 +560,10 @@ def create_carts_and_orders(users, products, n_orders_per_user, max_items):
 
             available_listings = session.query(Inventory).filter(
                 Inventory.quantity > 0,
-                Inventory.seller_id != buyer.user_id,
-                Inventory.warehouse_id != None
+                Inventory.seller_id != buyer.user_id # Buyer can't buy from themselves
             ).all()
 
-            if not available_listings: continue
+            if not available_listings: continue # No products available from sellers
 
             for _ in range(num_items_in_order):
                 if not available_listings: break
@@ -535,18 +571,19 @@ def create_carts_and_orders(users, products, n_orders_per_user, max_items):
 
                 if chosen_listing.product_id in product_ids_in_order: continue
 
-                quantity = random.randint(1, min(4, chosen_listing.quantity))
-                price = chosen_listing.unit_price
+                quantity = random.randint(1, min(4, chosen_listing.quantity)) # Order 1 to 4 items, up to available
+                price = chosen_listing.unit_price # Use the seller's specific price
                 order_total += price * quantity
                 items_for_order.append({
                     'product_id': chosen_listing.product_id,
                     'quantity': quantity,
                     'price': price,
-                    'seller_id': chosen_listing.seller_id,
-                    'warehouse_id': chosen_listing.warehouse_id
+                    'seller_id': chosen_listing.seller_id # Use the seller from the Inventory listing
                 })
                 product_ids_in_order.add(chosen_listing.product_id)
+                # Remove the chosen listing from available for this order to avoid re-picking
                 available_listings.remove(chosen_listing)
+
 
             if not items_for_order: continue
 
@@ -556,17 +593,18 @@ def create_carts_and_orders(users, products, n_orders_per_user, max_items):
                 buyer_id=buyer.user_id,
                 total_amount=round(order_total, 2),
                 num_products=sum(item['quantity'] for item in items_for_order),
-                order_status='Unfulfilled',
-                order_date=order_date
+                order_status='Unfulfilled', # Default status
+                order_date=order_date # Set the historical date
             )
             session.add(order)
             try:
-                session.flush()
+                session.flush() # Get the order_id
             except SQLAlchemyError as e:
                 session.rollback()
                 print(f"Failed to create order for user {buyer.user_id} (flush): {e}")
                 continue
 
+            # Create order items
             order_items_to_add = []
             for item_data in items_for_order:
                 order_product = OrderProduct(
@@ -574,19 +612,20 @@ def create_carts_and_orders(users, products, n_orders_per_user, max_items):
                     product_id=item_data['product_id'],
                     quantity=item_data['quantity'],
                     price=item_data['price'],
-                    seller_id=item_data['seller_id'],
-                    status='Unfulfilled'
+                    seller_id=item_data['seller_id'], # Correct seller ID
+                    status='Unfulfilled' # Default status
                 )
                 order_items_to_add.append(order_product)
 
             session.add_all(order_items_to_add)
 
+            # Commit each order individually
             try:
                 session.commit()
                 orders_created_list.append(order)
                 orders_for_this_user += 1
                 total_order_count += 1
-            except IntegrityError as e:
+            except IntegrityError as e: # Catch potential duplicate key errors if logic allows
                  session.rollback()
                  print(f"Failed to add order items (IntegrityError) for order {order.order_id}: {e}")
             except SQLAlchemyError as e:
@@ -594,14 +633,16 @@ def create_carts_and_orders(users, products, n_orders_per_user, max_items):
                 print(f"Failed to commit order {order.order_id} for user {buyer.user_id}: {e}")
 
     print(f"Successfully created {total_order_count} orders.")
+    # Return list of created orders
     return orders_created_list
+
 
 def create_shipments(orders, warehouses, n_shipments_to_create):
     Shipment = db_models['Shipment']
     ShipmentItem = db_models['ShipmentItem']
     OrderProduct = db_models['OrderProduct']
     Order = db_models['Order']
-    User = db_models['User']
+    User = db_models['User'] # Need User to get buyer address
 
     shipments_created_list = []
 
@@ -627,31 +668,17 @@ def create_shipments(orders, warehouses, n_shipments_to_create):
 
     print(f"Attempting to create shipments for {len(orders_for_shipment)} orders...")
     shipment_count = 0
-    processed_orders = set()
+    processed_orders = set() # Keep track of orders processed in this run
 
     for order in orders_for_shipment:
-        if order.order_id in processed_orders: continue
+        if order.order_id in processed_orders: continue # Skip if already processed
 
-        order_items = session.query(OrderProduct).filter_by(order_id=order.order_id).all()
-        if not order_items:
-            continue
-            
-        sample_order_item = order_items[0]
-        inventory_item = session.query(Inventory).filter_by(
-            product_id=sample_order_item.product_id,
-            seller_id=sample_order_item.seller_id
-        ).first()
-        
-        if inventory_item and inventory_item.warehouse_id:
-            warehouse_id = inventory_item.warehouse_id
-            warehouse = session.query(Warehouse).get(warehouse_id)
-        else:
-            warehouse = random.choice(warehouses)
-            
+        warehouse = random.choice(warehouses)
+        # Use address from user if available, otherwise random
         buyer = session.get(User, order.buyer_id)
         if buyer and buyer.address:
-             dest_x = (hash(buyer.address + "x_coord") % 90) + 5
-             dest_y = (hash(buyer.address + "y_coord") % 90) + 5
+             dest_x = (hash(buyer.address + "x_coord") % 90) + 5 # Range 5-94
+             dest_y = (hash(buyer.address + "y_coord") % 90) + 5 # Range 5-94
              dest_x = max(0, min(100, dest_x))
              dest_y = max(0, min(100, dest_y))
         else:
@@ -661,10 +688,10 @@ def create_shipments(orders, warehouses, n_shipments_to_create):
         now = datetime.now()
         order_date_naive = order.order_date.replace(tzinfo=None) if order.order_date.tzinfo else order.order_date
         days_since_order = (now - order_date_naive).days
-        status = 'packing'
+        status = 'packing' # Default
         ups_tracking_id = None
         truck_id = None
-        fulfillment_date = None
+        fulfillment_date = None # For updating order items
 
         if days_since_order > 30 and random.random() < 0.98: status = 'delivered'
         elif days_since_order > 7 and random.random() < 0.9: status = random.choice(['delivering', 'loaded'])
@@ -672,18 +699,19 @@ def create_shipments(orders, warehouses, n_shipments_to_create):
         order_items_for_status_check = session.query(OrderProduct).filter_by(order_id=order.order_id).all()
         any_item_fulfilled = any(item.status == 'Fulfilled' for item in order_items_for_status_check)
         if any_item_fulfilled and status in ['packing', 'packed', 'loading']:
-            status = 'loaded'
+            status = 'loaded' # If items were somehow fulfilled, shipment must have progressed
 
         if status != 'packing':
-             ups_tracking_id = fake.ean(length=13)
+             ups_tracking_id = fake.ean(length=13) # Use ean for tracking id like format
         if status in ['loading', 'loaded', 'delivering', 'delivered']:
-             truck_id = random.randint(1, 50)
+             truck_id = random.randint(1, 50) # More trucks available
         if status == 'delivered':
-             min_fulfill_date = order_date_naive + timedelta(days=random.uniform(0.5, 3))
+             min_fulfill_date = order_date_naive + timedelta(days=random.uniform(0.5, 3)) # Deliver faster
              if min_fulfill_date < now:
                  fulfillment_date = fake.date_time_between(start_date=min_fulfill_date, end_date=now, tzinfo=None)
              else:
                  fulfillment_date = now
+
 
         shipment = Shipment(
              order_id=order.order_id,
@@ -693,17 +721,18 @@ def create_shipments(orders, warehouses, n_shipments_to_create):
              status=status,
              ups_tracking_id=ups_tracking_id,
              truck_id=truck_id,
-             ups_account = buyer.email if buyer and random.random() < 0.1 else None
+             ups_account = buyer.email if buyer and random.random() < 0.1 else None # Assign UPS account sometimes
         )
         session.add(shipment)
         try:
-            session.flush()
+            session.flush() # Get shipment_id
         except SQLAlchemyError as e:
              session.rollback()
              print(f"Failed to create shipment for order {order.order_id} (flush): {e}")
              continue
 
-        order_items = order_items_for_status_check
+        # Create shipment items
+        order_items = order_items_for_status_check # Reuse fetched items
         if not order_items:
             print(f"Warning: Order {order.order_id} has no items. Cannot create shipment items. Rolling back shipment creation.")
             session.rollback()
@@ -728,7 +757,7 @@ def create_shipments(orders, warehouses, n_shipments_to_create):
 
             except Exception as e:
                  print(f"Error updating order/item status for delivered shipment {shipment.shipment_id}: {e}")
-                 session.rollback()
+                 session.rollback() # Rollback if updating status is critical
                  continue
 
         try:
@@ -743,7 +772,9 @@ def create_shipments(orders, warehouses, n_shipments_to_create):
     print(f"Successfully created {shipment_count} shipments.")
     return shipments_created_list
 
+
 def create_reviews(users, products, n_reviews_to_create):
+    """Creates reviews for products and sellers."""
     Review = db_models['Review']
     reviews_to_add = []
     buyers = [u for u in users if not u.is_seller]
@@ -763,7 +794,7 @@ def create_reviews(users, products, n_reviews_to_create):
     existing_seller_reviews = {(r.user_id, r.seller_id) for r in session.query(Review.user_id, Review.seller_id).filter(Review.seller_id != None).all()}
 
     attempts = 0
-    max_attempts = n_reviews_to_create * 4
+    max_attempts = n_reviews_to_create * 4 # Increase max attempts
 
     while reviews_created < n_reviews_to_create and attempts < max_attempts:
         attempts += 1
@@ -773,15 +804,15 @@ def create_reviews(users, products, n_reviews_to_create):
         if review_target_type == 'product' and products:
             target_product = random.choice(products)
             target_key = (reviewer.user_id, target_product.product_id)
-            if target_key in existing_product_reviews: continue
+            if target_key in existing_product_reviews: continue # Avoid duplicate review
 
             review = Review(
                 user_id=reviewer.user_id,
                 product_id=target_product.product_id,
                 seller_id=None,
-                rating=random.choices([1, 2, 3, 4, 5], weights=[0.05, 0.1, 0.2, 0.4, 0.25])[0],
+                rating=random.choices([1, 2, 3, 4, 5], weights=[0.05, 0.1, 0.2, 0.4, 0.25])[0], # Weighted ratings
                 comment=fake.paragraph(nb_sentences=random.randint(1, 4)),
-                review_date=fake.date_time_between(start_date="-6m", end_date="now", tzinfo=None)
+                review_date=fake.date_time_between(start_date="-6m", end_date="now", tzinfo=None) # Reviews from last 6 months
             )
             reviews_to_add.append(review)
             existing_product_reviews.add(target_key)
@@ -789,16 +820,17 @@ def create_reviews(users, products, n_reviews_to_create):
 
         elif review_target_type == 'seller' and sellers:
             target_seller = random.choice(sellers)
+            # Ensure reviewer is not the seller themselves
             if reviewer.user_id == target_seller.user_id: continue
 
             target_key = (reviewer.user_id, target_seller.user_id)
-            if target_key in existing_seller_reviews: continue
+            if target_key in existing_seller_reviews: continue # Avoid duplicate review
 
             review = Review(
                 user_id=reviewer.user_id,
                 product_id=None,
                 seller_id=target_seller.user_id,
-                rating=random.choices([1, 2, 3, 4, 5], weights=[0.08, 0.12, 0.2, 0.35, 0.25])[0],
+                rating=random.choices([1, 2, 3, 4, 5], weights=[0.08, 0.12, 0.2, 0.35, 0.25])[0], # Slightly different weights for sellers
                 comment=fake.paragraph(nb_sentences=random.randint(1, 3)),
                 review_date=fake.date_time_between(start_date="-6m", end_date="now", tzinfo=None)
             )
@@ -806,24 +838,28 @@ def create_reviews(users, products, n_reviews_to_create):
             existing_seller_reviews.add(target_key)
             reviews_created += 1
 
+        # Print progress less frequently for larger runs
         if reviews_created > 0 and reviews_created % 500 == 0 and len(reviews_to_add) > 0:
              print(f"  Prepared {reviews_created}/{n_reviews_to_create} reviews...")
 
+        # Commit reviews in batches
         if len(reviews_to_add) >= 500:
             try:
                  session.add_all(reviews_to_add)
                  session.commit()
                  print(f"  Committed batch of {len(reviews_to_add)} reviews.")
-                 reviews_to_add = []
+                 reviews_to_add = [] # Reset batch
             except IntegrityError as e:
                  session.rollback()
                  print(f"Error creating reviews batch (IntegrityError likely duplicate): {e}")
-                 reviews_to_add = []
+                 reviews_to_add = [] # Clear potentially problematic batch
+                 # Re-fetch existing reviews might be too slow here, rely on skipping logic
             except SQLAlchemyError as e:
                 session.rollback()
                 print(f"Error creating reviews batch: {e}")
                 reviews_to_add = []
 
+    # Commit any remaining reviews
     if reviews_to_add:
         try:
             session.add_all(reviews_to_add)
@@ -844,6 +880,8 @@ def create_reviews(users, products, n_reviews_to_create):
     print(f"Current total reviews in DB: {final_count}")
     return final_count
 
+
+# --- Main Execution Logic ---
 if __name__ == "__main__":
     print("Starting database seeding...")
 
@@ -851,17 +889,18 @@ if __name__ == "__main__":
     product_count = session.query(func.count(db_models['Product'].product_id)).scalar()
     order_count = session.query(func.count(db_models['Order'].order_id)).scalar()
     review_count = session.query(func.count(db_models['Review'].review_id)).scalar()
-    inventory_count = session.query(func.count(db_models['Inventory'].inventory_id)).scalar()
-    warehouse_inventory_count = session.query(func.count(db_models['WarehouseProduct'].id)).scalar()
+    inventory_count = session.query(func.count(db_models['Inventory'].inventory_id)).scalar() # Check SELLER inventory
+    warehouse_inventory_count = session.query(func.count(db_models['WarehouseProduct'].id)).scalar() # Check WAREHOUSE inventory
 
     print(f"Current counts - Users: {user_count}, Products: {product_count}, Orders: {order_count}, Reviews: {review_count}, Seller Inventory: {inventory_count}, Warehouse Inventory: {warehouse_inventory_count}")
 
+    # Adjust threshold logic slightly
     skip_seeding = (
         user_count > NUM_USERS * 0.7 and
         product_count > (NUM_CATEGORIES * NUM_PRODUCTS_PER_CATEGORY * 0.7) and
         order_count > (NUM_USERS * NUM_ORDERS_PER_USER * 0.4) and
         review_count > (NUM_ORDERS_ESTIMATE * 0.5) and
-        inventory_count > product_count * (MIN_SELLERS_PER_PRODUCT * 0.5)
+        inventory_count > product_count * (MIN_SELLERS_PER_PRODUCT * 0.5) # Check if seller inventory seems somewhat populated
     )
 
     if len(sys.argv) > 1 and sys.argv[1] == '--force':
@@ -871,18 +910,22 @@ if __name__ == "__main__":
         print(f"Database appears to have significant data already. Skipping full seeding run.")
         print("To force seeding on a populated DB, run with '--force' argument.")
 
+
     if not skip_seeding:
         print("Proceeding with full data seeding...")
         print("-" * 20)
+        # 1. Create users
         all_users = create_users(NUM_USERS, NUM_SELLERS)
         sellers = [u for u in all_users if u.is_seller]
         print(f"Total users in DB after creation/fetch: {session.query(func.count(db_models['User'].user_id)).scalar()}")
         print("-" * 20)
 
+        # 2. Create categories
         all_categories = create_categories(NUM_CATEGORIES)
         print(f"Total categories in DB after creation/fetch: {session.query(func.count(db_models['ProductCategory'].category_id)).scalar()}")
         print("-" * 20)
 
+        # 3. Create products
         all_products = []
         if all_categories and sellers:
              all_products = create_products(all_categories, sellers, NUM_PRODUCTS_PER_CATEGORY)
@@ -891,26 +934,30 @@ if __name__ == "__main__":
              print("Skipping product creation due to missing categories or sellers.")
         print("-" * 20)
 
+        # 4. Create Seller Inventory (NEW STEP)
+        if all_products and sellers:
+             create_seller_inventory(all_products, sellers, MIN_SELLERS_PER_PRODUCT)
+             print(f"Total seller inventory listings in DB: {session.query(func.count(db_models['Inventory'].inventory_id)).scalar()}")
+        else:
+             print("Skipping seller inventory creation due to missing products or sellers.")
+        print("-" * 20)
+
+        # 5. Create warehouses
         all_warehouses = create_warehouses(NUM_WAREHOUSES)
         print(f"Total warehouses in DB after creation: {session.query(func.count(db_models['Warehouse'].warehouse_id)).scalar()}")
         print("-" * 20)
 
-        product_warehouse_map = {}
+        # 6. Create Warehouse inventory (Populates WarehouseProduct)
         if all_products and all_warehouses:
-            product_warehouse_map = create_warehouse_inventory(all_products, all_warehouses, MAX_INITIAL_INVENTORY)
+            create_warehouse_inventory(all_products, all_warehouses, MAX_INITIAL_INVENTORY)
             print(f"Total WAREHOUSE inventory records in DB: {session.query(func.count(db_models['WarehouseProduct'].id)).scalar()}")
         else:
              print("Skipping warehouse inventory creation due to missing products or warehouses.")
         print("-" * 20)
 
-        if all_products and sellers and product_warehouse_map:
-             create_seller_inventory(all_products, sellers, MIN_SELLERS_PER_PRODUCT, product_warehouse_map, all_warehouses)
-             print(f"Total seller inventory listings in DB: {session.query(func.count(db_models['Inventory'].inventory_id)).scalar()}")
-        else:
-             print("Skipping seller inventory creation due to missing products, sellers, or warehouse assignments.")
-        print("-" * 20)
-
+        # 7. Create orders (ensure users and products exist)
         created_orders = []
+        # Orders depend on Seller Inventory now, so ensure that ran
         if all_users and all_products and session.query(func.count(db_models['Inventory'].inventory_id)).scalar() > 0:
             created_orders = create_carts_and_orders(all_users, all_products, NUM_ORDERS_PER_USER, MAX_ITEMS_PER_ORDER)
             print(f"Total orders in DB after creation: {session.query(func.count(db_models['Order'].order_id)).scalar()}")
@@ -934,6 +981,7 @@ if __name__ == "__main__":
 
         print("Database seeding completed!")
 
+    # Close the session
     session.close()
     engine.dispose()
     print("Database session closed.")

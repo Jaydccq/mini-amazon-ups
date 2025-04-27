@@ -1,0 +1,24 @@
+Dangers:
+
+Risk 1
+Risk: If the website or application restarts after a user has added items to their cart but before completing the purchase, volatile session data or in-memory cart information can be lost. Alternatively, product data (like price or stock) might refresh, creating inconsistencies with the user's cart contents from before the restart.
+Impact: Poor user experience (lost cart items, checkout errors), resulting in abandoned purchases and lost sales. Potential for data inconsistencies if an order fails mid-process. Increased customer support workload dealing with failed transactions or lost carts.
+Mitigation: Implement persistent shopping carts linked to user accounts (if logged in) or using persistent storage (database, browser local storage/cookies for guests). Always re-validate cart item availability, price, and status against the current database state before initiating checkout. Employ graceful restart/deployment techniques (e.g., blue-green deployments, rolling updates) to minimize session disruption. Provide clear, informative error messages to the user instead of generic failure notices.
+Exposed UPS API Key
+
+Risk 2
+Risk: The API key used for interacting with the UPS service is embedded in publicly accessible client-side code (like JavaScript) or exposed through an insecure API endpoint, allowing anyone to retrieve and potentially misuse it.
+Impact: Unauthorized third parties can use the key to perform actions (like rate lookups, potentially creating shipments if permissions allow) billed to the website owner's account or consuming API rate limits. This can lead to unexpected costs, service disruption if UPS suspends the key due to abuse, and damage to the site's security reputation.
+Mitigation: All interactions with the UPS API must occur exclusively on the backend server. The API key should be stored securely on the server using environment variables, secrets management systems, or secure configuration files (never in frontend code or source control). Configure IP address whitelisting with UPS if available. Ensure the API key adheres to the principle of least privilege (only necessary permissions). Monitor API usage for anomalies.
+Unvalidated Destination Address Coordinates Input
+
+Risk 3
+Risk: The system accepts geographic coordinates (latitude, longitude) for delivery addresses directly from user input without proper validation, allowing invalid formats, values outside the valid range (e.g., latitude > 90), coordinates pointing to impossible locations (e.g., middle of the ocean), or potentially malformed data.
+Impact: Failed deliveries due to incorrect or non-routable coordinates, leading to increased shipping costs (returns, redelivery attempts) and customer dissatisfaction. Potential for errors or crashes in backend systems, mapping tools, or logistics integrations processing the invalid data. Contamination of the database with inaccurate location information.
+Mitigation: Implement strict validation for coordinate format (e.g., decimal degrees) and range (Latitude: -90 to +90, Longitude: -180 to +180). Add plausibility checks (e.g., is it on land? within the service area?). Strongly prefer collecting standard street addresses and using server-side geocoding services to obtain coordinates. If direct coordinate input is necessary, use reverse geocoding to verify the location corresponds to a valid address. Sanitize all user input. Provide clear feedback for invalid entries.
+Unvalidated User Email Address
+
+Risk 4
+Risk: The system allows users to register or provide an email address without verifying its syntactic correctness (matches standard email format) or its actual existence and ownership by the user (functional verification).
+Impact: Inability to deliver essential communications (order confirmations, password resets, shipping notifications), leading to user frustration and support requests. Users may be locked out of accounts due to typos during registration. Facilitates the creation of fake or spam accounts for abusing promotions or other malicious activities. Degrades database quality with invalid emails, harming email marketing effectiveness and sender reputation. Minor security risk if a mistyped email belongs to another active user.
+Mitigation: Implement robust email format validation on both client-side (for immediate feedback) and server-side (as the ultimate check). Crucially, implement an email verification process (double opt-in): send an email with a unique confirmation link or code that the user must interact with to prove ownership and activate the email address in the system. Optionally, perform DNS MX record checks on the domain to filter obviously invalid domains. Provide clear instructions to users about the verification process. Periodically cleanse the database of emails that consistently result in hard bounces.

@@ -5,7 +5,7 @@ from app.models.inventory import Inventory
 from app.services.warehouse_service import WarehouseService
 from app.services.shipment_service import ShipmentService
 from app.models.cart import CartService 
-from app.models.cart import Cart
+from app.models.cart import Cart,User
 from app.models.product import Product  # Add this import
 
 import logging
@@ -88,12 +88,14 @@ def checkout():
         success, checkout_count = Cart.checkout_cart(current_user.user_id,
                                                      destination_x, destination_y, ups_account)
 
+        logger.info(f"Checkout success: {success}, items: {checkout_count}")
+        
         if success:
             flash(f'Order placed successfully! Total: {checkout_count} items', 'success')
             return redirect(url_for('amazon.index'))
 
         else:
-            flash(f'Checkout failed: only {checkout_count} checked out successful!', 'error')
+            flash(f'cart controller checked out successful!', 'error')
             return redirect(url_for('amazon.cart'))
 
 

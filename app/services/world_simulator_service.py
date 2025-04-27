@@ -294,64 +294,7 @@ class WorldSimulatorService:
             logger.error(f"Error loading shipment: {e}")
             return False, str(e)
     
-    def query_package(self, package_id):
-        if not self.connected:
-            return False, "Not connected to World Simulator"
-        
-        try:
-            
-            
-            package = None
-            if self.world_id:
-                package = Package.query.filter_by(package_id=package_id, world_id=self.world_id).first()
-            
-            # If package doesn't exist, create a placeholder entry
-            if not package and self.world_id:
-                try:
-                    package = Package(
-                        package_id=package_id, 
-                        world_id=self.world_id, 
-                        status='unknown'
-                    )
-                    db.session.add(package)
-                    db.session.commit()
-                    logger.info(f"Created placeholder package record for ID {package_id} in world {self.world_id}")
-                except Exception as e:
-                    db.session.rollback()
-                    logger.warning(f"Could not create placeholder package: {e}")
-            
-            command = amazon_pb2.ACommands()
-            query = command.queries.add()
-            query.packageid = package_id
-            query.seqnum = self._get_next_seqnum()
-            
-            db_message = WorldMessage(
-                seqnum=query.seqnum,
-                message_type='query',
-                message_content=f"Package: {package_id}",
-                status='sent'
-            )
-            db.session.add(db_message)
-            db.session.commit()
-            
-            event = threading.Event()
-            with self.lock:
-                self.response_events[query.seqnum] = event
-            
-            self.queue_command(command)
-            
-            if event.wait(timeout=10):
-                with self.lock:
-                    if query.seqnum in self.pending_responses:
-                        response = self.pending_responses[query.seqnum]
-                        del self.pending_responses[query.seqnum]
-                        del self.response_events[query.seqnum]
-                        return True, response
-            
-            return False, "Timeout waiting for response"
-        except Exception as e:
-            logger.error(f"Error querying package: {e}", exc_info=True)
-            return False, str(e)
+    
     
     def queue_command(self, command):
         # Add acks for received messages
@@ -717,24 +660,26 @@ class WorldSimulatorService:
             if world_id:
                 connect_msg.worldid = world_id
 
+
+            
+            default_init_warehouses = []
+            for i in range(1, 5):
+                one_warehouse = Warehouse()
+                one_warehouse.warehouse_id = i
+                one_warehouse.x = random.randint(10, 100)
+                one_warehouse.y = random.randint(10, 100)
+                default_init_warehouses.append(one_warehouse)
+                new_wh = connect_msg.initwh.add()
+                new_wh.id = one_warehouse.warehouse_id
+                new_wh.x = one_warehouse.x
+                new_wh.y = one_warehouse.y
+            
             if init_warehouses:
                 for wh in init_warehouses:
                     new_wh = connect_msg.initwh.add()
                     new_wh.id = wh.warehouse_id
                     new_wh.x = wh.x
                     new_wh.y = wh.y
-            else:
-                default_init_warehouses = []
-                for i in range(1, 5):
-                    one_warehouse = Warehouse()
-                    one_warehouse.warehouse_id = i
-                    one_warehouse.x = random.randint(10, 100)
-                    one_warehouse.y = random.randint(10, 100)
-                    default_init_warehouses.append(one_warehouse)
-                    new_wh = connect_msg.initwh.add()
-                    new_wh.id = one_warehouse.warehouse_id
-                    new_wh.x = one_warehouse.x
-                    new_wh.y = one_warehouse.y
 
             self.send_protobuf(connect_msg)
 
@@ -881,3 +826,72 @@ class WorldSimulatorService:
             self.connected = False
             return None, str(e)
         
+
+    def query_package(self, package_id):
+        if not self.connected:
+            return False, "Not connected to World Simulator"
+
+
+        try:
+            command = amazon_pb2.ACommands()
+            query = command.queries.add()
+            query.packageid = package_id # This is the shipment_id
+            query.seqnum = self._get_next_seqnum()
+
+            # Log the command being sent
+            with self.app.app_context(): # Use context for DB operation
+                db_message = WorldMessage(
+                    seqnum=query.seqnum,
+                    message_type='query',
+                    message_content=f"Query Package ID: {package_id}",
+                    status='sent'
+                )
+                db.session.add(db_message)
+                db.session.commit()
+
+
+            # Prepare to wait for the response
+            event = threading.Event()
+            with self.lock:
+                self.response_events[query.seqnum] = event
+
+            self.queue_command(command)
+            logger.info(f"Queued query command for package ID {package_id} (seqnum: {query.seqnum})")
+
+            # Wait for the response or timeout
+            if event.wait(timeout=10): # Adjust timeout if needed
+                with self.lock:
+                    if query.seqnum in self.pending_responses:
+                        response_status = self.pending_responses[query.seqnum]
+                        logger.info(f"Received response for query seqnum {query.seqnum}: Status='{response_status}'")
+                        # Clean up
+                        del self.pending_responses[query.seqnum]
+                        if query.seqnum in self.response_events: del self.response_events[query.seqnum]
+                        # The response is likely the status string (e.g., "packed", "loaded")
+                        return True, response_status
+                    else:
+                        # Event was set, but no response recorded? Should ideally not happen with current logic.
+                        logger.warning(f"Event set for query seqnum {query.seqnum}, but no response found in pending_responses.")
+                        return False, "Response event triggered, but data missing"
+            else:
+                logger.warning(f"Timeout waiting for query response for package ID {package_id} (seqnum: {query.seqnum})")
+                # Clean up the event waiter if timed out
+                with self.lock:
+                    if query.seqnum in self.response_events:
+                        del self.response_events[query.seqnum]
+                    # Optionally remove from pending_responses too if it might get populated later erroneously
+                    if query.seqnum in self.pending_responses:
+                        del self.pending_responses[query.seqnum]
+                return False, "Timeout waiting for query response"
+
+        except Exception as e:
+            logger.error(f"Error querying package {package_id}: {e}", exc_info=True)
+            with self.app.app_context():
+                db.session.rollback()
+            with self.lock:
+                 if 'query' in locals() and query.seqnum in self.response_events:
+                     del self.response_events[query.seqnum]
+                 if 'query' in locals() and query.seqnum in self.pending_responses:
+                      del self.pending_responses[query.seqnum]
+            return False, str(e)
+

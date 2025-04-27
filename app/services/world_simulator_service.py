@@ -884,6 +884,7 @@ class WorldSimulatorService:
                         del self.pending_responses[query.seqnum]
                 return False, "Timeout waiting for query response"
 
+        # except ConnectionResetError:
         except Exception as e:
             logger.error(f"Error querying package {package_id}: {e}", exc_info=True)
             with self.app.app_context():
